@@ -1,8 +1,8 @@
 cask "remote2prompt-app" do
-  version "0.2.0"
-  sha256 "d85563605a7a22d2bdfb377b3842c099422b3f835d9d75ea0fbaa3788dd4fc6a"
+  version "0.2.1"
+  sha256 "5004536500ce03f8de8b8fb3b1450a52c34a22ab16a62387eb2c7c86ec8c0686"
 
-  url "https://github.com/realDGD/Remote2Prompt/archive/d33e92182e04f8e49d8f1ab7795220041ba03641.tar.gz"
+  url "https://github.com/realDGD/Remote2Prompt/archive/1f91c0e0defa05896e4dea356df007160fb8d700.tar.gz"
   name "Remote2Prompt"
   desc "Native macOS remote key mapping and voice-trigger app built from source"
   homepage "https://github.com/realDGD/Remote2Prompt"
@@ -14,7 +14,7 @@ cask "remote2prompt-app" do
 
   preflight_steps do
     # Refuse to copy an old formula build even if its marketing version is unchanged.
-    run "/usr/bin/grep", args: ["-Fxq", "d85563605a7a22d2bdfb377b3842c099422b3f835d9d75ea0fbaa3788dd4fc6a",
+    run "/usr/bin/grep", args: ["-Fxq", "5004536500ce03f8de8b8fb3b1450a52c34a22ab16a62387eb2c7c86ec8c0686",
                                 "{{HOMEBREW_PREFIX}}/opt/remote2prompt/share/remote2prompt/source.sha256"]
     copy "{{HOMEBREW_PREFIX}}/opt/remote2prompt/libexec/Remote2Prompt.app",
          "Remote2Prompt.app", recursive: true

@@ -2,9 +2,9 @@
 class Remote2prompt < Formula
   desc "Native macOS remote key mapping and voice-trigger app"
   homepage "https://github.com/realDGD/Remote2Prompt"
-  url "https://github.com/realDGD/Remote2Prompt/archive/d33e92182e04f8e49d8f1ab7795220041ba03641.tar.gz"
-  version "0.2.0"
-  sha256 "d85563605a7a22d2bdfb377b3842c099422b3f835d9d75ea0fbaa3788dd4fc6a"
+  url "https://github.com/realDGD/Remote2Prompt/archive/1f91c0e0defa05896e4dea356df007160fb8d700.tar.gz"
+  version "0.2.1"
+  sha256 "5004536500ce03f8de8b8fb3b1450a52c34a22ab16a62387eb2c7c86ec8c0686"
 
   depends_on macos: :sonoma
 
@@ -16,7 +16,7 @@ class Remote2prompt < Formula
     system "./scripts/build-app.sh"
     system "./scripts/verify-app.sh"
     libexec.install "dist/Remote2Prompt.app"
-    (pkgshare/"source.sha256").write "d85563605a7a22d2bdfb377b3842c099422b3f835d9d75ea0fbaa3788dd4fc6a" + "\n"
+    (pkgshare/"source.sha256").write "5004536500ce03f8de8b8fb3b1450a52c34a22ab16a62387eb2c7c86ec8c0686" + "\n"
     (bin/"remote2prompt").write <<~SH
       #!/bin/sh
       if [ "$#" -eq 0 ]; then
@@ -43,7 +43,7 @@ class Remote2prompt < Formula
   test do
     assert_match "self-check passed", shell_output("#{bin}/remote2prompt --self-check")
     assert_match version.to_s, shell_output("#{bin}/remote2prompt --version")
-    assert_equal "d85563605a7a22d2bdfb377b3842c099422b3f835d9d75ea0fbaa3788dd4fc6a", (pkgshare/"source.sha256").read.strip
+    assert_equal "5004536500ce03f8de8b8fb3b1450a52c34a22ab16a62387eb2c7c86ec8c0686", (pkgshare/"source.sha256").read.strip
     app = Pathname("/Applications/Remote2Prompt.app")
     if app.exist?
       refute_predicate app, :symlink?
