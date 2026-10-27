@@ -2,6 +2,13 @@ import Foundation
 import IOKit.hid
 import Remote2PromptCore
 
+public struct HIDOpenFailure: Error, LocalizedError {
+    public let code: IOReturn
+    public var errorDescription: String? {
+        "系统拒绝打开遥控器（\(code)）。请检查输入监控授权，或退出占用设备的软件后重试。"
+    }
+}
+
 private func remoteAdded(_ context: UnsafeMutableRawPointer?, _ result: IOReturn, _ sender: UnsafeMutableRawPointer?, _ device: IOHIDDevice) {
     guard let context else { return }
     let monitor = Unmanaged<HIDRemoteMonitor>.fromOpaque(context).takeUnretainedValue()
@@ -62,7 +69,7 @@ public final class HIDRemoteMonitor {
         IOHIDManagerRegisterInputReportCallback(value, remoteReport, context)
         IOHIDManagerScheduleWithRunLoop(value, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
         let result = IOHIDManagerOpen(value, 0)
-        if result != kIOReturnSuccess { stop(); throw MappingFailure.writeFailed }
+        if result != kIOReturnSuccess { stop(); throw HIDOpenFailure(code: result) }
     }
 
     public func stop() {

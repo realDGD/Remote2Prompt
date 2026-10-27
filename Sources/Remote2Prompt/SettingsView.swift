@@ -28,13 +28,15 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @EnvironmentObject private var store: ConfigurationStore
     @ViewState private var selection: SettingsPage? = .connection
+    @ViewState private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(SettingsPage.allCases, selection: $selection) { page in
                 Label(page.title, systemImage: page.symbol).tag(page)
             }
             .listStyle(.sidebar)
+            .toolbar(removing: .sidebarToggle)
             .navigationSplitViewColumnWidth(min: 170, ideal: 195, max: 245)
             .safeAreaInset(edge: .bottom) {
                 Text("Remote2Prompt · 开发预览")
@@ -62,7 +64,21 @@ struct SettingsView: View {
                 }
                 .disabled(store.persistenceError != nil)
             }
-            .navigationTitle((selection ?? .connection).title)
+        }
+        // Keep title and toggle owned by the window, rather than moving toolbar items between columns.
+        .navigationTitle((selection ?? .connection).title)
+        .toolbar(removing: .sidebarToggle)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
+                    }
+                } label: {
+                    Label(columnVisibility == .detailOnly ? "显示边栏" : "隐藏边栏", systemImage: "sidebar.left")
+                }
+                .help(columnVisibility == .detailOnly ? "显示边栏" : "隐藏边栏")
+            }
         }
         .frame(minWidth: 780, minHeight: 560)
     }

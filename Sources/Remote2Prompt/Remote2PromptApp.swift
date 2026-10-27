@@ -1,5 +1,6 @@
 import AppKit
 import Remote2PromptCore
+import Remote2PromptMac
 import SwiftUI
 
 @main
@@ -21,6 +22,11 @@ enum Launcher {
             }
             return
         }
+        if CommandLine.arguments.contains("--list-remotes") {
+            print("Xiaomi RC001/RC003 keyboard interfaces: \(HIDRemoteMonitor.discoverCount())")
+            print("Input monitoring: \(IOHIDPermission.inputMonitoringGranted)")
+            return
+        }
         Remote2PromptApp.main()
     }
 }
@@ -28,11 +34,14 @@ enum Launcher {
 struct Remote2PromptApp: App {
     @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var delegate
     @StateObject private var store = ConfigurationStore()
+    @StateObject private var runtime = RemoteMappingRuntime(hardwareEnabled: !CommandLine.arguments.contains("--smoke-test"))
 
     var body: some Scene {
         Window("Remote2Prompt", id: "settings") {
             SettingsView()
                 .environmentObject(store)
+                .environmentObject(runtime)
+                .onReceive(store.$configuration) { runtime.configure($0) }
         }
         .defaultSize(width: 900, height: 650)
         .windowResizability(.contentMinSize)

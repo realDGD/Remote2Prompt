@@ -33,7 +33,7 @@ Remote2Prompt 是 macOS 原生遥控器语音与按键工具。先读 [README](R
 ## 验证与交付
 
 ```sh
-make test         # 不依赖 XCTest 的核心行为检查
+make test         # 不依赖 XCTest 的核心与 macOS 适配器模拟检查
 make build        # CLT Release 应用包
 make check        # 核心检查、构建、bundle 检查、文档检查
 make docs-check   # 仅文档和仓库约定改动

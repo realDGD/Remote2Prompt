@@ -8,13 +8,13 @@ Status: implemented
 
 ## Decision
 
-使用 Swift 6 / SwiftPM，最低系统为 macOS 14，应用由 SwiftUI 与 AppKit 组成。一个 target 提供纯核心模型和策略，一个 executable target 提供原生界面；测试为独立 executable target，通过 `make test` 运行，不依赖 XCTest。
+使用 Swift 6 / SwiftPM，最低系统为 macOS 14，应用由 SwiftUI 与 AppKit 组成。纯核心、macOS 适配器和原生应用分别在独立 target 中；核心及 macOS 适配器检查为独立 executable target，通过 `make test` 运行，不依赖 XCTest。
 
 构建脚本默认在当前进程中选择 `/Library/Developer/CommandLineTools`，以 `swift build` 生成可执行文件，再构造并临时签名 `.app`。Homebrew 从固定本次内容的源码归档构建；公开远程尚未建立时，生成本地 tap，不猜测远程 URL。
 
 构建使用 CLT 随附的 SwiftPM 默认驱动，避免依赖已弃用的 native 驱动选项。Homebrew 构建由外层沙箱隔离，Formula 仅为这一路径关闭 SwiftPM 子进程嵌套沙箱，并将缓存放入构建目录；否则实测的嵌套 sandbox-exec 会被 macOS 拒绝。普通开发构建保持 SwiftPM 沙箱。
 
-系统适配器尚未接入。UI 仅保存偏好，核心返回动作意图，二者都不声称已经发送按键或切换默认输入。应用标识符当前为 `dev.remote2prompt.app`，稳定发布前需复核。
+HID、系统按键和原生映射恢复适配器已接入，音频适配器与默认输入切换尚未实现。核心只返回意图，系统副作用集中在 macOS 适配 target。应用标识符当前为 `dev.remote2prompt.app`，稳定发布前需复核。
 
 当前 SDK 27 的裸 `@State` 会选择 CLT 未附带的宏插件，因此界面使用 `ViewState<Value>` 别名显式选中现有公开属性包装器。构建不加载完整 Xcode 内的插件。
 

@@ -14,6 +14,8 @@ Status: implemented
 
 `SystemActionSender` 成对构造键盘与媒体事件；语音使用 flagsChanged、左右键码和设备侧修饰标记。物理键已按住时拒绝语音合成接管；权限丢失后仍尝试释放。动作与按键发送提供注入出口，自动测试不向桌面实际发送输入。
 
+设备控制授权包含事件监听能力，输入监控不以必须出现独立授权条目作为启动前提；实际 HID 打开失败仍会回滚租约并停止，不把授权 API 的返回值当作报告接收成功。原生请求组合使用 IOHIDRequestAccess 与 CGRequestListenEventAccess，设置 deep link 单独提供，依据见 [Apple DTS 回复](https://developer.apple.com/forums/thread/828052)。
+
 ## Alternatives considered
 
 **仅独占一个 HID 接口。** 不能保证同设备其他接口没有原生事件，不足以作为危险键抑制依据。

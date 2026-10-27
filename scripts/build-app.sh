@@ -9,6 +9,10 @@ if [[ "$destination" != /* || "$destination" != */Remote2Prompt.app || -L "$dest
     echo "Output must be an absolute, non-symlink path ending in /Remote2Prompt.app" >&2
     exit 1
 fi
+if /bin/ps -axo comm= | /usr/bin/awk -v target="$destination/Contents/MacOS/Remote2Prompt" '$0 == target { found = 1 } END { exit !found }'; then
+    echo "Remote2Prompt is running from $destination. Quit it before rebuilding so the running code and privacy authorization stay consistent." >&2
+    exit 1
+fi
 if [[ -e "$destination" ]]; then
     existing_id="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$destination/Contents/Info.plist" 2>/dev/null || true)"
     if [[ "$existing_id" != "dev.remote2prompt.app" ]]; then

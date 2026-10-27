@@ -23,6 +23,7 @@ public final class RemoteMappingRuntime: ObservableObject {
     @Published public private(set) var lastActivity: RemoteKeyActivity?
     @Published public private(set) var inputMonitoring = false
     @Published public private(set) var accessibility = false
+    @Published public private(set) var permissionNotice: String?
     private var configuration = AppConfiguration()
     private var lease: NativeKeyLease?
     private let monitor = HIDRemoteMonitor()
@@ -83,6 +84,12 @@ public final class RemoteMappingRuntime: ObservableObject {
 
     public func refresh() {
         guard hardwareEnabled else { return }
+        guard IOHIDPermission.runningCodeIsCurrent() else {
+            stop()
+            status = "应用已更新，请退出并重新打开"
+            errorMessage = "正在运行的构建与磁盘上的应用不一致，当前权限状态不能用于判断新构建。请重开应用后刷新。"
+            return
+        }
         let oldCount = detectedCount
         let oldInput = inputMonitoring; let oldAX = accessibility
         detectedCount = HIDRemoteMonitor.discoverCount()
@@ -90,8 +97,9 @@ public final class RemoteMappingRuntime: ObservableObject {
         accessibility = AXIsProcessTrusted()
         if oldCount != detectedCount || oldInput != inputMonitoring || oldAX != accessibility { retryAllowed = true }
         guard configuration.mappingsEnabled else { return }
-        guard inputMonitoring && accessibility else {
-            stop(); status = "等待输入监控与辅助功能授权"; return
+        // Accessibility includes event posting/listening. The HID open remains authoritative for this device.
+        guard accessibility else {
+            stop(); status = "等待系统权限授权"; return
         }
         guard detectedCount > 0 else { stop(); status = "等待已配对的小米遥控器"; return }
         if isRunning {
@@ -124,10 +132,27 @@ public final class RemoteMappingRuntime: ObservableObject {
         refresh()
     }
 
-    public func requestInputMonitoring() { _ = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent); refresh() }
-    public func requestAccessibility() {
-        _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+    public func requestInputMonitoring() {
+        NSApp.activate(ignoringOtherApps: true)
+        let hidGranted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+        let eventGranted = CGRequestListenEventAccess()
+        permissionNotice = hidGranted || eventGranted ? "系统已允许输入监听。" : "已向 macOS 请求输入监控权限。若系统不再弹窗，请使用“打开输入监控设置”检查当前应用条目。设备控制授权也可涵盖监听能力，实际连接仍由系统验证。"
         refresh()
+    }
+    public func requestAccessibility() {
+        NSApp.activate(ignoringOtherApps: true)
+        let granted = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+        permissionNotice = granted ? "设备控制权限已授予。" : "已向 macOS 请求设备控制权限。完成后可刷新状态；系统不再弹窗时请打开对应设置页。"
+        refresh()
+    }
+    public func openInputMonitoringSettings() { openPrivacyPane("Privacy_ListenEvent") }
+    public func openAccessibilitySettings() { openPrivacyPane("Privacy_Accessibility") }
+
+    private func openPrivacyPane(_ pane: String) {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)"), NSWorkspace.shared.open(url) else {
+            errorMessage = "无法打开系统设置，请手动前往“隐私与安全性”完成授权。"
+            return
+        }
     }
 
     public func shutdown() {

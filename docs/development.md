@@ -15,6 +15,10 @@ make build
 
 默认 Release 产物为 `dist/Remote2Prompt.app`，只包含当前架构。`CONFIGURATION=debug make build` 可生成调试包。脚本将 `VERSION` 写入 Info.plist，以临时签名生成可运行 bundle；临时签名不等于 Developer ID、公证或可公开分发的正式包。
 
+必须先退出从目标路径运行的 app 再重建；构建脚本会拒绝覆盖运行中的应用。临时签名的指定要求绑定代码摘要，更新构建可能使原有 TCC 授权不再匹配。运行时用 Security API 检测磁盘与进程代码不一致并暂停映射，避免把旧进程权限误当作新构建状态。不要通过修改隐私数据库或放宽签名要求绕过授权。
+
+macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问”，旧的 Privacy_Accessibility deep link 仍指向该页。输入监控提供 IOHIDRequestAccess 与 CGRequestListenEventAccess 原生请求，另有直接打开设置入口；macOS 不保证重复弹窗或自动列出条目。设备控制授权包含事件监听能力，运行时以实际 HID 打开和报告接收结果验证设备可用性；失败则恢复原生映射并停止。
+
 `make run` 会打开设置窗口。菜单栏可重开窗口；关闭窗口不会退出进程。执行程序支持 `--version`、`--self-check`；`--smoke-test` 启动真实 AppKit/SwiftUI 窗口，确认存在后自行退出，不访问硬件。
 
 ## 本地 Homebrew 路径
