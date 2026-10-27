@@ -17,6 +17,8 @@
 
 SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>` 显式引用公开 `SwiftUI.State<Value>` 包装器。不能未经独立 CLT 验证改回裸宏。
 
+`ConfigurationTransfer` 拥有可移植 JSON 格式及大小、schema 和映射校验；UI 使用原生文件面板与替换确认，移除设备身份并关闭导入能力。`SetupWizard` 的四步草稿与可选检查分开，跳过不产生硬件成功证据。`MenuAudioInputs` 直接观察两个音频所有者，复用既有输入目录和显式 `userSelection` 请求；手动切换不创建语音所有权，语音/恢复期间互斥。
+
 ## 设备、权限与事件
 
 发现阶段只读 IORegistry 属性，不实例化 HID user client。接管时 `HIDRemoteMonitor` 才打开限定 VID/PID 的原始键盘报告通道。`XiaomiRemote` 解析三个 little-endian 16-bit usage，支持 report 1 的 6/7 字节布局，语音 0x3E 不进入普通手势。`ButtonGestures` 使用外部单调时间：双击 0.30 秒、长按 0.55 秒；可重复动作 0.45 秒后每 0.08 秒重复，不补发积压。
