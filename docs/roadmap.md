@@ -45,7 +45,8 @@ M1 代码接入后继续推进设置与语音，当前见 [本轮验证](validat
 
 ## M4：分发
 
-- [ ] 确定真实远程仓库、项目许可证、稳定 Bundle ID 与首个发布版本。
+- [x] 建立 public 源码仓库、公开前脱敏约定及 CLT/Homebrew CI。
+- [ ] 确定项目许可证、发布用 Bundle ID 与首个发布版本。
 - [ ] 将本地 Formula 改为固定源码 Tag/归档 URL 与 SHA-256，并建立公开 tap。
 - [ ] 干净 CLT 机器上 `brew install --build-from-source`、升级、卸载和应用程序入口验收。
 - [ ] 独立评估 MiRemoteV/BlackHole 依赖和驱动分发；需要安装驱动时提供单独、显式的流程。

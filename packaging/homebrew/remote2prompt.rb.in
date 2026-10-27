@@ -1,6 +1,7 @@
-# Local source-build template. Configure a public homepage/source and license before public release.
+# Local source-build template. Choose a license and fixed release archive before publishing a tap.
 class Remote2prompt < Formula
   desc "Native macOS remote key mapping and voice-trigger app"
+  homepage "https://github.com/realDGD/Remote2Prompt"
   url @SOURCE_URL@
   version @VERSION@
   sha256 @SHA256@

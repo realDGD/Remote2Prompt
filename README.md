@@ -1,5 +1,7 @@
 # Remote2Prompt
 
+[![CI](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml/badge.svg)](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml)
+
 面向 macOS 的原生遥控器语音与按键工具，以 Swift 编写，采用左栏设置，通过 Command Line Tools 构建，支持 Homebrew 从源码安装。
 
 当前是**按键与语音链路开发预览**：已接入 HID、原生键接管与恢复、普通手势、快捷键、独立语音触发，以及 ATVV → IMA/DVI ADPCM → 16 kHz PCM → 所选回环设备的代码链路。**真实遥控器说话、目标输入法识别及完整故障回归尚未验收，代码接入不等于语音输入已验证成功。** 当前结果见 [本轮验证](docs/validation/2026-10-27-settings-and-voice.md)，历史见 [M1 记录](docs/validation/2026-10-27-m1.md)。
@@ -34,9 +36,11 @@ make check
 
 ## Homebrew 源码安装
 
-尚无远程仓库或公开 Release，先提供可复现的本地 tap：
+源码仓库为 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)。尚未发布 Release 或公开 tap，先提供可复现的本地 tap：
 
 ```sh
+git clone https://github.com/realDGD/Remote2Prompt.git
+cd Remote2Prompt
 make homebrew
 brew tap --custom-remote remote2prompt/local "$PWD/dist/homebrew/tap"
 brew install --build-from-source remote2prompt/local/remote2prompt
@@ -64,7 +68,13 @@ ln -s "$(brew --prefix remote2prompt)/libexec/Remote2Prompt.app" /Applications/R
 | 独立语音触发、Fn 与左右 Control/Command/Option | 已接入成对事件及音频排空后释放，目标输入法待验收 |
 | RC003 音频与虚拟设备 | 已接入协议/解码/回环输出代码；实际枚举本机 MiRemoteV 2ch，真实声音与 RC001 待验收 |
 | 在线优先虚拟输入、断开恢复实体输入 | 纯策略已实现，CoreAudio 默认输入协调待开发 |
-| Homebrew 源码安装 | 之前本地源码安装及 brew test 通过；本轮生成归档，公开 tap 待建立 |
+| Homebrew 源码安装与 CI | 提供本地 tap，CI 覆盖 arm64/Intel CLT 和源码安装；实际结果见 Actions，公开 tap 待建立 |
+
+## 公开维护
+
+仓库保留分阶段提交。`make privacy-check` 检查当前受跟踪源码，`ruby scripts/check-publication.rb --history` 同时检查全部可达文件历史；构建、原始诊断、录音和签名材料由 `.gitignore` 排除。不要把真实设备标识或未经脱敏的日志贴入仓库与 issue。
+
+[CI](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml) 运行文档、全历史脱敏、凭据扫描、工作流语法、两种架构 CLT 构建和 Homebrew 源码安装；不访问真实遥控器或验证系统权限。详见 [公开维护记录](docs/validation/2026-10-27-publication.md)。当前尚未选择开源许可证，也未发布二进制或驱动。
 
 ## 开发入口
 

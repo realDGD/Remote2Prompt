@@ -11,7 +11,7 @@ output = File.join(root, "dist", "homebrew")
 FileUtils.mkdir_p(output)
 
 # Keep local outputs and environment files out of the source archive.
-entries = %w[Package.swift VERSION Makefile README.md AGENTS.md CLAUDE.md THIRD_PARTY_NOTICES.md .gitignore Sources Tests Resources scripts packaging docs .agents]
+entries = %w[Package.swift VERSION Makefile README.md AGENTS.md CLAUDE.md THIRD_PARTY_NOTICES.md .gitignore Sources Tests Resources scripts packaging docs .agents .github]
 entries << "LICENSE" if File.file?(File.join(root, "LICENSE"))
 archive = nil
 checksum = nil

@@ -35,7 +35,7 @@ macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问�
 
 ## 本地 Homebrew 路径
 
-没有远程地址时，运行 `make homebrew`，生成：
+源码仓库已公开在 [GitHub](https://github.com/realDGD/Remote2Prompt)，但尚无固定发布 Tag 或公开 tap。运行 `make homebrew`，生成本地源码安装入口：
 
 ```text
 dist/homebrew/
@@ -76,7 +76,13 @@ brew untap remote2prompt/local
 
 ## 公开发布前
 
-必须先明确真实仓库地址、许可证、Bundle ID 和版本，再将 [Formula 模板](../packaging/homebrew/remote2prompt.rb.in) 的生成来源换为固定 Tag/归档 URL，核对 SHA-256。公开 tap 不能使用本机 `file://` 路径。Homebrew Formula 的源码构建与 Cask 的预编译分发是两条路径；当前不创建公开 tap、Tag、Release 或自动更新服务。
+真实源码地址现为 `https://github.com/realDGD/Remote2Prompt`。公开 tap 或二进制发布前，仍须确定许可证、发布用 Bundle ID 和版本，再将 [Formula 模板](../packaging/homebrew/remote2prompt.rb.in) 的生成来源换为固定 Tag/归档 URL，核对 SHA-256。公开 tap 不能使用本机 `file://` 路径。Homebrew Formula 的源码构建与 Cask 的预编译分发是两条路径；当前不创建公开 tap、Tag、Release 或自动更新服务。
+
+## 持续集成
+
+[工作流](../.github/workflows/ci.yml) 响应 main push、pull request 和手动触发。Linux job 检查文档、全部可达历史的本机信息、Gitleaks 凭据及 actionlint 语法；macOS 15 的 arm64 和 Intel job 明确设置独立 CLT，运行 `make check`，再生成本地 tap、在 Homebrew 沙箱中源码安装、`brew test` 和卸载。
+
+第三方 Action 固定提交，检查工具固定版本及 SHA-256，工作流仅使用读取内容权限，不上传二进制或原始诊断。CI 不请求输入监控、辅助功能、蓝牙或麦克风权限，不运行音频输出检查、GUI smoke 或遥控器验收。最低 macOS 14 和实际输入法仍需单独验证。
 
 ## 本轮诊断入口
 
