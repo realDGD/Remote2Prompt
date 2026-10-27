@@ -13,6 +13,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     @Published public private(set) var testingTone = false
     public private(set) var receivedSamples = 0
     public var canStart: (() -> Bool)?
+    public var prepareInput: ((@escaping (Bool) -> Void) -> Void)?
     public var onBegin: (() -> Bool)?
     public var onEnd: (() -> Void)?
     private let writer = LoopbackWriter()
@@ -27,6 +28,8 @@ public final class RemoteAudioRuntime: ObservableObject {
     private var generation: UInt64 = 0
     private var routeGeneration: UInt64 = 0
     private var finishing = false
+    private var preparingInput = false
+    private var preroll = VoiceStartBuffer()
     private var draining = false
     private var protocolStarted = false
     private var allowEarlyAudio = true
@@ -50,7 +53,7 @@ public final class RemoteAudioRuntime: ObservableObject {
             catch { self.cancel(message: "遥控器音频帧格式不受支持。"); return }
             self.bluetoothReady = true; self.updateReady()
         }
-        bluetooth.onOpen = { [weak self] in _ = self?.press() }
+        // HID is the only start signal. A delayed ATVV open cannot start or retry a released session.
         bluetooth.onStarted = { [weak self] in
             guard let self else { return }
             if !self.sessionActive || self.finishing { _ = self.bluetooth.close() }
@@ -142,18 +145,34 @@ public final class RemoteAudioRuntime: ObservableObject {
     @discardableResult public func press() -> Bool {
         let interruptedTail = sessionActive && finishing
         if sessionActive && !finishing { return true }
-        if interruptedTail { cancel() }
         guard !stopped, isReady, canStart?() == true else {
-            _ = bluetooth.close()
-            if wanted { status = "请检查语音开关、设备连接和设备控制权限" }
+            if !sessionActive {
+                _ = bluetooth.close()
+                if wanted { status = "请检查语音开关、设备连接和设备控制权限" }
+            }
             return false
         }
+        if interruptedTail { cancel() }
         generation &+= 1; let token = generation
         try? decoder.reset(); receivedSamples = 0; finishing = false; draining = false
         protocolStarted = false; allowEarlyAudio = !interruptedTail
+        preparingInput = true; preroll.clear()
         testingTone = false; writer.begin(); sessionActive = true
-        guard onBegin?() == true else { cancel(message: "无法发送语音触发键。"); return false }
-        guard bluetooth.open() else { cancel(message: "无法打开遥控器麦克风。"); return false }
+        status = "正在准备语音输入"
+        let prepared: (Bool) -> Void = { [weak self] success in
+            guard let self, self.generation == token, self.sessionActive, !self.finishing else { return }
+            guard success else { self.cancel(message: "未能确认遥控器输入，语音未开始。"); return }
+            self.startPreparedVoice(token: token)
+        }
+        if let prepareInput { prepareInput(prepared) } else { prepared(true) }
+        return sessionActive
+    }
+    private func startPreparedVoice(token: UInt64) {
+        guard !stopped, isReady, canStart?() == true else { cancel(message: "语音键已松开或音频链路已失效。"); return }
+        preparingInput = false
+        guard onBegin?() == true else { cancel(message: "无法发送语音触发键。"); return }
+        write(preroll.take(), token: token)
+        guard bluetooth.open() else { cancel(message: "无法打开遥控器麦克风。"); return }
         status = "正在接收遥控器语音"
         startTimeout?.cancel()
         startTimeout = Task { @MainActor [weak self] in
@@ -161,10 +180,10 @@ public final class RemoteAudioRuntime: ObservableObject {
             guard let self, self.generation == token, self.sessionActive, self.receivedSamples == 0 else { return }
             self.cancel(message: "遥控器尚未传来音频，请松开语音键后重试。")
         }
-        return true
     }
     public func release() {
         guard sessionActive, !finishing else { return }
+        if preparingInput { cancel(message: "语音键已松开，已取消等待输入切换。"); return }
         finishing = true; _ = bluetooth.close(); startTimeout?.cancel()
         let token = generation
         tail?.cancel()
@@ -189,15 +208,22 @@ public final class RemoteAudioRuntime: ObservableObject {
             guard !samples.isEmpty else { return }
             receivedSamples += samples.count
             protocolStarted = true
+            if preparingInput { try preroll.append(samples); return }
             let token = generation
-            writer.append(samples) { [weak self] error in
-                guard let error else { return }
-                Task { @MainActor in
-                    guard let self, self.generation == token else { return }
-                    self.invalidateOutput(error.localizedDescription)
-                }
-            }
+            write(samples, token: token)
+        } catch LoopbackFailure.overflow {
+            cancel(message: "等待输入切换过久，语音缓存已满，请松开后重试。")
         } catch { invalidateOutput("遥控器音频帧无效，请重新连接音频。") }
+    }
+    private func write(_ samples: [Int16], token: UInt64) {
+        guard !samples.isEmpty else { return }
+        writer.append(samples) { [weak self] error in
+            guard let error else { return }
+            Task { @MainActor in
+                guard let self, self.generation == token else { return }
+                self.invalidateOutput(error.localizedDescription)
+            }
+        }
     }
     private func invalidateOutput(_ message: String) {
         outputReady = false; bluetoothReady = false; isReady = false
@@ -208,6 +234,7 @@ public final class RemoteAudioRuntime: ObservableObject {
         generation &+= 1; tail?.cancel(); startTimeout?.cancel()
         let wasActive = sessionActive
         sessionActive = false; finishing = false; draining = false; testingTone = false
+        preparingInput = false; preroll.clear()
         if wasActive { _ = bluetooth.close() }
         writer.cancel(); try? decoder.reset()
         if wasActive { onEnd?() }

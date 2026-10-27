@@ -15,7 +15,7 @@ Remote2Prompt 是 macOS 原生遥控器语音与按键工具。先读 [README](R
 - 仅面向 macOS 14+，Swift 6 / SwiftPM，原生 SwiftUI + AppKit 左栏设置；不加入 iOS、Electron 或 Web 设置界面。
 - 构建和自动检查必须能用独立 Command Line Tools 完成。默认 `DEVELOPER_DIR=/Library/Developer/CommandLineTools`，不运行 `xcodebuild`，不修改全局 `xcode-select`。
 - `Sources/Remote2PromptCore/` 保持独立于 SwiftUI、蓝牙、CoreAudio 和系统事件发送；系统适配器拥有资源和清理，UI 只消费状态和设置。
-- 音频输入优先开关和按键映射默认关闭。语音键即时开始/结束，独立于普通键的单击、双击和长按判定。
+- 音频输入优先开关和按键映射默认关闭。语音键不等待普通手势判定；启用临时输入切换时，先确认系统输入再发送触发键，松开排空尾音后释放并恢复。
 - 退出、断连、权限失效或会话取消必须释放已发送的合成按键。左右 Control 分别为独立选项，不能退化成组合键。
 - 音频设备按 UID 保存，瞬时 AudioDeviceID 只存在于适配器。默认不修改系统输入或输出；优先策略只允许在用户开启后接管输入。
 - 不记录语音内容、完整 HID 数据、蓝牙地址、外设 UUID 或输入文字；硬件日志使用脱敏固定样例。

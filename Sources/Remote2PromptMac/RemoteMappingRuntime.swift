@@ -57,6 +57,7 @@ public final class RemoteMappingRuntime: ObservableObject {
     private var hasShutdown = false
     private var audioReady = false
     private var audioReadiness: AnyCancellable?
+    private var audioTrigger: VoiceTrigger?
 
     public init(hardwareEnabled: Bool = true) {
         self.hardwareEnabled = hardwareEnabled
@@ -68,12 +69,19 @@ public final class RemoteMappingRuntime: ObservableObject {
         }
         audio.canStart = { [weak self] in
             guard let self else { return false }
-            return !self.hasShutdown && self.isRunning && !self.setupActive && self.accessibility && self.configuration.voiceEnabled && self.detectedCount == 1
+            return !self.hasShutdown && self.isRunning && !self.setupActive && self.accessibility
+                && self.configuration.voiceEnabled && self.detectedCount == 1
+                && self.held.values.contains { $0.contains(XiaomiRemote.voiceUsage) }
+        }
+        audio.prepareInput = { [weak self] completion in
+            guard let self else { completion(false); return }
+            self.audioTrigger = self.configuration.voiceTrigger
+            self.inputPriority.beginVoiceSession(completion: completion)
         }
         audio.onBegin = { [weak self] in
             guard let self else { return false }
             do {
-                try self.deliver(self.voice.begin(owner: "remote-audio", trigger: self.configuration.voiceTrigger))
+                try self.deliver(self.voice.begin(owner: "remote-audio", trigger: self.audioTrigger ?? self.configuration.voiceTrigger))
                 self.publishPressed(); return true
             } catch { self.fail(error.localizedDescription); return false }
         }
@@ -81,6 +89,8 @@ public final class RemoteMappingRuntime: ObservableObject {
             guard let self else { return }
             do { try self.deliver(self.voice.end(owner: "remote-audio")) }
             catch { self.errorMessage = error.localizedDescription }
+            self.audioTrigger = nil
+            self.inputPriority.endVoiceSession()
             self.publishPressed()
         }
         do { lease = try NativeKeyLease.system(); try lease?.restore() }
@@ -321,7 +331,8 @@ public final class RemoteMappingRuntime: ObservableObject {
                     else { try deliver(voice.begin(owner: owner, trigger: configuration.voiceTrigger)) }
                 }
             }
-            if configuration.mappingsEnabled && voice.heldTrigger == nil {
+            if configuration.mappingsEnabled && voice.heldTrigger == nil
+                && !(configuration.voiceEnabled && held.values.contains { $0.contains(XiaomiRemote.voiceUsage) }) {
                 for usage in previous.subtracting(usages).sorted() {
                     if let button = XiaomiRemote.buttonUsages[usage] {
                         try perform(gestures.handle(owner: owner, button: button, isDown: false, at: ProcessInfo.processInfo.systemUptime, configuration: configuration))

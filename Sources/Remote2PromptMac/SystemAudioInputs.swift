@@ -75,7 +75,7 @@ public final class CoreAudioInputSystem: AudioInputSystem {
         guard running else { throw InputSystemFailure.unavailable }
         let candidates = try deviceIDs().compactMap { try? device($0) }
         guard let target = candidates.first(where: { $0.input.policy.uid == request.targetUID }),
-              request.purpose == .prioritize ? target.input.policy.supportsPriority : target.input.policy.isPhysical else {
+              request.purpose == .prioritize ? target.input.policy.supportsPriority : true else {
             throw InputSystemFailure.unavailable
         }
         var address = Self.address(kAudioHardwarePropertyDefaultInputDevice)

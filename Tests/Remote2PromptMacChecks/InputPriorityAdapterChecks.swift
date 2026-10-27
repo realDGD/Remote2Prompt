@@ -54,7 +54,7 @@ private func fixture(mode: FakeAudioInputs.Mode = .immediate, enabled: Bool = tr
     let clock = InputClock()
     let coordinator = InputPriorityCoordinator(system: system, clock: { clock.now })
     coordinator.start()
-    coordinator.configure(enabled: enabled, selectedUID: "virtual", readyRemotes: ["ready-a"])
+    coordinator.configure(enabled: enabled, selectedUID: "virtual", activeVoices: ["ready-a"])
     return (system, coordinator, clock)
 }
 
@@ -63,6 +63,8 @@ func inputPriorityAdapterChecks() -> [(String, @MainActor () throws -> Void)] {
     var cases = inputSwitchChecks()
     cases.append(contentsOf: inputFailureChecks())
     cases.append(contentsOf: inputLifecycleChecks())
+    cases.append(contentsOf: voiceInputRuntimeChecks())
+    cases.append(contentsOf: voicePrerollChecks())
     return cases
 }
 
@@ -75,14 +77,14 @@ private func inputSwitchChecks() -> [(String, @MainActor () throws -> Void)] {
             try check(system.writes.isEmpty && coordinator.state.observedInput == "Built-in", "Disabled controller changed input")
             coordinator.stop()
         }),
-        ("priority confirms readback and restores latest physical preemption", {
+        ("voice input restores the pre-press input despite preemption", {
             let (system, coordinator, clock) = fixture()
             try check(system.current == "virtual" && coordinator.state.ownsInput && coordinator.state.confirmedInput == "Loopback", "Initial confirmed ownership missing")
             clock.now = 0.5; system.current = "airpods"; system.callback?()
-            try check(system.current == "virtual" && coordinator.state.restoreInput == "AirPods", "Physical preemption was not remembered")
+            try check(system.current == "virtual" && coordinator.state.restoreInput == "Built-in", "Preemption replaced the press snapshot")
             clock.now = 1
-            coordinator.configure(enabled: true, selectedUID: "virtual", readyRemotes: [])
-            try check(system.current == "airpods" && !coordinator.state.ownsInput, "Last-ready disconnect did not restore")
+            coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: [])
+            try check(system.current == "built-in" && !coordinator.state.ownsInput, "Voice end did not restore the pre-press input")
             coordinator.stop()
         }),
         ("own input notifications do not cause duplicate writes", {
@@ -102,10 +104,10 @@ private func inputSwitchChecks() -> [(String, @MainActor () throws -> Void)] {
         }),
         ("one remaining ready source keeps virtual input", {
             let (system, coordinator, clock) = fixture()
-            coordinator.configure(enabled: true, selectedUID: "virtual", readyRemotes: ["ready-a", "ready-b"])
-            coordinator.configure(enabled: true, selectedUID: "virtual", readyRemotes: ["ready-b"])
+            coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: ["ready-a", "ready-b"])
+            coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: ["ready-b"])
             try check(system.writes.count == 1 && system.current == "virtual", "One disconnect restored too early")
-            clock.now = 0.5; coordinator.configure(enabled: true, selectedUID: "virtual", readyRemotes: [])
+            clock.now = 0.5; coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: [])
             try check(system.current == "built-in", "Final source did not restore")
             coordinator.stop()
         })
@@ -142,17 +144,17 @@ private func inputFailureChecks() -> [(String, @MainActor () throws -> Void)] {
         }),
         ("disable during pending input write restores after late confirmation", {
             let (system, coordinator, clock) = fixture(mode: .delayed)
-            coordinator.configure(enabled: false, selectedUID: "virtual", readyRemotes: [])
+            coordinator.configure(enabled: false, selectedUID: "virtual", activeVoices: [])
             clock.now = 0.2; system.applyPending()
-            try check(coordinator.state.ownsInput && system.writes.count == 1, "Old accepted write was discarded without restoration ownership")
-            clock.now = 0.5; system.mode = .immediate; coordinator.refresh()
+            try check(coordinator.state.ownsInput && system.writes.count == 2 && system.writes.last?.purpose == .restore, "Late takeover did not immediately request restoration")
+            clock.now = 0.3; system.applyPending()
             try check(system.current == "built-in" && !coordinator.state.ownsInput && system.writes.count == 2, "Late input was not restored after disable")
             coordinator.stop()
         }),
         ("failed input reads cannot cause writes", {
             let (system, coordinator, clock) = fixture(enabled: false)
             system.snapshotFails = true
-            coordinator.configure(enabled: true, selectedUID: "virtual", readyRemotes: ["ready-a"])
+            coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: ["ready-a"])
             try check(system.writes.isEmpty && coordinator.state.phase == .failed && coordinator.nextWakeup == 2, "Read failure invented a current input or busy retry")
             clock.now = 2; system.snapshotFails = false; coordinator.refresh()
             try check(system.current == "virtual", "Read recovery failed")
@@ -161,8 +163,8 @@ private func inputFailureChecks() -> [(String, @MainActor () throws -> Void)] {
         ("source change immediately before input write preserves external choice", {
             let (system, coordinator, clock) = fixture(enabled: false)
             system.raceBeforeWrite = true
-            coordinator.configure(enabled: true, selectedUID: "virtual", readyRemotes: ["ready-a"])
-            coordinator.configure(enabled: false, selectedUID: "virtual", readyRemotes: [])
+            coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: ["ready-a"])
+            coordinator.configure(enabled: false, selectedUID: "virtual", activeVoices: [])
             clock.now = 1; coordinator.refresh()
             try check(system.current == "airpods" && system.writes.isEmpty && !coordinator.state.ownsInput, "Stale source overwrote external choice")
             coordinator.stop()
@@ -181,10 +183,11 @@ private func inputLifecycleChecks() -> [(String, @MainActor () throws -> Void)] 
             configuration.preferVirtualInput = true; configuration.voiceEnabled = true
             configuration.remoteAudioEnabled = true; configuration.selectedVirtualInputUID = "virtual"
             runtime.configure(configuration); runtime.setReady(true)
+            runtime.beginVoiceSession { _ in }
             var completed = false
             runtime.shutdown { completed = true }
             let delivery = Timer(timeInterval: 0.1, repeats: false) { _ in
-                MainActor.assumeIsolated { system.applyPending(); system.mode = .immediate }
+                MainActor.assumeIsolated { system.mode = .immediate; system.applyPending() }
             }
             RunLoop.main.add(delivery, forMode: .modalPanel)
             defer { delivery.invalidate() }
@@ -200,6 +203,7 @@ private func inputLifecycleChecks() -> [(String, @MainActor () throws -> Void)] 
             configuration.preferVirtualInput = true; configuration.voiceEnabled = true
             configuration.remoteAudioEnabled = true; configuration.selectedVirtualInputUID = "virtual"
             runtime.configure(configuration); runtime.setReady(true)
+            runtime.beginVoiceSession { _ in }
             system.mode = .denied
             var completed = false
             runtime.shutdown { completed = true }
@@ -228,7 +232,12 @@ private func inputLifecycleChecks() -> [(String, @MainActor () throws -> Void)] 
             configuration.voiceEnabled = true; runtime.configure(configuration)
             try check(system.writes.isEmpty, "Trigger-only mode took over system input")
             configuration.remoteAudioEnabled = true; runtime.configure(configuration)
-            try check(system.current == "virtual" && system.writes.count == 1, "Ready opted-in audio did not take over")
+            try check(system.writes.isEmpty, "Readiness changed idle system input")
+            var allowed = false
+            runtime.beginVoiceSession { allowed = $0 }
+            try check(allowed && system.current == "virtual" && system.writes.count == 1, "Press did not acquire the virtual input")
+            runtime.endVoiceSession()
+            try check(system.current == "built-in", "Release did not restore immediately")
             system.current = "airpods"
             runtime.shutdownImmediately()
             try check(system.current == "airpods" && !system.listening, "Shutdown overwrote a later external choice")
@@ -237,15 +246,15 @@ private func inputLifecycleChecks() -> [(String, @MainActor () throws -> Void)] 
             let (system, coordinator, clock) = fixture()
             system.inputs.removeAll { $0.policy.uid == "built-in" }
             system.inputs.append(SystemAudioInput(policy: AudioInput(uid: "unknown", kind: .unknown), name: "Unknown"))
-            clock.now = 0.5; coordinator.configure(enabled: false, selectedUID: nil, readyRemotes: [])
+            clock.now = 0.5; coordinator.configure(enabled: false, selectedUID: nil, activeVoices: [])
             try check(system.current == "airpods", "Unavailable original or unknown device was restored")
             coordinator.stop()
         }),
         ("initial virtual input remains a user choice after disable", {
             let system = FakeAudioInputs(); system.current = "virtual"
             let coordinator = InputPriorityCoordinator(system: system)
-            coordinator.start(); coordinator.configure(enabled: true, selectedUID: "virtual", readyRemotes: ["ready-a"])
-            coordinator.configure(enabled: false, selectedUID: nil, readyRemotes: [])
+            coordinator.start(); coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: ["ready-a"])
+            coordinator.configure(enabled: false, selectedUID: nil, activeVoices: [])
             try check(system.writes.isEmpty && !coordinator.state.ownsInput, "Existing virtual input was claimed")
             coordinator.stop()
         }),
@@ -259,7 +268,7 @@ private func inputLifecycleChecks() -> [(String, @MainActor () throws -> Void)] 
         ("partial input listener start is cleaned up", {
             let system = FakeAudioInputs(); system.startFails = true
             let coordinator = InputPriorityCoordinator(system: system)
-            coordinator.start(); coordinator.configure(enabled: true, selectedUID: "virtual", readyRemotes: ["ready-a"])
+            coordinator.start(); coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: ["ready-a"])
             try check(!system.listening && system.writes.isEmpty && coordinator.state.phase == .failed, "Partial listener startup remained active")
             system.startFails = false; coordinator.retry()
             try check(system.current == "virtual", "Listener startup could not retry")
@@ -272,6 +281,171 @@ private func inputLifecycleChecks() -> [(String, @MainActor () throws -> Void)] 
             try check(CoreAudioInputSystem.kind(transport: kAudioDeviceTransportTypeAggregate) == .virtual, "Aggregate became physical")
             try check(CoreAudioInputSystem.kind(transport: kAudioDeviceTransportTypeVirtual) == .virtual, "Loopback became physical")
             try check(CoreAudioInputSystem.kind(transport: 0) == .unknown, "Unknown transport became physical")
+        })
+    ]
+}
+
+@MainActor
+private func voiceInputRuntimeChecks() -> [(String, @MainActor () throws -> Void)] {
+    [
+        ("idle readiness never writes and press captures the latest default", {
+            let system = FakeAudioInputs()
+            let runtime = AudioInputPriorityRuntime(system: system)
+            defer { runtime.shutdownImmediately() }
+            var config = AppConfiguration()
+            config.preferVirtualInput = true; config.voiceEnabled = true
+            config.remoteAudioEnabled = true; config.selectedVirtualInputUID = "virtual"
+            runtime.configure(config); runtime.setReady(true)
+            system.current = "airpods"; system.callback?()
+            try check(system.writes.isEmpty, "Idle default change was intercepted")
+            var allowed = false
+            runtime.beginVoiceSession { allowed = $0 }
+            try check(allowed && runtime.state.restoreInput == "AirPods" && system.current == "virtual", "Press snapshot did not use the latest input")
+            runtime.endVoiceSession()
+            try check(system.current == "airpods", "Release did not return to the press snapshot")
+            system.current = "built-in"; system.callback?()
+            try check(system.writes.count == 2 && system.current == "built-in", "A post-release system change was overridden")
+        }),
+        ("trigger permission waits for delayed input confirmation", {
+            let system = FakeAudioInputs(); system.mode = .delayed
+            let runtime = AudioInputPriorityRuntime(system: system)
+            defer { runtime.shutdownImmediately() }
+            var config = AppConfiguration()
+            config.preferVirtualInput = true; config.voiceEnabled = true
+            config.remoteAudioEnabled = true; config.selectedVirtualInputUID = "virtual"
+            runtime.configure(config); runtime.setReady(true)
+            var results: [Bool] = []
+            runtime.beginVoiceSession { results.append($0) }
+            try check(results.isEmpty && system.current == "built-in", "Trigger started before input confirmation")
+            system.applyPending()
+            try check(results == [true] && runtime.state.readyForVoice, "Confirmed input did not release the trigger gate")
+            runtime.endVoiceSession(); system.applyPending()
+            try check(system.current == "built-in" && results == [true], "Restoration duplicated the begin callback")
+        }),
+        ("release before input confirmation cancels trigger and restores a late switch", {
+            let system = FakeAudioInputs(); system.mode = .delayed
+            let runtime = AudioInputPriorityRuntime(system: system)
+            defer { runtime.shutdownImmediately() }
+            var config = AppConfiguration()
+            config.preferVirtualInput = true; config.voiceEnabled = true
+            config.remoteAudioEnabled = true; config.selectedVirtualInputUID = "virtual"
+            runtime.configure(config); runtime.setReady(true)
+            var results: [Bool] = []
+            runtime.beginVoiceSession { results.append($0) }
+            runtime.endVoiceSession()
+            try check(results == [false], "Cancelled begin was left pending")
+            system.mode = .immediate; system.applyPending()
+            try check(system.current == "built-in" && results == [false], "Late confirmation started a released voice session")
+        }),
+        ("voice opt-out permits the trigger without a default input write", {
+            let system = FakeAudioInputs()
+            let runtime = AudioInputPriorityRuntime(system: system)
+            defer { runtime.shutdownImmediately() }
+            var allowed = false
+            runtime.beginVoiceSession { allowed = $0 }
+            runtime.endVoiceSession()
+            try check(allowed && system.writes.isEmpty, "Opt-out changed the default or blocked an ordinary voice trigger")
+        }),
+        ("input readiness loss cancels a pending trigger", {
+            let system = FakeAudioInputs(); system.mode = .delayed
+            let runtime = AudioInputPriorityRuntime(system: system)
+            defer { runtime.shutdownImmediately() }
+            var config = AppConfiguration()
+            config.preferVirtualInput = true; config.voiceEnabled = true
+            config.remoteAudioEnabled = true; config.selectedVirtualInputUID = "virtual"
+            runtime.configure(config); runtime.setReady(true)
+            var results: [Bool] = []
+            runtime.beginVoiceSession { results.append($0) }
+            runtime.setReady(false)
+            try check(results == [false], "An unavailable audio path still allowed the trigger")
+            system.mode = .immediate; system.applyPending()
+            runtime.endVoiceSession()
+            try check(system.current == "built-in" && results == [false], "Readiness failure lost the original input")
+        }),
+        ("failed voice preparation cannot take over later without another press", {
+            let system = FakeAudioInputs()
+            system.inputs.removeAll { $0.policy.uid == "virtual" }
+            let runtime = AudioInputPriorityRuntime(system: system)
+            defer { runtime.shutdownImmediately() }
+            var config = AppConfiguration()
+            config.preferVirtualInput = true; config.voiceEnabled = true
+            config.remoteAudioEnabled = true; config.selectedVirtualInputUID = "virtual"
+            runtime.configure(config); runtime.setReady(true)
+            var results: [Bool] = []
+            runtime.beginVoiceSession { results.append($0) }
+            try check(results == [false], "Missing loopback did not cancel preparation")
+            system.inputs.append(SystemAudioInput(policy: AudioInput(uid: "virtual", isVirtual: true), name: "Loopback"))
+            system.callback?()
+            try check(system.writes.isEmpty && results == [false], "A failed press turned into a later background takeover")
+        }),
+        ("shutdown reports an unavailable restore target instead of success", {
+            let system = FakeAudioInputs()
+            let runtime = AudioInputPriorityRuntime(system: system)
+            var config = AppConfiguration()
+            config.preferVirtualInput = true; config.voiceEnabled = true
+            config.remoteAudioEnabled = true; config.selectedVirtualInputUID = "virtual"
+            runtime.configure(config); runtime.setReady(true)
+            runtime.beginVoiceSession { _ in }
+            system.inputs.removeAll { $0.policy.isPhysical }
+            runtime.endVoiceSession()
+            var completed = false
+            runtime.shutdown { completed = true }
+            try check(completed && system.current == "virtual" && runtime.state.error != nil && !system.listening, "Missing return device was reported as a successful restore")
+        }),
+        ("late takeover restores a system choice made after release", {
+            let (system, coordinator, clock) = fixture(mode: .delayed)
+            coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: [])
+            system.current = "airpods"; system.callback?()
+            system.mode = .immediate; clock.now = 0.1; system.applyPending()
+            try check(system.current == "airpods" && system.writes.count == 2, "A late takeover erased a post-release choice")
+            coordinator.stop()
+        }),
+        ("late restoration does not permanently replace an idle system choice", {
+            let (system, coordinator, _) = fixture()
+            system.mode = .delayed
+            coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: [])
+            system.current = "airpods"; system.callback?()
+            system.mode = .immediate; system.applyPending()
+            try check(system.current == "airpods" && system.writes.count == 3 && !coordinator.state.ownsInput, "A delayed restore overrode the newer system choice")
+            coordinator.stop()
+        }),
+        ("an unreadable press snapshot cannot be replaced by a later system state", {
+            let system = FakeAudioInputs()
+            let runtime = AudioInputPriorityRuntime(system: system)
+            defer { runtime.shutdownImmediately() }
+            var config = AppConfiguration()
+            config.preferVirtualInput = true; config.voiceEnabled = true
+            config.remoteAudioEnabled = true; config.selectedVirtualInputUID = "virtual"
+            runtime.configure(config); runtime.setReady(true)
+            system.snapshotFails = true
+            var results: [Bool] = []
+            runtime.beginVoiceSession { results.append($0) }
+            try check(results == [false], "Missing press snapshot did not cancel preparation")
+            system.snapshotFails = false; system.current = "airpods"; system.callback?()
+            try check(system.writes.isEmpty && system.current == "airpods", "A later snapshot silently started the failed press")
+        })
+    ]
+}
+
+@MainActor
+private func voicePrerollChecks() -> [(String, @MainActor () throws -> Void)] {
+    [
+        ("waiting for input preserves the first PCM samples in order", {
+            var buffer = VoiceStartBuffer()
+            try buffer.append([1, -2, 3]); try buffer.append([4, 5])
+            try check(buffer.take() == [1, -2, 3, 4, 5] && buffer.take().isEmpty, "Preroll lost, reordered or duplicated the first audio")
+        }),
+        ("cancelled voice preroll cannot enter the next session", {
+            var buffer = VoiceStartBuffer()
+            try buffer.append([1, 2]); buffer.clear(); try buffer.append([3])
+            try check(buffer.take() == [3], "Cancelled audio leaked into the next voice session")
+        }),
+        ("waiting voice audio is bounded and never silently drops the first samples", {
+            var buffer = VoiceStartBuffer()
+            try buffer.append([Int16](repeating: 7, count: 32000))
+            do { try buffer.append([8]); throw Failure(message: "Unbounded preroll accepted") }
+            catch LoopbackFailure.overflow {}
+            try check(buffer.take().count == 32000, "Overflow silently truncated the existing preroll")
         })
     ]
 }

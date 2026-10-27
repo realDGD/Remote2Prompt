@@ -1,6 +1,7 @@
 # Agent Note: 遥控器在线时优先虚拟输入
 
 Status: implemented
+Archived: 2026-10-27
 
 ## Problem
 

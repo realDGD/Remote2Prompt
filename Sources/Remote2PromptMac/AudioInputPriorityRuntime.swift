@@ -10,6 +10,9 @@ public final class AudioInputPriorityRuntime: ObservableObject {
     private let hardwareEnabled: Bool
     private var configuration = AppConfiguration()
     private var ready = false
+    private var voiceActive = false
+    private var beginCompletion: ((Bool) -> Void)?
+    private var beginDeadline: TimeInterval?
     private var periodic: Timer?
     private var wakeup: Timer?
     private var wakeupAt: TimeInterval?
@@ -38,9 +41,27 @@ public final class AudioInputPriorityRuntime: ObservableObject {
         ready = value; apply()
     }
     public func retry() { guard hardwareEnabled, !closing, !closed else { return }; coordinator.retry() }
+    /// The trigger may be sent only after a fresh, matching CoreAudio readback.
+    public func beginVoiceSession(completion: @escaping (Bool) -> Void) {
+        guard hardwareEnabled, !closing, !closed else { completion(false); return }
+        guard configuration.preferVirtualInput else { completion(true); return }
+        guard ready, configuration.voiceEnabled, configuration.remoteAudioEnabled else { completion(false); return }
+        completeBegin(false)
+        voiceActive = true
+        beginCompletion = completion
+        beginDeadline = ProcessInfo.processInfo.systemUptime + 3.5
+        apply()
+    }
+    public func endVoiceSession() {
+        voiceActive = false
+        let completion = beginCompletion
+        beginCompletion = nil; beginDeadline = nil
+        if hardwareEnabled, !closing, !closed { apply() }
+        completion?(false)
+    }
     private func apply() {
         coordinator.configure(enabled: configuration.preferVirtualInput, selectedUID: configuration.selectedVirtualInputUID,
-                              readyRemotes: ready && configuration.voiceEnabled && configuration.remoteAudioEnabled ? ["remote-audio"] : [])
+                              activeVoices: voiceActive && ready && configuration.voiceEnabled && configuration.remoteAudioEnabled ? ["remote-audio"] : [])
     }
 
     /// AppKit keeps the run loop alive while this bounded restore/readback transaction completes.
@@ -48,22 +69,32 @@ public final class AudioInputPriorityRuntime: ObservableObject {
         if closed { completion(); return }
         completions.append(completion)
         guard !closing else { return }
-        closing = true; deadline = ProcessInfo.processInfo.systemUptime + 3.5
-        if hardwareEnabled { coordinator.configure(enabled: false, selectedUID: nil, readyRemotes: []) }
+        closing = true; voiceActive = false
+        completeBegin(false)
+        deadline = ProcessInfo.processInfo.systemUptime + 3.5
+        if hardwareEnabled { coordinator.configure(enabled: false, selectedUID: nil, activeVoices: []) }
         updated()
     }
     public func shutdownImmediately() {
         guard !closed else { return }
         closing = true; deadline = ProcessInfo.processInfo.systemUptime
-        if hardwareEnabled { coordinator.configure(enabled: false, selectedUID: nil, readyRemotes: []) }
+        completeBegin(false)
+        if hardwareEnabled { coordinator.configure(enabled: false, selectedUID: nil, activeVoices: []) }
         finish()
     }
     private func updated() {
-        if state != coordinator.state { state = coordinator.state }
         guard !closed else { return }
+        if state != coordinator.state { state = coordinator.state }
         let now = ProcessInfo.processInfo.systemUptime
+        if beginCompletion != nil {
+            if state.readyForVoice && ready && voiceActive && configuration.preferVirtualInput { completeBegin(true) }
+            else if !ready || !configuration.preferVirtualInput || now >= (beginDeadline ?? now)
+                || state.phase == .failed && !state.pending && !coordinator.hasPressSnapshot
+                || [.paused, .stopped, .waiting].contains(state.phase) && !state.pending { completeBegin(false) }
+        }
         if closing && (!hardwareEnabled || coordinator.canFinishShutdown || now >= (deadline ?? now)) { finish(); return }
         var next = coordinator.nextWakeup
+        if let beginDeadline { next = min(next ?? beginDeadline, beginDeadline) }
         if closing, let deadline { next = min(next ?? deadline, deadline) }
         guard next != wakeupAt else { return }
         wakeup?.invalidate(); wakeup = nil; wakeupAt = next
@@ -82,13 +113,23 @@ public final class AudioInputPriorityRuntime: ObservableObject {
     private func finish() {
         guard !closed else { return }
         closed = true
+        completeBegin(false)
         periodic?.invalidate(); periodic = nil
         wakeup?.invalidate(); wakeup = nil; wakeupAt = nil
-        let unconfirmed = !coordinator.canFinishShutdown
+        let unconfirmed = coordinator.hasUnrestoredSession
         coordinator.stop()
         state = coordinator.state
         if unconfirmed { state.error = "退出前未能确认输入恢复，请检查系统输入设备。" }
         let callbacks = completions; completions.removeAll()
         callbacks.forEach { $0() }
+    }
+    private func completeBegin(_ success: Bool) {
+        let callback = beginCompletion
+        beginCompletion = nil; beginDeadline = nil
+        if !success, callback != nil, voiceActive {
+            voiceActive = false
+            if hardwareEnabled, !closing, !closed { apply() }
+        }
+        callback?(success)
     }
 }

@@ -23,76 +23,106 @@ public struct InputPriorityRequest: Equatable, Sendable {
     public let purpose: Purpose
 }
 
-/// A fresh observation of CoreAudio and ready remotes. Runtime AudioDeviceIDs must stay in the adapter.
+/// A fresh observation of CoreAudio and active voice sessions. Runtime AudioDeviceIDs must stay in the adapter.
 public struct InputPriorityObservation: Sendable {
     public var enabled: Bool
-    public var readyRemoteIDs: Set<String>
+    public var activeVoiceIDs: Set<String>
     public var selectedVirtualUID: String?
     public var defaultInputUID: String?
     public var availableInputs: [AudioInput]
 
     public init(
         enabled: Bool,
-        readyRemoteIDs: Set<String>,
+        activeVoiceIDs: Set<String>,
         selectedVirtualUID: String?,
         defaultInputUID: String?,
         availableInputs: [AudioInput]
     ) {
         self.enabled = enabled
-        self.readyRemoteIDs = readyRemoteIDs
+        self.activeVoiceIDs = activeVoiceIDs
         self.selectedVirtualUID = selectedVirtualUID
         self.defaultInputUID = defaultInputUID
         self.availableInputs = availableInputs
     }
 }
 
-/// Issue #435 policy. A proposal is not ownership; only accepted writes with matching readback are confirmed.
+/// A press-to-use transaction. The pre-press input is immutable until restoration completes.
 public struct AudioInputPriority: Sendable {
-    public private(set) var recentPhysicalInputUID: String?
+    public private(set) var restoreInputUID: String?
     public private(set) var confirmedVirtualUID: String?
+    public private(set) var hasSession = false
+    private var active = false
+    private var established = false
+    private var releaseObservedUID: String?
+    private var idleChoiceUID: String?
+    private var lastObservedUID: String?
+    private var lastConfirmedUID: String?
     private var sequence: UInt64 = 0
     private var proposal: InputPriorityRequest?
 
     public init() {}
 
     public mutating func record(_ observation: InputPriorityObservation) {
-        let inputs = observation.availableInputs
-        if let current = inputs.first(where: { $0.uid == observation.defaultInputUID }), current.isPhysical {
-            recentPhysicalInputUID = current.uid
+        let nowActive = observation.enabled && !observation.activeVoiceIDs.isEmpty
+        if nowActive && !hasSession {
+            hasSession = true
+            // A missing initial default cannot safely become a transaction with no return address.
+            restoreInputUID = observation.availableInputs.first { $0.uid == observation.defaultInputUID }?.uid
         }
+        if nowActive && !active, let idleChoiceUID {
+            // A real system choice after release belongs to the next press, unlike our temporary input.
+            restoreInputUID = idleChoiceUID; self.idleChoiceUID = nil
+        }
+        if !active && !nowActive && hasSession,
+           let current = observation.defaultInputUID, current != lastObservedUID,
+           current != proposal?.targetUID, current != lastConfirmedUID,
+           observation.availableInputs.contains(where: { $0.uid == current }) {
+            idleChoiceUID = current
+        }
+        if active && !nowActive { releaseObservedUID = observation.defaultInputUID }
+        active = nowActive
+        lastObservedUID = observation.defaultInputUID
+    }
+
+    public func restorationTarget(in inputs: [AudioInput]) -> AudioInput? {
+        guard hasSession, let saved = idleChoiceUID ?? restoreInputUID else { return nil }
+        return inputs.first { $0.uid == saved } ?? inputs.filter(\.isPhysical).sorted { $0.uid < $1.uid }.first
     }
 
     public mutating func reconcile(_ observation: InputPriorityObservation) -> InputPriorityRequest? {
         record(observation)
         proposal = nil
         let inputs = observation.availableInputs
+        if !active && hasSession && !established { clear(); return nil }
         guard let current = observation.defaultInputUID else { return nil }
 
-        if observation.enabled, !observation.readyRemoteIDs.isEmpty,
-           let selected = inputs.first(where: { $0.uid == observation.selectedVirtualUID && $0.supportsPriority }) {
-            if current == selected.uid {
-                if confirmedVirtualUID != selected.uid { confirmedVirtualUID = nil }
-                return nil
-            }
+        if active {
+            guard restoreInputUID != nil,
+                  let selected = inputs.first(where: { $0.uid == observation.selectedVirtualUID && $0.supportsPriority }) else { return nil }
+            if current == selected.uid { established = true; return nil }
             return request(from: current, to: selected.uid, purpose: .prioritize)
         }
 
-        guard let owned = confirmedVirtualUID else { return nil }
-        // An external choice after shutdown/disable must be preserved, including another virtual input.
-        guard current == owned else { confirmedVirtualUID = nil; return nil }
-        let physical = inputs.filter(\.isPhysical).sorted { $0.uid < $1.uid }
-        guard let restore = physical.first(where: { $0.uid == recentPhysicalInputUID }) ?? physical.first else { return nil }
+        guard hasSession else { return nil }
+        if current == (idleChoiceUID ?? restoreInputUID) { clear(); return nil }
+        // A choice made *after* release ends the transaction; idle input selection belongs to macOS.
+        // A late confirmation of our accepted write is still eligible for restoration.
+        guard current == releaseObservedUID || current == confirmedVirtualUID || current == lastConfirmedUID else { clear(); return nil }
+        guard let restore = restorationTarget(in: inputs) else { return nil }
+        if current == restore.uid { clear(); return nil }
         return request(from: current, to: restore.uid, purpose: .restore)
     }
 
     @discardableResult
     public mutating func confirm(_ request: InputPriorityRequest, observedUID: String?) -> Bool {
         guard proposal == request, observedUID == request.targetUID else { return false }
+        lastConfirmedUID = request.targetUID
         switch request.purpose {
-        case .prioritize: confirmedVirtualUID = request.targetUID
+        case .prioritize:
+            confirmedVirtualUID = request.targetUID; established = true
         case .restore:
-            guard confirmedVirtualUID == request.sourceUID else { return false }
             confirmedVirtualUID = nil
+            if !active && (idleChoiceUID == nil || idleChoiceUID == observedUID) { clear() }
         }
         proposal = nil
         return true
@@ -100,6 +130,12 @@ public struct AudioInputPriority: Sendable {
 
     public mutating func reject(_ request: InputPriorityRequest) {
         if proposal == request { proposal = nil }
+    }
+
+    private mutating func clear() {
+        hasSession = false; established = false; restoreInputUID = nil
+        confirmedVirtualUID = nil; releaseObservedUID = nil; proposal = nil
+        idleChoiceUID = nil; lastConfirmedUID = nil
     }
 
     private mutating func request(from source: String, to target: String, purpose: InputPriorityRequest.Purpose) -> InputPriorityRequest {
