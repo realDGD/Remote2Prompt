@@ -1,9 +1,46 @@
+# Generated builds, SwiftPM state and local tooling
 .DS_Store
 .build/
 .swiftpm/
 dist/
+.local/
+
+# Local credentials and signing material
 .env
 .env.*
 !.env.example
+.secrets/
+*.p12
+*.pfx
+*.pem
+*.key
+*.cer
+*.mobileprovision
+*.provisionprofile
+
+# Raw diagnostics, hardware captures and recordings stay on the development machine
+diagnostics/
+captures/
+recordings/
+*.log
+*.trace
+*.crash
+*.ips
+*.dmp
+*.pcap
+*.pcapng
+*.btsnoop
+*.wav
+*.aiff
+*.caf
+*.pcm
+*.m4a
+*.mp3
+
+# Per-user editor state
 *.xcuserstate
 xcuserdata/
+.idea/
+.vscode/
+*.swp
+*.swo

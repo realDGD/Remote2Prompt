@@ -15,7 +15,7 @@ Find.find(root) do |path|
 end
 
 files.each do |path|
-  next unless path.match?(/\.(md|swift|sh|rb|in|plist)\z/) || %w[Makefile VERSION .gitignore].include?(File.basename(path))
+  next unless path.match?(/\.(md|swift|sh|rb|in|plist|ya?ml|toml)\z/) || %w[Makefile VERSION .gitignore].include?(File.basename(path))
   content = File.read(path, encoding: "UTF-8")
   relative = Pathname.new(path).relative_path_from(Pathname.new(root)).to_s
   errors << "#{relative}: file must end with exactly one newline" unless content.end_with?("\n") && !content.end_with?("\n\n")
