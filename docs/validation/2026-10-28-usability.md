@@ -18,3 +18,20 @@
 ## 尚未覆盖
 
 真实菜单的系统输入显示及手动切换、真实遥控器成对按键、语音识别与 AirPods/USB 抢占恢复需独立记录。macOS 14 原生界面仍待现场验收。
+
+## 内存优化与回归
+
+解码器直接读完整帧，残余缓存不足一帧；播放完成回调只保留整数计数，回环逐包解析不再构造完整设备名称列表。保持原音频格式、包与队列上限及停止语义。
+
+在同一 CLT 优化编译下，修改前 `61d1cfb` 和修改后处理 120 字节帧、4096 字节 `0x17` 合成包：输出均为 8160 样本、摘要 `532021617657001358`、predictor 32767、index 88。`pendingBytes` 残余为 16 字节，容量从 5088 变为 16，reset 后同样从 5088 变为 16。仅表示该合成输入的缓存保留，不能外推为整个应用 RSS 的降幅。
+
+复现当前测量：
+
+```sh
+DEVELOPER_DIR=/Library/Developer/CommandLineTools xcrun swiftc -O \
+  Sources/Remote2PromptCore/RemoteVoiceProtocol.swift scripts/measure-decoder-memory.swift \
+  -o .build/measure-decoder-memory
+.build/measure-decoder-memory
+```
+
+集成 `make check` 通过：核心 69/69、适配器 59/59；CLT Release、bundle、文档与脱敏通过。只读输入目录检查通过：3 项输入、18 个 listener 清理完成，系统默认未变，不采集音频。

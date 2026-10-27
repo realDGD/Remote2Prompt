@@ -100,7 +100,8 @@ public final class RemoteAudioRuntime: ObservableObject {
     }
     public func refreshDevices() {
         guard hardwareEnabled, !stopped else { return }
-        devices = LoopbackDevices.available()
+        let available = LoopbackDevices.available()
+        if devices != available { devices = available }
         if let uid = configuration.selectedVirtualInputUID {
             if !devices.contains(where: { $0.uid == uid }) {
                 if outputReady || configuring { routeGeneration &+= 1; configuring = false; writer.stop(); cancel(message: "所选回环设备已断开。"); bluetooth.stop(); bluetoothReady = false }
@@ -140,7 +141,10 @@ public final class RemoteAudioRuntime: ObservableObject {
         guard deviceCount == 1 else { status = "语音音频需要恰好一只兼容遥控器"; return }
         bluetooth.start()
     }
-    private func updateReady() { isReady = wanted && outputReady && bluetoothReady && deviceCount == 1 }
+    private func updateReady() {
+        let ready = wanted && outputReady && bluetoothReady && deviceCount == 1
+        if isReady != ready { isReady = ready }
+    }
 
     @discardableResult public func press() -> Bool {
         let interruptedTail = sessionActive && finishing

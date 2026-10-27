@@ -61,12 +61,13 @@ public final class LoopbackWriter: @unchecked Sendable {
             buffer.frameLength = AVAudioFrameCount(samples.count)
             for (index, sample) in samples.enumerated() { data[index] = Float(sample) / 32768 }
             let token = generation
-            pending += samples.count
+            let sampleCount = samples.count
+            pending += sampleCount
             node.scheduleBuffer(buffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in
                 guard let self else { return }
                 self.queue.async {
                     guard self.generation == token else { return }
-                    self.pending = max(0, self.pending - samples.count)
+                    self.pending = max(0, self.pending - sampleCount)
                     if self.pending == 0 { let done = self.drained; self.drained = nil; done?(true) }
                 }
             }

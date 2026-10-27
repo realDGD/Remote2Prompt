@@ -46,6 +46,34 @@ func voiceProtocolChecks() -> [(String, () throws -> Void)] {
             do { try decoder.reset(stepIndex: 89); throw CheckFailure(description: "Invalid step accepted") }
             catch VoiceProtocolFailure.invalidSync {}
         }),
+        ("streaming decoder matches whole frames across packet boundaries", {
+            let bytes = Data((0..<17017).map { UInt8(($0 * 31 + 17) % 256) })
+            for frame in [1, 2, 120, 1024] {
+                var reference = try RemoteVoiceDecoder(frameBytes: frame)
+                var streaming = try RemoteVoiceDecoder(frameBytes: frame)
+                var expected: [Int16] = []; var actual: [Int16] = []
+                for offset in stride(from: 0, to: bytes.count, by: frame) {
+                    expected += try reference.append(Data(bytes[offset..<min(offset + frame, bytes.count)]))
+                }
+                var offset = 0; var chunk = 0
+                let sizes = [1, 119, 120, 121, 4096, 1023]
+                while offset < bytes.count {
+                    let end = min(offset + sizes[chunk % sizes.count], bytes.count)
+                    actual += try streaming.append(Data(bytes[offset..<end]))
+                    try expect(streaming.pendingBytes.count < frame, "Decoder retained a complete frame")
+                    offset = end; chunk += 1
+                }
+                try expect(actual == expected && streaming.pendingBytes == reference.pendingBytes && streaming.predictor == reference.predictor && streaming.stepIndex == reference.stepIndex, "Packet fragmentation changed PCM or decoder state")
+            }
+        }),
+        ("oversized decoder packet leaves pending audio and predictor intact", {
+            var decoder = try RemoteVoiceDecoder(frameBytes: 120)
+            _ = try decoder.append(Data(repeating: 0x77, count: 135))
+            let pending = decoder.pendingBytes; let predictor = decoder.predictor; let step = decoder.stepIndex
+            do { _ = try decoder.append(Data(repeating: 0, count: 4097)); throw CheckFailure(description: "Oversized packet accepted") }
+            catch VoiceProtocolFailure.oversizedPacket {}
+            try expect(decoder.pendingBytes == pending && decoder.predictor == predictor && decoder.stepIndex == step, "Rejected packet modified stream state")
+        }),
         ("ADPCM saturates and reset prevents cross-session audio", {
             var decoder = try RemoteVoiceDecoder(frameBytes: 1)
             try decoder.reset(predictor: 32760, stepIndex: 88)

@@ -35,8 +35,13 @@ public enum LoopbackDevices {
         }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
     static func resolve(_ uid: String) -> AudioDeviceID? {
-        guard available().contains(where: { $0.uid == uid }) else { return nil }
-        return devices().first { string($0, kAudioDevicePropertyDeviceUID) == uid }
+        guard supportedUIDs.contains(uid) else { return nil }
+        return devices().first {
+            string($0, kAudioDevicePropertyDeviceUID) == uid && alive($0)
+                && channelCount($0, scope: kAudioDevicePropertyScopeInput) >= 2
+                && channelCount($0, scope: kAudioDevicePropertyScopeOutput) >= 2
+                && string($0, kAudioObjectPropertyName) != nil
+        }
     }
     private static func devices() -> [AudioDeviceID] {
         var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDevices, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)

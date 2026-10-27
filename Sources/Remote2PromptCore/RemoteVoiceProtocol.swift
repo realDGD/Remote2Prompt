@@ -55,14 +55,31 @@ public struct RemoteVoiceDecoder: Sendable {
     }
     public mutating func append(_ packet: Data) throws -> [Int16] {
         guard packet.count <= 4096 else { throw VoiceProtocolFailure.oversizedPacket }
-        pendingBytes.append(contentsOf: packet)
-        let completeBytes = pendingBytes.count / frameBytes * frameBytes
+        let completeBytes = (pendingBytes.count + packet.count) / frameBytes * frameBytes
         var samples: [Int16] = []; samples.reserveCapacity(completeBytes * 2)
-        for byte in pendingBytes.prefix(completeBytes) {
-            samples.append(decode(Int(byte >> 4)))
-            samples.append(decode(Int(byte & 15)))
+        var offset = 0
+        if !pendingBytes.isEmpty {
+            let needed = min(frameBytes - pendingBytes.count, packet.count)
+            pendingBytes.append(contentsOf: packet.prefix(needed))
+            offset = needed
+            if pendingBytes.count == frameBytes {
+                for index in 0..<frameBytes {
+                    let byte = pendingBytes[index]
+                    samples.append(decode(Int(byte >> 4)))
+                    samples.append(decode(Int(byte & 15)))
+                }
+                pendingBytes.removeAll(keepingCapacity: true)
+            }
         }
-        pendingBytes.removeFirst(completeBytes)
+        let end = offset + (packet.count - offset) / frameBytes * frameBytes
+        packet.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            for index in offset..<end {
+                let byte = bytes[index]
+                samples.append(decode(Int(byte >> 4)))
+                samples.append(decode(Int(byte & 15)))
+            }
+        }
+        if end < packet.count { pendingBytes.append(contentsOf: packet.suffix(packet.count - end)) }
         return samples
     }
     private mutating func decode(_ value: Int) -> Int16 {
