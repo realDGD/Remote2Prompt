@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Combine
+import CoreServices
 import IOKit.hid
 import Remote2PromptCore
 
@@ -24,6 +25,9 @@ public final class RemoteMappingRuntime: ObservableObject {
     @Published public private(set) var inputMonitoring = false
     @Published public private(set) var accessibility = false
     @Published public private(set) var permissionNotice: String?
+    @Published public private(set) var setupActive = false
+    @Published public private(set) var setupInput = SetupInputCheck()
+    @Published public private(set) var requestingPermission = false
     private var configuration = AppConfiguration()
     private var lease: NativeKeyLease?
     private let monitor = HIDRemoteMonitor()
@@ -37,6 +41,8 @@ public final class RemoteMappingRuntime: ObservableObject {
     private var workspaceObservation: NSObjectProtocol?
     private var retryAllowed = true
     private let hardwareEnabled: Bool
+    private enum PermissionRequest { case input, accessibility }
+    private var pendingPermission: PermissionRequest?
 
     public init(hardwareEnabled: Bool = true) {
         self.hardwareEnabled = hardwareEnabled
@@ -60,6 +66,12 @@ public final class RemoteMappingRuntime: ObservableObject {
         observations.append(NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.shutdown() }
         })
+        observations.append(NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refresh()
+                self?.performPendingPermissionRequest()
+            }
+        })
         workspaceObservation = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.stop(); self?.retryAllowed = false; self?.status = "已因休眠停止接管，唤醒后请重试连接"
@@ -75,7 +87,7 @@ public final class RemoteMappingRuntime: ObservableObject {
         let wasEnabled = configuration.mappingsEnabled
         if configuration.bindings != value.bindings { gestures.cancelAll() }
         configuration = value
-        if !value.mappingsEnabled { stop(); status = "自定义映射已关闭" }
+        if !value.mappingsEnabled && !setupActive { stop(); status = "自定义映射已关闭" }
         else {
             if !wasEnabled { retryAllowed = true }
             refresh()
@@ -96,7 +108,7 @@ public final class RemoteMappingRuntime: ObservableObject {
         inputMonitoring = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
         accessibility = AXIsProcessTrusted()
         if oldCount != detectedCount || oldInput != inputMonitoring || oldAX != accessibility { retryAllowed = true }
-        guard configuration.mappingsEnabled else { return }
+        guard configuration.mappingsEnabled || setupActive else { return }
         // Accessibility includes event posting/listening. The HID open remains authoritative for this device.
         guard accessibility else {
             stop(); status = "等待系统权限授权"; return
@@ -118,7 +130,7 @@ public final class RemoteMappingRuntime: ObservableObject {
             try lease?.acquire()
             try monitor.start()
             isRunning = true; errorMessage = nil
-            status = "按键映射已启用"
+            status = setupActive ? "设置向导正在检测按键，日常映射已暂停" : "按键映射已启用"
             gestureTimer = Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { [weak self] _ in
                 MainActor.assumeIsolated { self?.tick() }
             }
@@ -132,17 +144,69 @@ public final class RemoteMappingRuntime: ObservableObject {
         refresh()
     }
 
-    public func requestInputMonitoring() {
-        NSApp.activate(ignoringOtherApps: true)
-        let hidGranted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
-        let eventGranted = CGRequestListenEventAccess()
-        permissionNotice = hidGranted || eventGranted ? "系统已允许输入监听。" : "已向 macOS 请求输入监控权限。若系统不再弹窗，请使用“打开输入监控设置”检查当前应用条目。设备控制授权也可涵盖监听能力，实际连接仍由系统验证。"
+    /// Capture uses the production HID lease but never executes saved actions or voice modifiers.
+    public func beginSetup() {
+        guard !setupActive else { return }
+        stop()
+        setupActive = true; errorMessage = nil; retryAllowed = true
         refresh()
     }
+
+    public func checkSetupButtons() { setupInput.beginButtons() }
+    public func checkSetupVoice() { setupInput.beginVoice() }
+
+    public func endSetup() {
+        guard setupActive else { return }
+        stop()
+        setupActive = false; retryAllowed = true
+        if !configuration.mappingsEnabled { status = "自定义映射已关闭" }
+        refresh()
+    }
+
+    public func requestInputMonitoring() {
+        queuePermissionRequest(.input)
+    }
     public func requestAccessibility() {
+        queuePermissionRequest(.accessibility)
+    }
+
+    private func queuePermissionRequest(_ request: PermissionRequest) {
+        guard !requestingPermission else { return }
+        pendingPermission = request; requestingPermission = true
+        permissionNotice = "正在准备系统授权请求…"
         NSApp.activate(ignoringOtherApps: true)
-        let granted = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
-        permissionNotice = granted ? "设备控制权限已授予。" : "已向 macOS 请求设备控制权限。完成后可刷新状态；系统不再弹窗时请打开对应设置页。"
+        // Activation is asynchronous. Request only after this application owns the foreground.
+        DispatchQueue.main.async { [weak self] in self?.performPendingPermissionRequest() }
+    }
+
+    private func performPendingPermissionRequest() {
+        guard NSApp.isActive, let request = pendingPermission else { return }
+        pendingPermission = nil
+        defer { requestingPermission = false }
+        guard IOHIDPermission.runningCodeIsCurrent() else { refresh(); return }
+        // Keep System Settings pointing to this bundle when another local build has been removed.
+        LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
+        switch request {
+        case .input:
+            let alert = NSAlert()
+            alert.messageText = "为 Remote2Prompt 请求输入监控"
+            alert.informativeText = "此权限用于读取遥控器按键。点击“继续请求”后由 macOS 决定是否显示系统授权提示。已有设备控制授权时也可能允许监听，无需重复授权。若系统不再提示，可打开输入监控设置检查当前应用。"
+            alert.addButton(withTitle: "继续请求")
+            alert.addButton(withTitle: "打开系统设置…")
+            alert.addButton(withTitle: "取消")
+            switch alert.runModal() {
+            case .alertFirstButtonReturn:
+                let granted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+                permissionNotice = granted ? "系统已允许输入监听。" : "已发送系统请求。若没有系统提示，请打开输入监控设置；列表没有当前应用时，可用“＋”添加，或先使用设备控制授权尝试连接。"
+            case .alertSecondButtonReturn:
+                openInputMonitoringSettings()
+                permissionNotice = "已打开输入监控设置。请核对下方显示的当前应用路径。"
+            default: permissionNotice = "已取消输入监控请求。"
+            }
+        case .accessibility:
+            let granted = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+            permissionNotice = granted ? "设备控制权限已授予。" : "已向 macOS 请求设备控制权限。完成后返回本应用会自动刷新状态；系统不再提示时请打开对应设置页。"
+        }
         refresh()
     }
     public func openInputMonitoringSettings() { openPrivacyPane("Privacy_ListenEvent") }
@@ -174,6 +238,11 @@ public final class RemoteMappingRuntime: ObservableObject {
                 }
             }
             held[owner] = usages
+            if setupActive {
+                setupInput.receive(owner: owner, previous: previous, current: usages)
+                publishPressed()
+                return
+            }
             if previous.contains(XiaomiRemote.voiceUsage) && !usages.contains(XiaomiRemote.voiceUsage) {
                 try deliver(voice.end(owner: owner))
             }
@@ -197,12 +266,13 @@ public final class RemoteMappingRuntime: ObservableObject {
         } catch { fail(error.localizedDescription) }
     }
     private func disconnected(_ owner: String) {
+        setupInput.disconnected(owner: owner)
         held.removeValue(forKey: owner); gestures.cancel(owner: owner)
         do { try deliver(voice.end(owner: owner)) } catch { fail(error.localizedDescription) }
         publishPressed()
     }
     private func tick() {
-        guard isRunning else { return }
+        guard isRunning && !setupActive else { return }
         do { try perform(gestures.advance(to: ProcessInfo.processInfo.systemUptime)) }
         catch { fail(error.localizedDescription) }
     }
@@ -214,12 +284,13 @@ public final class RemoteMappingRuntime: ObservableObject {
     }
     private func publishPressed() {
         activeButtons = Set(held.values.flatMap { $0.compactMap { XiaomiRemote.buttonUsages[$0] } })
-        voiceHeld = voice.heldTrigger != nil
+        voiceHeld = held.values.contains { $0.contains(XiaomiRemote.voiceUsage) }
     }
     private func stop() {
         isRunning = false
         gestureTimer?.invalidate(); gestureTimer = nil
         monitor.stop(); gestures.cancelAll(); held.removeAll()
+        setupInput.invalidate()
         do { try deliver(voice.cancelAll()); try sender.releaseAll() }
         catch { errorMessage = error.localizedDescription }
         do { try lease?.restore() } catch { errorMessage = error.localizedDescription }

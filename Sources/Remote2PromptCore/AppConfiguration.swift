@@ -35,6 +35,18 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
         return MappedInvocation(action: binding.action, shortcut: binding.shortcut)
     }
 
+    /// Fill empty click bindings only; rerunning setup preserves every existing override and gesture.
+    public mutating func fillBasicNavigationBindings() {
+        let defaults: [(RemoteButton, MappedAction)] = [
+            (.up, .arrowUp), (.down, .arrowDown), (.left, .arrowLeft), (.right, .arrowRight),
+            (.select, .enter), (.back, .backspace), (.power, .escape),
+            (.volumeUp, .volumeUp), (.volumeDown, .volumeDown)
+        ]
+        for (button, action) in defaults where self.action(for: button, gesture: .click) == .none {
+            setAction(action, for: button, gesture: .click)
+        }
+    }
+
     public func encoded() throws -> Data {
         try JSONEncoder().encode(self)
     }

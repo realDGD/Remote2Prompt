@@ -168,7 +168,7 @@ let checks: [(String, () throws -> Void)] = [
         try expect(session.cancelAll().isEmpty, "Shutdown emitted a second release")
         try expect(session.begin(owner: "a", trigger: .leftControl).first?.isDown == true, "Cancelled owner could not restart")
     })
-] + mappingChecks()
+] + mappingChecks() + setupChecks()
 
 var failed = 0
 for (name, check) in checks {
