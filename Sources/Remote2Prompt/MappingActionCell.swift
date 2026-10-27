@@ -44,6 +44,9 @@ struct MappingActionCell: View {
         .frame(maxWidth: .infinity)
         .background(isEmpty ? Color.primary.opacity(0.025) : Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 7))
         .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Color.primary.opacity(isEmpty ? 0.04 : 0.09)))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(name)
+        .accessibilityIdentifier("mapping.\(button.rawValue).\(gesture.rawValue)")
     }
 
     private func actionMenu(compact: Bool) -> some View {

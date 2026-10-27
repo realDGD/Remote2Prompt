@@ -7,36 +7,46 @@ struct VoiceAudioControls: View {
     @ObservedObject var audio: RemoteAudioRuntime
 
     var body: some View {
-        Picker("虚拟音频设备", selection: Binding(
-            get: { store.configuration.selectedVirtualInputUID ?? "" },
-            set: { value in store.update { $0.selectedVirtualInputUID = value.isEmpty ? nil : value } }
-        )) {
-            Text("不选择").tag("")
-            ForEach(audio.devices) { device in Text(device.name).tag(device.uid) }
-            if let uid = store.configuration.selectedVirtualInputUID, !audio.devices.contains(where: { $0.uid == uid }) {
-                Text("已保存的设备当前不可用").tag(uid)
-            }
-        }
-        LabeledContent("音频输出", value: audio.outputStatus)
-        HStack {
-            Button("刷新设备") { audio.refreshDevices() }
-            Button(audio.testingTone ? "正在发送测试音…" : "向此设备发送测试音") { audio.playTestTone() }
-                .disabled(!audio.canTestTone)
-        }
-        if audio.devices.isEmpty {
-            Text("未找到可用的 MiRemoteV 2ch 或 BlackHole 2ch。安装相应驱动后刷新；应用不会自动安装驱动或重启音频服务。")
-                .foregroundStyle(.secondary)
-            Link("查看 BlackHole 官方安装说明", destination: URL(string: "https://github.com/ExistentialAudio/BlackHole#installation-instructions")!)
-        }
-        Toggle("接收遥控器语音音频", isOn: Binding(
+        Toggle("接收遥控器声音", isOn: Binding(
             get: { store.configuration.remoteAudioEnabled },
             set: { value in store.update { $0.remoteAudioEnabled = value; if value { $0.voiceEnabled = true } } }
         ))
-        Text("开启后同时启用语音触发，并连接遥控器的音频通道；需要蓝牙授权。请在目标输入法中选择上方同一回环设备作为麦克风。")
-            .foregroundStyle(.secondary)
-        LabeledContent("遥控器音频", value: audio.status)
-        Button("重新连接音频") { audio.retry() }
-        Text("仅向明确选择的回环设备输出。系统默认输入由下方独立开关控制，默认输出保持不变。测试音在内存中生成，语音开始时立即取消测试音。")
-            .font(.caption).foregroundStyle(.secondary)
+        .toggleStyle(.switch).controlSize(.small)
+        Text("开启时会同时启用语音触发。请在目标输入法中选择下面同一个虚拟麦克风。")
+            .font(.callout).foregroundStyle(.secondary)
+        HStack {
+            Picker("虚拟麦克风", selection: Binding(
+                get: { store.configuration.selectedVirtualInputUID ?? "" },
+                set: { value in store.update { $0.selectedVirtualInputUID = value.isEmpty ? nil : value } }
+            )) {
+                Text("请选择设备").tag("")
+                ForEach(audio.devices) { device in Text(device.name).tag(device.uid) }
+                if let uid = store.configuration.selectedVirtualInputUID, !audio.devices.contains(where: { $0.uid == uid }) {
+                    Text("已保存的设备当前不可用").tag(uid)
+                }
+            }
+            Button { audio.refreshDevices() } label: { Image(systemName: "arrow.clockwise") }
+                .buttonStyle(.borderless).disabled(InterfaceInspection.enabled).help("刷新音频设备").accessibilityLabel("刷新音频设备")
+        }
+        if audio.devices.isEmpty {
+            if InterfaceInspection.enabled {
+                Text("界面预览不连接音频设备").font(.caption).foregroundStyle(.secondary)
+            } else {
+                Label("未找到 MiRemoteV 2ch 或 BlackHole 2ch", systemImage: "speaker.slash")
+                    .font(.callout).foregroundStyle(.secondary)
+                Link("查看虚拟麦克风安装说明", destination: URL(string: "https://github.com/ExistentialAudio/BlackHole#installation-instructions")!)
+            }
+        }
+        if store.configuration.remoteAudioEnabled {
+            LabeledContent("音频连接", value: audio.status)
+            Button("重新连接音频") { audio.retry() }.disabled(InterfaceInspection.enabled)
+        }
+        DisclosureGroup("测试与设备状态") {
+            LabeledContent("设备状态", value: audio.outputStatus)
+            Button(audio.testingTone ? "正在发送测试音…" : "发送测试音到虚拟麦克风") { audio.playTestTone() }
+                .disabled(!audio.canTestTone)
+            Text("测试音只发往所选设备，开始语音时会自动停止。应用不安装音频驱动，也不重启系统音频服务。")
+                .font(.caption).foregroundStyle(.secondary)
+        }
     }
 }

@@ -9,107 +9,186 @@ struct ConnectionPage: View {
     var openMappings: () -> Void = {}
 
     var body: some View {
-        Form {
-            Section("遥控器连接") {
-                Label(runtime.status, systemImage: "appletvremote.gen4")
-                    .font(.headline)
-                LabeledContent("已发现的遥控器接口", value: String(runtime.detectedCount))
+        SettingsPageStack {
+            SettingsCard("遥控器连接") {
+                Label(InterfaceInspection.enabled ? "界面预览，未连接设备" : runtime.status, systemImage: runtime.isRunning ? "checkmark.circle.fill" : "appletvremote.gen4")
+                    .foregroundStyle(runtime.isRunning ? .green : .primary)
                 if let error = runtime.errorMessage { Text(error).foregroundStyle(.red) }
                 HStack {
-                    Button("打开蓝牙设置…") { openBluetoothSettings() }
-                    Button("重试连接") { runtime.retry() }
+                    Button("蓝牙设置…") { openBluetoothSettings() }.disabled(InterfaceInspection.enabled)
+                    Button("重试连接") { runtime.retry() }.disabled(InterfaceInspection.enabled)
+                    Spacer()
+                    Button("设置向导…") { store.isSetupPresented = true }
                 }
-                Text("先在系统蓝牙中配对 RC003，再启用按键映射。请退出其他遥控器映射软件，避免重复响应。")
-                    .foregroundStyle(.secondary)
-                Button("运行设置向导…") { store.isSetupPresented = true }
+                Text("先在系统蓝牙中配对 RC003。请退出其他遥控器映射软件，避免按键重复响应。")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            Section("语音音频") {
+            SettingsCard("遥控器声音") {
+                VoiceAudioControls(audio: runtime.audio)
                 HStack {
                     LabeledContent("语音触发键", value: store.configuration.voiceEnabled ? store.configuration.voiceTrigger.title : "未启用")
-                    Button("设置…", action: openMappings).buttonStyle(.link)
+                    Button("去设置", action: openMappings).buttonStyle(.link)
                 }
-                VoiceAudioControls(audio: runtime.audio)
             }
-            Section("系统输入优先") {
+            SettingsCard("系统输入切换") {
                 InputPriorityControls(priority: runtime.inputPriority)
             }
-            Section {
-                DisclosureGroup("连接详情") {
+            SettingsCard {
+                DisclosureGroup("连接诊断") {
+                    LabeledContent("发现的遥控器接口", value: String(runtime.detectedCount))
                     LabeledContent("收到的按键报告", value: String(runtime.reportCount))
                     if let activity = runtime.lastActivity {
-                        LabeledContent("最后按键", value: "\(activity.isVoice ? "语音键" : activity.button?.title ?? "未知")：\(activity.isDown ? "按下" : "松开")")
+                        LabeledContent("最后按键", value: "\(activity.isVoice ? "语音键" : activity.button?.title ?? "未知") · \(activity.isDown ? "按下" : "松开")")
                     }
                 }
             }
         }
-        .formStyle(.grouped)
     }
 }
 
 struct PermissionsPage: View {
-    var body: some View {
-        Form {
-            Section("按键所需权限") { PermissionControls() }
-            Section("蓝牙与麦克风") {
-                Text("按键由系统蓝牙配对。启用遥控器音频后才通过 CoreBluetooth 请求蓝牙访问；不读取 Mac 本机麦克风。")
-                Button("打开蓝牙设置…") { openBluetoothSettings() }
-            }
-            Section("隐私") {
-                Label("只处理兼容遥控器的按键", systemImage: "shield.lefthalf.filled")
-                Text("快捷键录入仅接收当前窗口的按键，不读取其他应用输入。遥控器音频仅在启用后保留在内存，并写入你选择的回环设备；不录音存盘、不上传、不保存输入文字。")
-                Text("设置和原生按键恢复记录保存在本机；不记录完整 HID 报告或设备硬件地址。")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
-    }
-}
-
-struct PermissionControls: View {
     @EnvironmentObject private var runtime: RemoteMappingRuntime
 
     var body: some View {
-        LabeledContent(IOHIDPermission.controlPermissionTitle, value: runtime.accessibility ? "已授权" : "未授权")
-        HStack {
-            Button("请求\(IOHIDPermission.controlPermissionTitle)权限") { runtime.requestAccessibility() }
-                .disabled(runtime.requestingPermission)
-            Button("打开对应设置…") { runtime.openAccessibilitySettings() }
+        SettingsPageStack {
+            SettingsCard("发送按键") { DeviceControlPermissionRows() }
+            SettingsCard("读取遥控器按键") { InputMonitoringPermissionRows() }
+            if let notice = runtime.permissionNotice {
+                SettingsCard("授权提示") { Text(notice).font(.callout).foregroundStyle(.secondary) }
+            }
+            SettingsCard("蓝牙与声音") {
+                Label("启用遥控器声音后才请求蓝牙访问", systemImage: "antenna.radiowaves.left.and.right")
+                Text("应用不读取 Mac 自带麦克风。请在系统蓝牙中配对遥控器，声音写入你选择的虚拟麦克风。")
+                    .font(.callout).foregroundStyle(.secondary)
+                Button("蓝牙设置…") { openBluetoothSettings() }.disabled(InterfaceInspection.enabled)
+            }
+            SettingsCard("隐私保护") {
+                Label("仅处理兼容遥控器的按键", systemImage: "appletvremote.gen4")
+                Label("快捷键录入仅作用于当前窗口", systemImage: "keyboard")
+                Label("语音只在内存处理，不录音、不上传", systemImage: "waveform")
+                Text("设置和按键恢复记录仅保存在本机；不保存输入文字、完整 HID 报告或设备硬件地址。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            SettingsCard { PermissionTroubleshootingRows() }
         }
-        Text("用于发送映射后的按键。macOS 27 将原“辅助功能”改名为“设备控制和数据访问”。")
-            .foregroundStyle(.secondary)
+    }
+}
+
+private struct SettingsPageStack<Content: View>: View {
+    @ViewBuilder let content: Content
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) { content }
+                .padding(24).frame(maxWidth: 820).frame(maxWidth: .infinity)
+        }.background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+private struct SettingsCard<Content: View>: View {
+    let title: String?
+    @ViewBuilder let content: Content
+    init(_ title: String? = nil, @ViewBuilder content: () -> Content) {
+        self.title = title; self.content = content()
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let title { Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.leading, 2) }
+            VStack(alignment: .leading, spacing: 14) { content }
+                .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.06)))
+        }
+    }
+}
+
+/// The setup wizard reuses the same permission actions without introducing nested Forms.
+struct PermissionControls: View {
+    @EnvironmentObject private var runtime: RemoteMappingRuntime
+    var body: some View {
+        DeviceControlPermissionRows()
         Divider()
-        LabeledContent("按键监听", value: runtime.inputMonitoring ? "系统已允许" : "系统未允许")
+        InputMonitoringPermissionRows()
+        if let notice = runtime.permissionNotice { Text(notice).font(.callout).foregroundStyle(.secondary) }
+        PermissionTroubleshootingRows()
+    }
+}
+
+private struct PermissionStatusRow: View {
+    let title: String
+    let symbol: String
+    let allowed: Bool
+    let grantedTitle: String
+    var body: some View {
         HStack {
-            if !runtime.inputMonitoring {
-                Button("请求输入监控权限") { runtime.requestInputMonitoring() }
-                    .disabled(runtime.requestingPermission)
-            }
-            Button("打开输入监控设置…") {
-                runtime.openInputMonitoringSettings()
-                if !runtime.inputMonitoring { showDragGuide() }
-            }
+            Label(title, systemImage: symbol)
+            Spacer()
+            Label(InterfaceInspection.enabled ? "未检查" : allowed ? grantedTitle : "未允许",
+                  systemImage: InterfaceInspection.enabled ? "eye" : allowed ? "checkmark.circle.fill" : "circle.dashed")
+                .foregroundStyle(allowed && !InterfaceInspection.enabled ? .green : .secondary)
+                .font(.caption.weight(.medium))
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(allowed && !InterfaceInspection.enabled ? Color.green.opacity(0.09) : Color.primary.opacity(0.045), in: Capsule())
         }
-        .onChange(of: runtime.manualInputHelpRequest) { _, _ in showDragGuide() }
-        Text(runtime.inputMonitoring ? "系统已允许读取按键，可能来自设备控制授权。这个状态不代表已在输入监控列表中单独开启，无需重复申请。" : "设备控制授权也包含监听能力。需要单独申请时，按钮会直接发出系统请求；系统不再提示时，可打开输入监控设置检查。")
-            .foregroundStyle(.secondary)
-        if let notice = runtime.permissionNotice {
-            Text(notice).foregroundStyle(.secondary).accessibilityLabel("授权请求结果：\(notice)")
-        }
-        DisclosureGroup("授权后仍未生效？") {
-            Text("请确认系统列表中的应用来自下方路径。若列表没有当前应用，可点击“＋”添加。本地构建更新后可能需要重新授权并重开应用。")
-            Text(Bundle.main.bundleURL.path)
-                .font(.caption).textSelection(.enabled)
+    }
+}
+
+private struct DeviceControlPermissionRows: View {
+    @EnvironmentObject private var runtime: RemoteMappingRuntime
+    var body: some View {
+        PermissionStatusRow(title: IOHIDPermission.controlPermissionTitle, symbol: "hand.raised",
+                            allowed: runtime.accessibility, grantedTitle: "已授权")
+        Text("允许把映射后的遥控器按键发送给当前应用。")
+            .font(.callout).foregroundStyle(.secondary)
+        if runtime.accessibility {
+            Button("管理权限…") { runtime.openAccessibilitySettings() }.disabled(InterfaceInspection.enabled)
+        } else {
             HStack {
-                Button("在 Finder 中显示当前应用") {
-                    NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
-                }
-                Button("刷新权限状态") { runtime.refresh() }
+                Button("请求设备控制权限") { runtime.requestAccessibility() }
+                    .disabled(runtime.requestingPermission || InterfaceInspection.enabled)
+                Button("系统设置…") { runtime.openAccessibilitySettings() }.disabled(InterfaceInspection.enabled)
             }
         }
     }
+}
 
+private struct InputMonitoringPermissionRows: View {
+    @EnvironmentObject private var runtime: RemoteMappingRuntime
+    var body: some View {
+        PermissionStatusRow(title: "按键监听", symbol: "keyboard", allowed: runtime.inputMonitoring, grantedTitle: "系统已允许")
+        Text(runtime.inputMonitoring ? "当前已具备按键读取能力，无需重复申请。" : "用于读取遥控器按键。先尝试系统授权；系统不再提示时，可打开设置手动添加。")
+            .font(.callout).foregroundStyle(.secondary)
+        HStack {
+            if !runtime.inputMonitoring {
+                Button("请求输入监控权限") { runtime.requestInputMonitoring() }
+                    .disabled(runtime.requestingPermission || InterfaceInspection.enabled)
+            }
+            Button(runtime.inputMonitoring ? "管理输入监控…" : "系统设置与拖入引导…") {
+                runtime.openInputMonitoringSettings()
+                if !runtime.inputMonitoring { showDragGuide() }
+            }.disabled(InterfaceInspection.enabled)
+        }
+        .onChange(of: runtime.manualInputHelpRequest) { _, _ in showDragGuide() }
+    }
     private func showDragGuide() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { PermissionDragGuide.shared.show() }
+    }
+}
+
+private struct PermissionTroubleshootingRows: View {
+    @EnvironmentObject private var runtime: RemoteMappingRuntime
+    var body: some View {
+        DisclosureGroup("授权后仍未生效？") {
+            Text("设备控制授权也可能提供监听能力；“系统已允许”不表示在输入监控列表单独开启。较早系统的设备控制权限名为“辅助功能”。")
+                .font(.callout).foregroundStyle(.secondary)
+            Text("确认系统列表中添加的是当前应用。若没有该条目，可点击“＋”或把应用拖入列表。更新本地构建后，可能需要重新授权并重开。")
+                .font(.callout).foregroundStyle(.secondary)
+            Text(Bundle.main.bundleURL.path).font(.caption).textSelection(.enabled)
+            HStack {
+                Button("在 Finder 中显示应用") { NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL]) }.disabled(InterfaceInspection.enabled)
+                Button("刷新权限状态") { runtime.refresh() }
+            }
+        }
     }
 }
 

@@ -105,3 +105,9 @@ ruby scripts/prepare-homebrew.rb --remote "$(git rev-parse HEAD)" --tap realdgd/
 macOS 检查程序的 `--loopback-output-smoke` 是单独、显式的硬件检查：仅向已识别回环设备写入 800 个静音样本，等待排空，并比较前后系统默认设备快照。普通 `make test` 不运行此硬件检查。
 
 `Remote2Prompt --check-input-catalog` 只读检查真实输入目录、分类及 CoreAudio listener 注册/清理，比较前后默认设备并只输出数量，不打印 UID、设备名或地址，不切换设备、不读取音频。应用的输入优先功能须由用户开启，默认关闭；普通检查与 UI smoke 使用模拟或禁用硬件的运行时。M3 的真实默认输入切换须另行按硬件矩阵验收，不能以该诊断命令代替。
+
+## 独立设置预览
+
+`./scripts/prepare-ui-preview.sh` 用同一 CLT 构建独立的 `.build/ui-preview/Remote2Prompt.app`，使用专用 Bundle ID 和配置域，不覆盖安装版，也不启动 HID、蓝牙、音频或默认输入写入。它支持实际原生点击与快捷键录入，配置仅用于本次检查，退出时清除。左栏底部明确标记“界面预览”。重建前先退出该预览；脚本拒绝覆盖正在运行或身份不符的副本。
+
+预览副本的 `--smoke-test --preview-directory <输出目录>` 可导出自身视图并自动退出。截图缓存只用于布局检查，不能替代真实控件交互或硬件验收。预览中不要点击系统授权/系统设置入口进行授权测试；真实权限仍需使用固定的实际安装路径。

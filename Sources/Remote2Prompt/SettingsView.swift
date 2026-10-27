@@ -43,7 +43,7 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(store.persistenceError != nil)
-                    Text("Remote2Prompt")
+                    Text(InterfaceInspection.interactive ? "Remote2Prompt · 界面预览" : "Remote2Prompt")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 .padding()

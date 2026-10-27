@@ -176,7 +176,7 @@ struct MappingsPage: View {
 
     private var activityBar: some View {
         HStack(spacing: 18) {
-            Label(runtime.status, systemImage: runtime.isRunning ? "circle.fill" : "circle")
+            Label(InterfaceInspection.enabled ? "界面预览，未访问设备" : runtime.status, systemImage: runtime.isRunning ? "circle.fill" : "circle")
                 .foregroundStyle(runtime.isRunning ? .green : .secondary)
                 .lineLimit(1).help(runtime.status)
             Spacer(minLength: 0)
