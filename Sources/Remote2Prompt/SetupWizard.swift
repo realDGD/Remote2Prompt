@@ -75,7 +75,7 @@ struct SetupWizard: View {
                     .foregroundStyle(.secondary)
             }
             Section("本版本的语音能力") {
-                Text("可以把语音键转换为 Fn、左或右 Control 等触发键。此向导只检测按键；遥控器音频需在“连接与语音”页单独选择回环设备并连接，不验证语音识别结果。")
+                Text("可以把语音键转换为 Fn、左或右 Control 等触发键。此向导只检测按键；遥控器音频需在“连接与音频”页单独选择回环设备并连接，不验证语音识别结果。")
             }
         case .permissions:
             Section { PermissionControls() }

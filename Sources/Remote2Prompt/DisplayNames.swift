@@ -1,6 +1,23 @@
 import Remote2PromptCore
 
 extension RemoteButton {
+    var symbol: String {
+        switch self {
+        case .up: "arrow.up"
+        case .down: "arrow.down"
+        case .left: "arrow.left"
+        case .right: "arrow.right"
+        case .select: "circle.inset.filled"
+        case .back: "arrow.uturn.backward"
+        case .home: "house"
+        case .menu: "line.3.horizontal"
+        case .tv: "tv"
+        case .volumeUp: "plus"
+        case .volumeDown: "minus"
+        case .power: "power"
+        }
+    }
+
     var title: String {
         switch self {
         case .up: "上"

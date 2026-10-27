@@ -3,6 +3,21 @@ import Remote2PromptCore
 import Remote2PromptMac
 import SwiftUI
 
+/// Inspection windows use their own preferences and never start device adapters.
+@MainActor
+enum InterfaceInspection {
+    static let bundleID = "dev.remote2prompt.ui-preview"
+    static let preferencesDomain = "dev.remote2prompt.ui-preview.settings"
+    static let interactive = Bundle.main.bundleIdentifier == bundleID || CommandLine.arguments.contains("--ui-preview")
+    static let enabled = interactive || CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide")
+    static let defaults: UserDefaults = {
+        guard enabled else { return .standard }
+        let defaults = UserDefaults(suiteName: preferencesDomain)!
+        defaults.removePersistentDomain(forName: preferencesDomain)
+        return defaults
+    }()
+}
+
 @main
 enum Launcher {
     @MainActor
@@ -52,18 +67,18 @@ enum Launcher {
 
 struct Remote2PromptApp: App {
     @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var delegate
-    @StateObject private var store = ConfigurationStore()
-    @StateObject private var runtime = RemoteMappingRuntime(hardwareEnabled: !CommandLine.arguments.contains("--smoke-test") && !CommandLine.arguments.contains("--smoke-test-guide"))
+    @StateObject private var store = ConfigurationStore(defaults: InterfaceInspection.defaults)
+    @StateObject private var runtime = RemoteMappingRuntime(hardwareEnabled: !InterfaceInspection.enabled)
 
     var body: some Scene {
-        Window("Remote2Prompt", id: "settings") {
+        Window(InterfaceInspection.interactive ? "Remote2Prompt · 界面预览" : "Remote2Prompt", id: "settings") {
             SettingsView()
                 .environmentObject(store)
                 .environmentObject(runtime)
                 .onAppear { delegate.attach(runtime) }
                 .onReceive(store.$configuration) { runtime.configure($0) }
         }
-        .defaultSize(width: 1120, height: 760)
+        .defaultSize(width: 1200, height: 850)
         .windowResizability(.contentMinSize)
 
         MenuBarExtra("Remote2Prompt", systemImage: "mic.badge.plus") {
@@ -141,6 +156,12 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        if InterfaceInspection.enabled {
+            InterfaceInspection.defaults.removePersistentDomain(forName: InterfaceInspection.preferencesDomain)
+        }
+    }
 
     private func savePreviews(to directory: URL) {
         do {

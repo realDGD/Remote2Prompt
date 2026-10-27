@@ -30,6 +30,7 @@ enum ShortcutEditResult {
 
 struct ShortcutCaptureView: View {
     let initial: Remote2PromptCore.KeyboardShortcut?
+    var context: String? = nil
     let onFinish: (ShortcutEditResult) -> Void
     @ViewState private var candidate: Remote2PromptCore.KeyboardShortcut?
     @ViewState private var recording = true
@@ -38,6 +39,7 @@ struct ShortcutCaptureView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("录入快捷键").font(.title2.bold())
+            if let context { Text(context).font(.callout.weight(.medium)).foregroundStyle(.secondary) }
             Text("按下单键、组合键，或按下并松开一个左右修饰键。录入只在当前窗口内生效。")
                 .foregroundStyle(.secondary)
             Text(candidate?.displayTitle ?? "未设置快捷键")

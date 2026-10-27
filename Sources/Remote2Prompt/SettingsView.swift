@@ -6,7 +6,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .connection: "连接与语音"
+        case .connection: "连接与音频"
         case .mappings: "按键映射"
         case .permissions: "权限与隐私"
         case .about: "关于"
@@ -59,8 +59,8 @@ struct SettingsView: View {
                 }
                 Group {
                     switch selection ?? .mappings {
-                    case .connection: ConnectionPage()
-                    case .mappings: MappingsPage()
+                    case .connection: ConnectionPage(openMappings: { selection = .mappings })
+                    case .mappings: MappingsPage(openAudioSettings: { selection = .connection })
                     case .permissions: PermissionsPage()
                     case .about: AboutPage()
                     }

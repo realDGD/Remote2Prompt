@@ -6,6 +6,7 @@ import SwiftUI
 struct ConnectionPage: View {
     @EnvironmentObject private var store: ConfigurationStore
     @EnvironmentObject private var runtime: RemoteMappingRuntime
+    var openMappings: () -> Void = {}
 
     var body: some View {
         Form {
@@ -22,11 +23,11 @@ struct ConnectionPage: View {
                     .foregroundStyle(.secondary)
                 Button("运行设置向导…") { store.isSetupPresented = true }
             }
-            Section("语音键") {
-                VoiceTriggerControls()
-                LabeledContent("当前按键", value: runtime.voiceHeld ? "按住中" : "已松开")
-            }
             Section("语音音频") {
+                HStack {
+                    LabeledContent("语音触发键", value: store.configuration.voiceEnabled ? store.configuration.voiceTrigger.title : "未启用")
+                    Button("设置…", action: openMappings).buttonStyle(.link)
+                }
                 VoiceAudioControls(audio: runtime.audio)
             }
             Section("系统输入优先") {
@@ -42,25 +43,6 @@ struct ConnectionPage: View {
             }
         }
         .formStyle(.grouped)
-    }
-}
-
-struct VoiceTriggerControls: View {
-    @EnvironmentObject private var store: ConfigurationStore
-
-    var body: some View {
-        Toggle("启用语音触发", isOn: Binding(
-            get: { store.configuration.voiceEnabled },
-            set: { value in store.update { $0.voiceEnabled = value } }
-        ))
-        Picker("语音触发键", selection: Binding(
-            get: { store.configuration.voiceTrigger },
-            set: { value in store.update { $0.voiceTrigger = value } }
-        )) {
-            ForEach(VoiceTrigger.allCases) { Text($0.title).tag($0) }
-        }
-        Text("独立于普通按键映射。按住语音键立即按下所选键；接入遥控器音频时，尾音输出完再释放。请在输入法中设置相同触发键；左右 Control 各自独立。")
-            .foregroundStyle(.secondary)
     }
 }
 

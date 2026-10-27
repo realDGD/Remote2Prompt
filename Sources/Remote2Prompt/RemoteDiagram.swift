@@ -6,6 +6,7 @@ struct RemoteDiagram: View {
     @Binding var selection: RemoteButton?
     let active: Set<RemoteButton>
     let voiceHeld: Bool
+    var onSelection: () -> Void = {}
     private let dark = Color(white: 0.20)
 
     var body: some View {
@@ -53,7 +54,7 @@ struct RemoteDiagram: View {
 
     private func key(_ button: RemoteButton?, _ symbol: String?, light: Bool = false, size: CGFloat = 48) -> some View {
         let pressed = button.map { active.contains($0) } ?? voiceHeld
-        return Button { selection = button } label: {
+        return Button { selection = button; onSelection() } label: {
             ZStack {
                 Circle().fill(light ? Color(white: 0.85) : dark)
                 if button == .tv {
@@ -70,7 +71,7 @@ struct RemoteDiagram: View {
 
     private func direction(_ button: RemoteButton, start: Double, dot: CGPoint) -> some View {
         let selected = selection == button
-        return Button { selection = button } label: {
+        return Button { selection = button; onSelection() } label: {
             ZStack {
                 RingSector(start: start).fill(active.contains(button) ? Color.green.opacity(0.5) : selected ? Color.accentColor.opacity(0.35) : .clear)
                 Circle().fill(Color.black.opacity(0.5)).frame(width: 2, height: 2).position(dot)
@@ -80,7 +81,7 @@ struct RemoteDiagram: View {
     }
 
     private func volume(_ button: RemoteButton, _ symbol: String) -> some View {
-        Button { selection = button } label: {
+        Button { selection = button; onSelection() } label: {
             Image(systemName: symbol).font(.system(size: 20)).foregroundStyle(Color(white: 0.7))
                 .frame(width: 48, height: 55)
                 .background(active.contains(button) ? Color.green.opacity(0.4) : selection == button ? Color.accentColor.opacity(0.3) : .clear)
