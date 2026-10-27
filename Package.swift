@@ -10,12 +10,14 @@ let package = Package(
     ],
     targets: [
         .target(name: "Remote2PromptCore"),
-        .executableTarget(name: "Remote2Prompt", dependencies: ["Remote2PromptCore"]),
+        .target(name: "Remote2PromptMac", dependencies: ["Remote2PromptCore"]),
+        .executableTarget(name: "Remote2Prompt", dependencies: ["Remote2PromptCore", "Remote2PromptMac"]),
         // CLT does not include XCTest. Keep checks runnable with the same toolchain as the app.
         .executableTarget(
             name: "Remote2PromptChecks",
             dependencies: ["Remote2PromptCore"],
             path: "Tests/Remote2PromptChecks"
-        )
+        ),
+        .executableTarget(name: "Remote2PromptMacChecks", dependencies: ["Remote2PromptCore", "Remote2PromptMac"], path: "Tests/Remote2PromptMacChecks")
     ]
 )

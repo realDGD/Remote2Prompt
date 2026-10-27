@@ -20,6 +20,7 @@ public enum VoiceTrigger: String, CaseIterable, Codable, Sendable, Identifiable 
 public struct VoiceKeyEvent: Equatable, Sendable {
     public let trigger: VoiceTrigger
     public let isDown: Bool
+    public init(trigger: VoiceTrigger, isDown: Bool) { self.trigger = trigger; self.isDown = isDown }
 }
 
 /// Overlapping sessions share one held key. The first trigger stays latched until the last release.
