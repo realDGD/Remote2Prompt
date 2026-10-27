@@ -120,7 +120,7 @@ struct MappingsPage: View {
     }
     private var outputTitle: String {
         switch runtime.lastOutput {
-        case .action(let invocation): invocation.shortcut?.displayTitle ?? invocation.action.title
+        case .action(let invocation): invocation.resolvedShortcut?.displayTitle ?? invocation.action.title
         case .voice(let event): "\(event.trigger.title) · \(event.isDown ? "按下" : "松开")"
         case nil: "尚未发送"
         }

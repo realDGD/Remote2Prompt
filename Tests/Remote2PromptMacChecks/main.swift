@@ -238,6 +238,10 @@ enum MacChecks {
                 try check(events.count == 2 && events[0].flags.contains([.maskControl, .maskShift]), "Shortcut flags lost")
                 try sender.perform(MappedInvocation(action: .volumeUp))
                 try check(events.count == 4 && events.allSatisfy { $0.getIntegerValueField(.eventSourceUserData) == SystemActionSender.eventTag }, "Events missing origin tags")
+                try sender.perform(MappedInvocation(action: .copy))
+                let resolved = MappedInvocation(action: .copy).resolvedShortcut
+                try check(events.count == 6 && resolved?.keyCode == 8 && resolved?.modifiers == .command, "Copy did not expose its actual shortcut")
+                try check(events[4].getIntegerValueField(.keyboardEventKeycode) == Int64(resolved!.keyCode) && events[4].flags == .maskCommand, "Displayed output differs from posted copy shortcut")
             })
         ]
         var failures = 0

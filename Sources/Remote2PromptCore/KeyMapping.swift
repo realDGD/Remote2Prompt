@@ -60,4 +60,21 @@ public struct MappedInvocation: Equatable, Sendable {
     public var allowsRepeat: Bool {
         [.arrowUp, .arrowDown, .arrowLeft, .arrowRight, .backspace, .volumeUp, .volumeDown].contains(action)
     }
+    /// The UI and system adapter share the exact key that an ordinary action resolves to.
+    public var resolvedShortcut: KeyboardShortcut? {
+        switch action {
+        case .arrowUp: KeyboardShortcut(keyCode: 126)
+        case .arrowDown: KeyboardShortcut(keyCode: 125)
+        case .arrowLeft: KeyboardShortcut(keyCode: 123)
+        case .arrowRight: KeyboardShortcut(keyCode: 124)
+        case .enter: KeyboardShortcut(keyCode: 36)
+        case .escape: KeyboardShortcut(keyCode: 53)
+        case .backspace: KeyboardShortcut(keyCode: 51)
+        case .copy: KeyboardShortcut(keyCode: 8, modifiers: .command)
+        case .paste: KeyboardShortcut(keyCode: 9, modifiers: .command)
+        case .commandTab: KeyboardShortcut(keyCode: 48, modifiers: .command)
+        case .customShortcut: shortcut
+        case .none, .volumeUp, .volumeDown, .mute, .playPause: nil
+        }
+    }
 }

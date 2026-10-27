@@ -51,7 +51,10 @@ public enum LoopbackDevices {
     private static func string(_ id: AudioDeviceID, _ selector: AudioObjectPropertySelector) -> String? {
         var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
         var value: CFString?; var size = UInt32(MemoryLayout<CFString?>.size)
-        guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &value) == noErr else { return nil }
+        let status = withUnsafeMutablePointer(to: &value) {
+            AudioObjectGetPropertyData(id, &address, 0, nil, &size, UnsafeMutableRawPointer($0))
+        }
+        guard status == noErr else { return nil }
         return value as String?
     }
     private static func alive(_ id: AudioDeviceID) -> Bool {

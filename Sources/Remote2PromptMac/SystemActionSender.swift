@@ -35,26 +35,15 @@ public final class SystemActionSender {
     public func perform(_ invocation: MappedInvocation) throws {
         guard invocation.action != .none else { return }
         guard permission() else { throw ActionFailure.accessibility }
-        let shortcut: KeyboardShortcut?
         switch invocation.action {
         case .none: return
-        case .arrowUp: shortcut = KeyboardShortcut(keyCode: 126)
-        case .arrowDown: shortcut = KeyboardShortcut(keyCode: 125)
-        case .arrowLeft: shortcut = KeyboardShortcut(keyCode: 123)
-        case .arrowRight: shortcut = KeyboardShortcut(keyCode: 124)
-        case .enter: shortcut = KeyboardShortcut(keyCode: 36)
-        case .escape: shortcut = KeyboardShortcut(keyCode: 53)
-        case .backspace: shortcut = KeyboardShortcut(keyCode: 51)
-        case .copy: shortcut = KeyboardShortcut(keyCode: 8, modifiers: .command)
-        case .paste: shortcut = KeyboardShortcut(keyCode: 9, modifiers: .command)
-        case .commandTab: shortcut = KeyboardShortcut(keyCode: 48, modifiers: .command)
-        case .customShortcut: shortcut = invocation.shortcut
         case .volumeUp: try media(0); return
         case .volumeDown: try media(1); return
         case .mute: try media(7); return
         case .playPause: try media(16); return
+        default: break
         }
-        guard let shortcut, shortcut.isValid else { throw ActionFailure.eventCreation }
+        guard let shortcut = invocation.resolvedShortcut, shortcut.isValid else { throw ActionFailure.eventCreation }
         let down = try keyboard(code: shortcut.keyCode, down: true, flags: flags(shortcut.modifiers))
         let up = try keyboard(code: shortcut.keyCode, down: false, flags: flags(shortcut.modifiers))
         if let modifier = modifierFlags(shortcut.keyCode) {
