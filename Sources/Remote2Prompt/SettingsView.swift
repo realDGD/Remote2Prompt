@@ -26,15 +26,15 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @EnvironmentObject private var store: ConfigurationStore
     @ViewState private var selection: SettingsPage? = .mappings
-    @ViewState private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
+        NavigationSplitView {
             List(SettingsPage.allCases, selection: $selection) { page in
-                Label(page.title, systemImage: page.symbol).tag(page)
+                NavigationLink(value: page) {
+                    Label(page.title, systemImage: page.symbol)
+                }
             }
             .listStyle(.sidebar)
-            .toolbar(removing: .sidebarToggle)
             .navigationSplitViewColumnWidth(min: 170, ideal: 195, max: 245)
             .safeAreaInset(edge: .bottom) {
                 VStack(alignment: .leading, spacing: 12) {
@@ -67,21 +67,7 @@ struct SettingsView: View {
                 }
                 .disabled(store.persistenceError != nil)
             }
-        }
-        // Keep title and toggle owned by the window, rather than moving toolbar items between columns.
-        .navigationTitle((selection ?? .mappings).title)
-        .toolbar(removing: .sidebarToggle)
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
-                    }
-                } label: {
-                    Label(columnVisibility == .detailOnly ? "显示边栏" : "隐藏边栏", systemImage: "sidebar.left")
-                }
-                .help(columnVisibility == .detailOnly ? "显示边栏" : "隐藏边栏")
-            }
+            .navigationTitle((selection ?? .mappings).title)
         }
         .sheet(isPresented: $store.isSetupPresented) { SetupWizard() }
         .frame(minWidth: 1040, minHeight: 640)
