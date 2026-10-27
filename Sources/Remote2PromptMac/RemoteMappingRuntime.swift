@@ -3,6 +3,7 @@ import ApplicationServices
 import Combine
 import CoreServices
 import IOKit.hid
+import os
 import Remote2PromptCore
 
 public struct RemoteKeyActivity {
@@ -188,9 +189,14 @@ public final class RemoteMappingRuntime: ObservableObject {
         LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
         switch request {
         case .input:
-            let granted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
-            permissionNotice = granted ? "系统已允许监听按键，无需再次申请。这可能来自设备控制授权，不表示已在输入监控列表单独授权。" : "已向 macOS 请求输入监控并打开设置。请启用当前应用；若列表没有条目，可点击“＋”添加下方路径的应用。系统不会为每次请求重新弹窗。"
-            if !granted { openInputMonitoringSettings() }
+            let before = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent)
+            let hidGranted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+            let eventGranted = hidGranted ? true : CGRequestListenEventAccess()
+            let after = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent)
+            Logger(subsystem: "dev.remote2prompt.app", category: "permissions").notice("Input request before=\(before.rawValue) hid=\(hidGranted) event=\(eventGranted) after=\(after.rawValue)")
+            permissionNotice = eventGranted ? "系统已允许监听按键，无需再次申请。这可能来自设备控制授权，不表示已在输入监控列表单独授权。" : "已向 macOS 请求输入监控。请处理系统授权提示；若系统不再提示，请点击“打开输入监控设置”核对当前应用。"
+            // A first request may return before the system alert appears. Do not immediately steal its focus.
+            if !eventGranted && before == kIOHIDAccessTypeDenied { openInputMonitoringSettings() }
         case .accessibility:
             let granted = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
             permissionNotice = granted ? "设备控制权限已授予。" : "已向 macOS 请求设备控制权限。完成后返回本应用会自动刷新状态；系统不再提示时请打开对应设置页。"

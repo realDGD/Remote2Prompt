@@ -4,6 +4,13 @@ repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 source "$repo_dir/scripts/toolchain.sh"
 configuration="${CONFIGURATION:-release}"
 case "$configuration" in debug|release) ;; *) echo "CONFIGURATION must be debug or release" >&2; exit 1 ;; esac
+signing_identity="${CODE_SIGN_IDENTITY:--}"
+stable_adhoc="${REMOTE2PROMPT_STABLE_ADHOC_IDENTITY:-0}"
+case "$stable_adhoc" in 0|1) ;; *) echo "REMOTE2PROMPT_STABLE_ADHOC_IDENTITY must be 0 or 1" >&2; exit 1 ;; esac
+if [[ "$stable_adhoc" == "1" && "$signing_identity" != "-" ]]; then
+    echo "Stable ad-hoc mode cannot be combined with a certificate identity" >&2
+    exit 1
+fi
 destination="${1:-$repo_dir/dist/Remote2Prompt.app}"
 if [[ "$destination" != /* || "$destination" != */Remote2Prompt.app || -L "$destination" ]]; then
     echo "Output must be an absolute, non-symlink path ending in /Remote2Prompt.app" >&2
@@ -38,7 +45,12 @@ fi
 /usr/libexec/PlistBuddy -c "Set CFBundleShortVersionString $version" "$app_dir/Contents/Info.plist"
 printf 'APPL????' > "$app_dir/Contents/PkgInfo"
 chmod 755 "$app_dir/Contents/MacOS/Remote2Prompt"
-/usr/bin/codesign --force --sign - --timestamp=none "$app_dir"
+sign_arguments=(--force --sign "$signing_identity" --timestamp=none)
+if [[ "$stable_adhoc" == "1" ]]; then
+    # Explicit local-development opt-in. This identifies code by name, without a signer anchor.
+    sign_arguments+=(--requirements '=designated => identifier "dev.remote2prompt.app"')
+fi
+/usr/bin/codesign "${sign_arguments[@]}" "$app_dir"
 /usr/bin/codesign --verify --deep --strict "$app_dir"
 if [[ -e "$destination" ]]; then rm -rf "$destination"; fi
 mv "$app_dir" "$destination"

@@ -101,7 +101,7 @@ struct PermissionControls: View {
             }
             Button("打开输入监控设置…") { runtime.openInputMonitoringSettings() }
         }
-        Text(runtime.inputMonitoring ? "系统已允许读取按键，可能来自设备控制授权。这个状态不代表已在输入监控列表中单独开启，无需重复申请。" : "设备控制授权也包含监听能力。需要单独申请时，按钮会直接发出系统请求并打开输入监控设置；macOS 不会为每次点击重复弹窗。")
+        Text(runtime.inputMonitoring ? "系统已允许读取按键，可能来自设备控制授权。这个状态不代表已在输入监控列表中单独开启，无需重复申请。" : "设备控制授权也包含监听能力。需要单独申请时，按钮会直接发出系统请求；系统不再提示时，可打开输入监控设置检查。")
             .foregroundStyle(.secondary)
         if let notice = runtime.permissionNotice {
             Text(notice).foregroundStyle(.secondary).accessibilityLabel("授权请求结果：\(notice)")
