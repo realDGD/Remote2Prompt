@@ -30,6 +30,7 @@ FileUtils.mkdir_p(output)
 # Keep local outputs and environment files out of the source archive.
 entries = %w[Package.swift VERSION Makefile README.md AGENTS.md CLAUDE.md THIRD_PARTY_NOTICES.md .gitignore Sources Tests Resources scripts packaging docs .agents .github]
 entries << "LICENSE" if File.file?(File.join(root, "LICENSE"))
+%w[Formula Casks].each { |entry| entries << entry if File.directory?(File.join(root, entry)) }
 archive = nil
 checksum = nil
 Dir.mktmpdir("remote2prompt-archive-") do |temporary|
@@ -84,13 +85,12 @@ readme = <<~MD
   `--zap` removes only this app's settings and caches; omit it to retain settings. macOS privacy grants and audio drivers are untouched. Source code is public; a project license has not yet been selected.
 MD
 File.write(File.join(tap, "README.md"), readme)
-FileUtils.mkdir_p(File.join(tap, ".github", "workflows"))
-workflow = File.read(File.join(root, "packaging", "homebrew", "tap-ci.yml.in")).gsub("@TAP@", options[:tap])
-File.write(File.join(tap, ".github", "workflows", "ci.yml"), workflow)
+# Generated taps are packaging previews; the source repository owns CI.
+FileUtils.rm_rf(File.join(tap, ".github"))
 unless File.directory?(File.join(tap, ".git"))
   abort "Tap initialization failed" unless system("/usr/bin/git", "init", "--quiet", "--initial-branch=main", tap)
 end
-abort "Tap staging failed" unless system("/usr/bin/git", "-C", tap, "add", "Formula", "Casks", "README.md", ".gitignore", ".github")
+abort "Tap staging failed" unless system("/usr/bin/git", "-C", tap, "add", "--all")
 unless system("/usr/bin/git", "-C", tap, "diff", "--cached", "--quiet")
   abort "Tap commit failed" unless system(
     "/usr/bin/git", "-C", tap,

@@ -38,15 +38,17 @@ make check
 
 ## Homebrew 源码安装
 
-源码仓库为 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)，源码 tap 为 [realDGD/homebrew-remote2prompt](https://github.com/realDGD/homebrew-remote2prompt)。首次安装：
+源码仓库为 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)，同一仓库根目录的 `Formula/`、`Casks/` 提供源码 tap。首次安装：
 
 ```sh
-brew tap realdgd/remote2prompt
+brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
 brew install --build-from-source realdgd/remote2prompt/remote2prompt
 brew install --cask realdgd/remote2prompt/remote2prompt-app
 brew test realdgd/remote2prompt/remote2prompt
 open /Applications/Remote2Prompt.app
 ```
+
+Homebrew 7 若提示来源未信任，按提示分别执行 `brew trust --formula realdgd/remote2prompt/remote2prompt` 和 `brew trust --cask realdgd/remote2prompt/remote2prompt-app` 后重试。
 
 Formula 从固定 commit、SHA-256 的源码归档使用独立 CLT 编译；配套 Cask 将本机编译的应用本体安装到 `/Applications/Remote2Prompt.app`，不是手工软链接，也不下载预编译 app。`remote2prompt` 启动命令优先打开与本次编译一致的应用程序副本。更新先执行 Formula 的 `brew upgrade --build-from-source`，再执行 Cask 的 `brew upgrade --cask`。
 

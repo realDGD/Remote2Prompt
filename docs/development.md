@@ -35,10 +35,10 @@ macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问�
 
 ## Homebrew 源码与应用安装
 
-源码仓库为 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)，公开 tap 为 [realDGD/homebrew-remote2prompt](https://github.com/realDGD/homebrew-remote2prompt)。Formula 固定完整 commit 的归档 URL 和 SHA-256，不引用移动的 main，也不下载预编译二进制。
+源码仓库为 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)，同一仓库根目录维护 `Formula/` 和 `Casks/`。Formula 固定完整 commit 的归档 URL 和 SHA-256，不引用移动的 main，也不下载预编译二进制。
 
 ```sh
-brew tap realdgd/remote2prompt
+brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
 brew install --build-from-source realdgd/remote2prompt/remote2prompt
 brew install --cask realdgd/remote2prompt/remote2prompt-app
 brew test realdgd/remote2prompt/remote2prompt
@@ -80,7 +80,7 @@ brew install --cask remote2prompt/local/remote2prompt-app
 brew test remote2prompt/local/remote2prompt
 ```
 
-生成器仅归档显式允许的源码、脚本和文档，排除 `.git`、`.build`、`dist` 和本地环境文件。生成目录包含源码归档、Formula、Cask、tap README 和 CI，全部忽略。再次生成后需在安装的 tap checkout 执行 `git pull --ff-only`；不要同时安装本地和远端 Formula。清理 `dist` 会使本地 `file://` 来源失效，远端来源不受影响。
+生成器仅归档显式允许的源码、脚本和文档，排除 `.git`、`.build`、`dist` 和本地环境文件。生成目录包含源码归档、Formula、Cask 和 tap README，全部忽略；CI 仅由本源码仓库维护。再次生成后需在安装的 tap checkout 执行 `git pull --ff-only`；不要同时安装本地和远端 Formula。清理 `dist` 会使本地 `file://` 来源失效，远端来源不受影响。
 
 维护者公开新源码时先更新 `VERSION`，完成脱敏、检查和源码提交、推送，再生成固定该提交的 tap：
 
@@ -88,13 +88,13 @@ brew test remote2prompt/local/remote2prompt
 ruby scripts/prepare-homebrew.rb --remote "$(git rev-parse HEAD)" --tap realdgd/remote2prompt
 ```
 
-远端模式要求干净工作树和完整 HEAD SHA，下载真实 GitHub 源码归档计算 SHA-256，输出到 `dist/homebrew-remote/tap`。人工审阅生成目录，不发布本地路径或日志；将生成的 Formula/Cask/README/CI 提交推送到 tap，并等待其 CI。生成操作本身不推送、不安装。每次源码更新需要更新 tap；源码仓库之后的文档提交不会自动更改已固定的构建来源。
+远端模式要求干净工作树和完整 HEAD SHA，下载真实 GitHub 源码归档计算 SHA-256，输出到 `dist/homebrew-remote/tap`。人工审阅生成目录，不发布本地路径或日志；把生成的 `Formula/remote2prompt.rb` 和 `Casks/remote2prompt-app.rb` 复制到本源码仓库同名目录，审阅、提交并推送，等待同一仓库的 CI。源码提交和固定该提交的配方更新自然分为两次提交；不建立独立 tap 仓库。生成操作本身不推送、不安装。每次源码更新需要更新 tap；源码仓库之后的文档提交不会自动更改已固定的构建来源。
 
 公开源码和 tap 尚未选择许可证；本流程不擅自声明开源授权、不生成 Release/Tag、不分发驱动，也不引入证书或公证。分发理由见 [Agent Note](../.agents/notes/proposed/architecture/2026-10-27-source-tap-app-lifecycle.md)。
 
 ## 持续集成
 
-[工作流](../.github/workflows/ci.yml) 响应 main push、pull request 和手动触发。Linux job 检查文档、全部可达历史的本机信息、Gitleaks 凭据及 actionlint 语法；macOS 15 的 arm64 和 Intel job 明确设置独立 CLT，运行 `make check`，再生成本地 tap、在 Homebrew 沙箱中源码安装、用 Cask 安装应用程序本体、`brew test` 和卸载/设置清理。公开 tap 自身的两架构 CI 则下载固定远端源码进行同一检查。
+[工作流](../.github/workflows/ci.yml) 响应 main push、pull request 和手动触发。Linux job 检查文档、全部可达历史的本机信息、Gitleaks 凭据及 actionlint 语法；macOS 15 的 arm64 和 Intel job 明确设置独立 CLT，运行 `make check`，再验证本地 tap 生成器，以本仓库作为 tap checkout 下载配方固定的远端源码，在 Homebrew 沙箱中源码安装、用 Cask 安装应用程序本体、`brew test` 和卸载/设置清理。源码、配方与 CI 始终在同一仓库。
 
 第三方 Action 固定提交，检查工具固定版本及 SHA-256，工作流仅使用读取内容权限，不上传二进制或原始诊断。CI 不请求输入监控、辅助功能、蓝牙或麦克风权限，不运行音频输出检查、GUI smoke 或遥控器验收。最低 macOS 14 和实际输入法仍需单独验证。
 

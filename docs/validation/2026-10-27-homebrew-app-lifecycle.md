@@ -1,6 +1,6 @@
 # Homebrew 远端源码与应用生命周期验证
 
-日期：2026-10-27。用户明确授权提交、脱敏、公开仓库/tap、推送和 CI，以及删除现有应用、清空本应用设置后从远端源码安装。沿用 public 源码仓库，新建 [realDGD/homebrew-remote2prompt](https://github.com/realDGD/homebrew-remote2prompt)。无驱动、证书、钥匙串、TCC 或默认音频设备变更。
+日期：2026-10-27。用户明确授权提交、脱敏、公开仓库/tap、推送和 CI，以及删除现有应用、清空本应用设置后从远端源码安装。沿用 [public 源码仓库](https://github.com/realDGD/Remote2Prompt)。用户随后明确要求源码、配方和 CI 均放在同一仓库，因此最终 tap 直接指向该仓库，独立 tap 试运行不作为最终入口。无驱动、证书、钥匙串、TCC 或默认音频设备变更。
 
 ## 实现与本机首轮结果
 

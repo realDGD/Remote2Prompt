@@ -10,7 +10,7 @@ Status: proposed
 
 保留 `remote2prompt` Formula 在独立 CLT 和 Homebrew 沙箱中测试、编译、签名与验证；配套 `remote2prompt-app` Cask 依赖该 Formula，核对源码归档 SHA-256 后复制已编译的 app，由标准 `app` artifact 安装本体到 `/Applications` 并拥有其卸载。Cask 不下载预编译二进制。Formula 测试额外核验应用程序中的 app 与本次编译结果一致。
 
-公开 tap 固定完整源码 commit 的 GitHub 归档 URL 与 SHA-256；每次发布更新 `VERSION`，不引用移动的 main。源码和 tap 分别保留 CI：两种架构的 CLT 源码构建、安装、`brew test`、真实目录检查、卸载及 `--zap` 设置清理。生成的 tap、归档、app、日志与本机信息不提交到源码仓库。
+公开 tap 固定完整源码 commit 的 GitHub 归档 URL 与 SHA-256；每次发布更新 `VERSION`，不引用移动的 main。源码、根目录 `Formula/`/`Casks/` 和 CI 保留在同一个仓库，以显式仓库 URL 执行 tap。CI 检查：两种架构的 CLT 源码构建、安装、`brew test`、真实目录检查、卸载及 `--zap` 设置清理。生成的 tap、归档、app、日志与本机信息不提交到源码仓库。
 
 普通 Cask 卸载移除 app，Formula 卸载移除构建文件和命令；`--zap` 仅清理本应用的偏好、缓存和恢复记录，不清理 TCC 或驱动。删除恢复记录前必须退出应用并确保无待恢复原生映射；未完成恢复时保留记录排查。
 
