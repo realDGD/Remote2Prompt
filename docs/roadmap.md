@@ -49,9 +49,10 @@ M1 代码接入后继续推进设置与语音，当前见 [本轮验证](validat
 
 - [x] 建立 public 源码仓库、公开前脱敏约定及 CLT/Homebrew CI。
 - [ ] 确定项目许可证、发布用 Bundle ID 与首个发布版本。
-- [ ] 将本地 Formula 改为固定源码 Tag/归档 URL 与 SHA-256，并建立公开 tap。
+- [x] 本仓库根目录维护固定完整源码 commit、归档 URL 与 SHA-256 的 Formula/Cask；通过显式仓库 URL 作为公开 tap。
+- [x] 本机远端源码清洁安装、应用程序本体、`brew test`、卸载和 `--zap` 清理验证；详见 [安装记录](validation/2026-10-27-homebrew-app-lifecycle.md)。
 - [ ] 干净 CLT 机器上 `brew install --build-from-source`、升级、卸载和应用程序入口验收。
 - [ ] 独立评估 MiRemoteV/BlackHole 依赖和驱动分发；需要安装驱动时提供单独、显式的流程。
 - [ ] 如需公开二进制分发，再接入 Developer ID 签名、公证与下载校验。
 
-不为本地骨架初始化远程仓库、发布版本、安装驱动或重启系统音频服务。
+源码、Homebrew 配方与 CI 在同一仓库维护。版本固定源码；不在本流程中安装驱动或重启系统音频服务。

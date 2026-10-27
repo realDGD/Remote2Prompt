@@ -12,9 +12,9 @@ Status: implemented
 
 `.gitignore` 排除构建、环境、签名材料、原始诊断、硬件捕获、录音及编辑器用户状态。`scripts/check-publication.rb` 检查受跟踪文件与路径，`--history` 同时检查全部可达文件快照；只输出位置与分类，不打印原值。标准 ATVV 协议 UUID、产品 VID/PID、驱动固定 UID 和系统标准路径可以公开，真实外设 UUID、硬件地址与用户目录不可以。新增二进制或非标准 UUID 先明确其来源和公开范围，不能直接加宽忽略规则。
 
-GitHub Actions 使用 push、pull_request 与手动触发。Linux 检查文档、全历史脱敏、Gitleaks 和工作流语法；macOS 矩阵分别使用 Apple Silicon 与 Intel 的独立 CLT，运行核心/模拟检查、Release 打包和本地 Homebrew 源码安装、自检与卸载。Action 固定到提交，下载的检查工具固定版本与摘要；权限为 contents: read，不持久化 checkout 凭据，不在 PR 中使用发布凭据或真实硬件。
+GitHub Actions 使用 push、pull_request 与手动触发。Linux 检查文档、全历史脱敏、Gitleaks 和工作流语法；macOS 矩阵分别使用 Apple Silicon 与 Intel 的独立 CLT，运行核心/模拟检查、Release 打包和固定远端源码的 Homebrew 安装、应用程序本体、自检、卸载与可选设置清理。Action 固定到提交，下载的检查工具固定版本与摘要；权限为 contents: read，不持久化 checkout 凭据，不在 PR 中使用发布凭据或真实硬件。
 
-仓库公开与发布授权只适用于本次用户明确指定的操作，后续提交不自动获得 push 或 Release 授权。不自动选择开源许可证、安装音频驱动、请求系统权限、发布二进制、创建公开 tap 或修改分支保护。来源说明和功能未验收边界保留在当前文档。
+仓库公开与发布授权只适用于本次用户明确指定的操作，后续提交不自动获得 push 或 Release 授权。不自动选择开源许可证、安装音频驱动、请求系统权限、发布二进制或修改分支保护。用户后续明确授权的源码 tap 与应用生命周期已接入同一仓库，理由见 [分发决定](../architecture/2026-10-27-source-tap-app-lifecycle.md)。来源说明和功能未验收边界保留在当前文档。
 
 ## Alternatives considered
 

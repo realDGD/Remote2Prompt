@@ -17,6 +17,20 @@
 
 将检查入口改名为 `MacChecks.swift`，由 SwiftPM 使用标准 `@main` 入口解析；不删除或跳过测试、不换完整 Xcode。新源码版本为 0.1.2；本机 92 项检查再次通过。修复后的云端结果、最终固定源码和清洁安装结果随实际完成追加，不将首次本机成功当作跨版本通过。
 
+## 单仓库最终安装
+
+用户补充“都放在一个仓库”，因此 `Formula/remote2prompt.rb`、`Casks/remote2prompt-app.rb`、源码与 `.github/workflows/ci.yml` 全部在 [Remote2Prompt](https://github.com/realDGD/Remote2Prompt) 维护。初次尝试的独立 tap 已停止工作流并归档，没有继续作为安装来源；未不可逆删除仓库。安装 tap 的实际 origin 为本源码仓库。
+
+- 0.1.2 固定源码 `a1ca490dbdb112d70b34bb74610b03ca869ba9f4`；归档 SHA-256 为 `0ea4992a42beb5e96fcfd70af981f169946b93025923ed0b9867abf9e9753a7a`。后续 `f8aba59` 提交将此归档固定进根目录配方。
+- 移除旧 tap checkout，使用显式源码仓库 URL 重新 tap，并仅信任该 Formula/Cask；没有对整个第三方来源放宽信任。
+- `brew install --build-from-source realdgd/remote2prompt/remote2prompt` 成功，用时 1 分 28 秒；运行 52/52 核心、40/40 适配器检查、CLT Release 和 bundle 验证。安装收据确认 `poured_from_bottle=false`、`built_as_bottle=false`。
+- `brew install --cask realdgd/remote2prompt/remote2prompt-app` 成功；`/Applications/Remote2Prompt.app` 为真实 app 目录，非软链接。Formula 保留 Homebrew 管理的源码产物。
+- 最终 `brew test realdgd/remote2prompt/remote2prompt` 成功，包括本体/源码产物代码一致、版本及无界面自检；`codesign --verify --deep --strict` 通过，签名仍为 adhoc，无 Team ID。
+- 实际运行应用程序本体的 `--smoke-test`，窗口可见且正常自行退出；未访问 HID/蓝牙/音频。随后清空 AppKit 新生成的窗口布局偏好，确认偏好键数量为 0，无保存映射/连接设置和支持文件。没有保留旧设置，未重置 TCC。
+- 仓库 `dist` 和历史 `.build` 中开发 app 已删除。最终保留 `/Applications` 的 Cask 本体与 Cellar 中 Formula 管理的构建结果；本机没有后台运行应用。
+
+[同仓库 CI](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml) 同时验证候选源码的检查/构建和配方固定的真实远端源码安装、实际应用本体、`brew test`、卸载及合成偏好清理。ARM/Intel 云端结果按对应提交的 Actions run 判断，本机结果不替代云端结果；最终文档提交不改变配方固定的运行代码。
+
 ## 验证边界
 
 安装与卸载不验证输入监控弹窗、真实遥控器语音、目标输入法、默认输入抢占恢复或最低 macOS 14。临时签名更新后可能需要重新关联授权；本次不重置系统隐私记录。项目尚未选择许可证，没有发布 Tag、Release、二进制或音频驱动。

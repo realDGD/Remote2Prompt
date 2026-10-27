@@ -90,7 +90,7 @@ ruby scripts/prepare-homebrew.rb --remote "$(git rev-parse HEAD)" --tap realdgd/
 
 远端模式要求干净工作树和完整 HEAD SHA，下载真实 GitHub 源码归档计算 SHA-256，输出到 `dist/homebrew-remote/tap`。人工审阅生成目录，不发布本地路径或日志；把生成的 `Formula/remote2prompt.rb` 和 `Casks/remote2prompt-app.rb` 复制到本源码仓库同名目录，审阅、提交并推送，等待同一仓库的 CI。源码提交和固定该提交的配方更新自然分为两次提交；不建立独立 tap 仓库。生成操作本身不推送、不安装。每次源码更新需要更新 tap；源码仓库之后的文档提交不会自动更改已固定的构建来源。
 
-公开源码和 tap 尚未选择许可证；本流程不擅自声明开源授权、不生成 Release/Tag、不分发驱动，也不引入证书或公证。分发理由见 [Agent Note](../.agents/notes/proposed/architecture/2026-10-27-source-tap-app-lifecycle.md)。
+公开源码和 tap 尚未选择许可证；本流程不擅自声明开源授权、不生成 Release/Tag、不分发驱动，也不引入证书或公证。分发理由见 [Agent Note](../.agents/notes/implemented/architecture/2026-10-27-source-tap-app-lifecycle.md)。
 
 ## 持续集成
 

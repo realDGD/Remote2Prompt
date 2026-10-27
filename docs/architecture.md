@@ -6,7 +6,7 @@
 - `Remote2PromptMac`：设备与权限、原生按键租约、系统动作、CoreBluetooth、回环设备与音频输出。
 - `Remote2Prompt`：SwiftUI/AppKit 原生设置、配置保存和操作引导。
 - `Tests/Remote2PromptChecks`、`Tests/Remote2PromptMacChecks`：不依赖 XCTest 的检查入口。macOS 模拟检查注入设备服务与事件出口，不向桌面发送按键。
-- `scripts/` 与 `packaging/homebrew/`：独立 CLT 构建、bundle/仓库检查与本地源码 tap。
+- `scripts/` 与 `packaging/homebrew/`：独立 CLT 构建、bundle/仓库检查及本地/远端源码配方生成；本仓库根目录 `Formula/`、`Casks/` 保存公开 tap，Cask 拥有应用程序本体的安装与卸载。
 - `.agents/notes/`：持久决策；`.agents/plans/`：实施清单；`.agents/skills/`：项目检查与 Note 工作流。
 
 ## 配置与界面
