@@ -12,6 +12,11 @@ public struct RemoteKeyActivity {
     public let isDown: Bool
 }
 
+public enum MappingOutput {
+    case action(MappedInvocation)
+    case voice(VoiceKeyEvent)
+}
+
 /// Serial main-run-loop owner of hardware, mapping lease, gesture timers and synthetic key lifetimes.
 @MainActor
 public final class RemoteMappingRuntime: ObservableObject {
@@ -23,6 +28,7 @@ public final class RemoteMappingRuntime: ObservableObject {
     @Published public private(set) var voiceHeld = false
     @Published public private(set) var reportCount = 0
     @Published public private(set) var lastActivity: RemoteKeyActivity?
+    @Published public private(set) var lastOutput: MappingOutput?
     @Published public private(set) var inputMonitoring = false
     @Published public private(set) var accessibility = false
     @Published public private(set) var permissionNotice: String?
@@ -44,6 +50,8 @@ public final class RemoteMappingRuntime: ObservableObject {
     private let hardwareEnabled: Bool
     private enum PermissionRequest { case input, accessibility }
     private var pendingPermission: PermissionRequest?
+    private let permissionProbe = PermissionProbe()
+    private var hasShutdown = false
 
     public init(hardwareEnabled: Bool = true) {
         self.hardwareEnabled = hardwareEnabled
@@ -96,18 +104,23 @@ public final class RemoteMappingRuntime: ObservableObject {
     }
 
     public func refresh() {
-        guard hardwareEnabled else { return }
+        guard hardwareEnabled && !hasShutdown else { return }
         guard IOHIDPermission.runningCodeIsCurrent() else {
             stop()
             status = "应用已更新，请退出并重新打开"
             errorMessage = "正在运行的构建与磁盘上的应用不一致，当前权限状态不能用于判断新构建。请重开应用后刷新。"
             return
         }
+        permissionProbe.fetch { [weak self] snapshot in self?.applyPermissionSnapshot(snapshot) }
+    }
+
+    private func applyPermissionSnapshot(_ snapshot: PermissionSnapshot) {
+        guard !hasShutdown else { return }
         let oldCount = detectedCount
         let oldInput = inputMonitoring; let oldAX = accessibility
         detectedCount = HIDRemoteMonitor.discoverCount()
-        inputMonitoring = IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
-        accessibility = AXIsProcessTrusted()
+        inputMonitoring = snapshot.listen == kIOHIDAccessTypeGranted
+        accessibility = snapshot.control
         if oldCount != detectedCount || oldInput != inputMonitoring || oldAX != accessibility { retryAllowed = true }
         guard configuration.mappingsEnabled || setupActive else { return }
         // Accessibility includes event posting/listening. The HID open remains authoritative for this device.
@@ -214,6 +227,7 @@ public final class RemoteMappingRuntime: ObservableObject {
     }
 
     public func shutdown() {
+        hasShutdown = true
         pollTimer?.invalidate(); pollTimer = nil
         stop()
         observations.forEach(NotificationCenter.default.removeObserver); observations.removeAll()
@@ -271,10 +285,10 @@ public final class RemoteMappingRuntime: ObservableObject {
         catch { fail(error.localizedDescription) }
     }
     private func perform(_ invocations: [MappedInvocation]) throws {
-        for invocation in invocations { try sender.perform(invocation) }
+        for invocation in invocations { try sender.perform(invocation); lastOutput = .action(invocation) }
     }
     private func deliver(_ events: [VoiceKeyEvent]) throws {
-        for event in events { try sender.voice(event) }
+        for event in events { try sender.voice(event); lastOutput = .voice(event) }
     }
     private func publishPressed() {
         activeButtons = Set(held.values.flatMap { $0.compactMap { XiaomiRemote.buttonUsages[$0] } })

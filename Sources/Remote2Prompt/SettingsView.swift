@@ -84,6 +84,6 @@ struct SettingsView: View {
             }
         }
         .sheet(isPresented: $store.isSetupPresented) { SetupWizard() }
-        .frame(minWidth: 780, minHeight: 560)
+        .frame(minWidth: 1040, minHeight: 640)
     }
 }

@@ -49,9 +49,22 @@ public final class HIDRemoteMonitor {
     public init() {}
 
     public static func discoverCount() -> Int {
-        let manager = IOHIDManagerCreate(kCFAllocatorDefault, 0)
-        IOHIDManagerSetDeviceMatching(manager, matching)
-        return (IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice>)?.count ?? 0
+        // Metadata only: IOHIDDeviceCreate can instantiate a plug-in/user client before authorization.
+        guard let query = IOServiceMatching("IOHIDDevice") else { return 0 }
+        var iterator: io_iterator_t = 0
+        guard IOServiceGetMatchingServices(kIOMainPortDefault, query, &iterator) == KERN_SUCCESS else { return 0 }
+        defer { IOObjectRelease(iterator) }
+        var count = 0
+        while case let entry = IOIteratorNext(iterator), entry != 0 {
+            defer { IOObjectRelease(entry) }
+            func number(_ key: String) -> Int? {
+                (IORegistryEntryCreateCFProperty(entry, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? NSNumber)?.intValue
+            }
+            if number(kIOHIDVendorIDKey) == XiaomiRemote.vendorID,
+               number(kIOHIDProductIDKey) == XiaomiRemote.productID,
+               number(kIOHIDPrimaryUsagePageKey) == 1, number(kIOHIDPrimaryUsageKey) == 6 { count += 1 }
+        }
+        return count
     }
     private static var matching: CFDictionary {
         [kIOHIDVendorIDKey: XiaomiRemote.vendorID, kIOHIDProductIDKey: XiaomiRemote.productID,

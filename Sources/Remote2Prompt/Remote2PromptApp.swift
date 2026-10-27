@@ -43,7 +43,7 @@ struct Remote2PromptApp: App {
                 .environmentObject(runtime)
                 .onReceive(store.$configuration) { runtime.configure($0) }
         }
-        .defaultSize(width: 900, height: 650)
+        .defaultSize(width: 1120, height: 760)
         .windowResizability(.contentMinSize)
 
         MenuBarExtra("Remote2Prompt", systemImage: "mic.badge.plus") {
