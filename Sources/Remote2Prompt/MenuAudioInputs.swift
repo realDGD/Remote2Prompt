@@ -9,7 +9,7 @@ struct MenuAudioInputs: View {
     let setupActive: Bool
 
     var body: some View {
-        Menu("系统输入：\(priority.state.observedInput ?? "暂无可用设备")") {
+        Section("系统输入") {
             Picker("声音输入设备", selection: Binding(
                 get: { priority.state.defaultUID ?? "" },
                 set: { priority.selectInput(uid: $0) }
@@ -17,6 +17,8 @@ struct MenuAudioInputs: View {
                 if priority.state.inputs.isEmpty { Text("暂无可用设备").tag("") }
                 ForEach(priority.state.inputs, id: \.policy.uid) { Text($0.name).tag($0.policy.uid) }
             }
+            .pickerStyle(.inline)
+            .labelsHidden()
             .disabled(!canSelectSystemInput)
             if audio.sessionActive || priority.state.ownsInput || priority.state.pending {
                 Text("语音结束并恢复输入后可切换")
@@ -25,7 +27,7 @@ struct MenuAudioInputs: View {
             Divider()
             Button("刷新输入设备") { priority.refreshInputs() }
         }
-        Menu("遥控器虚拟麦克风") {
+        Section("遥控器麦克风") {
             Picker("虚拟麦克风", selection: Binding(
                 get: { store.configuration.selectedVirtualInputUID ?? "" },
                 set: { value in store.update { $0.selectedVirtualInputUID = value.isEmpty ? nil : value } }
@@ -36,8 +38,10 @@ struct MenuAudioInputs: View {
                     Text("已保存的设备不可用").tag(uid)
                 }
             }
+            .pickerStyle(.inline)
+            .labelsHidden()
             .disabled(store.persistenceError != nil || audio.sessionActive || setupActive)
-            Text("此选项设置遥控器声音的输出目标")
+            Text("将遥控器声音送入所选虚拟麦克风")
         }
         Text(store.configuration.voiceEnabled ? "语音触发：\(store.configuration.voiceTrigger.title)" : "语音触发未启用")
     }
