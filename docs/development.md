@@ -89,3 +89,5 @@ brew untap remote2prompt/local
 `--list-loopback-devices` 只读列出兼容回环设备名称。`--smoke-test-guide` 以不访问 HID/蓝牙的模式检查设置与拖入帮助面板可见；配合 `--preview-directory /绝对路径` 可导出应用自己的视图预览，缓存图不代替完整原生交互检查。
 
 macOS 检查程序的 `--loopback-output-smoke` 是单独、显式的硬件检查：仅向已识别回环设备写入 800 个静音样本，等待排空，并比较前后系统默认设备快照。普通 `make test` 不运行此硬件检查。
+
+`Remote2Prompt --check-input-catalog` 只读检查真实输入目录、分类及 CoreAudio listener 注册/清理，比较前后默认设备并只输出数量，不打印 UID、设备名或地址，不切换设备、不读取音频。应用的输入优先功能须由用户开启，默认关闭；普通检查与 UI smoke 使用模拟或禁用硬件的运行时。M3 的真实默认输入切换须另行按硬件矩阵验收，不能以该诊断命令代替。

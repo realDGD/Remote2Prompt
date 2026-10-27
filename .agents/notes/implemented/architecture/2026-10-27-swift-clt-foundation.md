@@ -14,7 +14,7 @@ Status: implemented
 
 构建使用 CLT 随附的 SwiftPM 默认驱动，避免依赖已弃用的 native 驱动选项。Homebrew 构建由外层沙箱隔离，Formula 仅为这一路径关闭 SwiftPM 子进程嵌套沙箱，并将缓存放入构建目录；否则实测的嵌套 sandbox-exec 会被 macOS 拒绝。普通开发构建保持 SwiftPM 沙箱。
 
-HID、系统按键、原生映射恢复，以及 ATVV 蓝牙音频、PCM 回环输出适配器已接入；默认输入优先切换仍未实现。核心只返回意图，系统副作用集中在 macOS 适配 target。应用标识符当前为 `dev.remote2prompt.app`，稳定发布前需复核。
+HID、系统按键、原生映射恢复、ATVV 蓝牙音频、PCM 回环输出及默认输入优先适配器已接入。核心只返回意图并处理显式确认，系统副作用集中在 macOS 适配 target；输入优先默认关闭，实际硬件验收独立记录。应用标识符当前为 `dev.remote2prompt.app`，稳定发布前需复核。
 
 当前 SDK 27 的裸 `@State` 会选择 CLT 未附带的宏插件，因此界面使用 `ViewState<Value>` 别名显式选中现有公开属性包装器。构建不加载完整 Xcode 内的插件。
 
