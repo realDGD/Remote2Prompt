@@ -4,6 +4,9 @@
 .swiftpm/
 dist/
 .local/
+*.app/
+*.dmg
+*.pkg
 
 # Local credentials and signing material
 .env

@@ -1,4 +1,4 @@
-# Local source-build template. Choose a license and fixed release archive before publishing a tap.
+# Source-build formula; the companion cask owns the Applications bundle.
 class Remote2prompt < Formula
   desc "Native macOS remote key mapping and voice-trigger app"
   homepage "https://github.com/realDGD/Remote2Prompt"
@@ -16,9 +16,13 @@ class Remote2prompt < Formula
     system "./scripts/build-app.sh"
     system "./scripts/verify-app.sh"
     libexec.install "dist/Remote2Prompt.app"
+    (pkgshare/"source.sha256").write @SHA256@ + "\n"
     (bin/"remote2prompt").write <<~SH
       #!/bin/sh
       if [ "$#" -eq 0 ]; then
+        if /usr/bin/cmp -s /Applications/Remote2Prompt.app/Contents/MacOS/Remote2Prompt "#{libexec}/Remote2Prompt.app/Contents/MacOS/Remote2Prompt"; then
+          exec /usr/bin/open /Applications/Remote2Prompt.app
+        fi
         exec /usr/bin/open "#{libexec}/Remote2Prompt.app"
       fi
       exec "#{libexec}/Remote2Prompt.app/Contents/MacOS/Remote2Prompt" "$@"
@@ -29,13 +33,23 @@ class Remote2prompt < Formula
     <<~EOS
       Remote key mapping and voice audio are development previews; real remote acceptance is pending.
       Run remote2prompt to open settings. No audio driver is installed.
-      Optional Applications shortcut (only if the destination does not exist):
-        ln -s "#{opt_libexec}/Remote2Prompt.app" /Applications/Remote2Prompt.app
+      Install the built app into Applications with:
+        brew install --cask @TAP@/remote2prompt-app
+      Remove the app with brew uninstall --cask @TAP@/remote2prompt-app.
+      Add --zap to remove its preferences; uninstall this formula to remove the source-build files and launcher.
     EOS
   end
 
   test do
     assert_match "self-check passed", shell_output("#{bin}/remote2prompt --self-check")
     assert_match version.to_s, shell_output("#{bin}/remote2prompt --version")
+    assert_equal @SHA256@, (pkgshare/"source.sha256").read.strip
+    app = Pathname("/Applications/Remote2Prompt.app")
+    if app.exist?
+      refute_predicate app, :symlink?
+      assert_match "self-check passed", shell_output("#{app}/Contents/MacOS/Remote2Prompt --self-check")
+      assert_equal (libexec/"Remote2Prompt.app/Contents/MacOS/Remote2Prompt").binread,
+                   (app/"Contents/MacOS/Remote2Prompt").binread
+    end
   end
 end

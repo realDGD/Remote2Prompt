@@ -38,27 +38,26 @@ make check
 
 ## Homebrew 源码安装
 
-源码仓库为 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)。尚未发布 Release 或公开 tap，先提供可复现的本地 tap：
+源码仓库为 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)，源码 tap 为 [realDGD/homebrew-remote2prompt](https://github.com/realDGD/homebrew-remote2prompt)。首次安装：
 
 ```sh
-git clone https://github.com/realDGD/Remote2Prompt.git
-cd Remote2Prompt
-make homebrew
-brew tap --custom-remote remote2prompt/local "$PWD/dist/homebrew/tap"
-brew install --build-from-source remote2prompt/local/remote2prompt
-brew test remote2prompt/local/remote2prompt
-remote2prompt
+brew tap realdgd/remote2prompt
+brew install --build-from-source realdgd/remote2prompt/remote2prompt
+brew install --cask realdgd/remote2prompt/remote2prompt-app
+brew test realdgd/remote2prompt/remote2prompt
+open /Applications/Remote2Prompt.app
 ```
 
-生成器输出源码归档、SHA-256 和本地 Formula。应用位于 `$(brew --prefix remote2prompt)/libexec/Remote2Prompt.app`；启动命令支持 `--version` 和 `--self-check`。安装检查与交互授权验证分开进行，避免相同 Bundle ID 的多个副本影响系统选择。
+Formula 从固定 commit、SHA-256 的源码归档使用独立 CLT 编译；配套 Cask 将本机编译的应用本体安装到 `/Applications/Remote2Prompt.app`，不是手工软链接，也不下载预编译 app。`remote2prompt` 启动命令优先打开与本次编译一致的应用程序副本。更新先执行 Formula 的 `brew upgrade --build-from-source`，再执行 Cask 的 `brew upgrade --cask`。
 
-如需应用程序入口，可自行建立链接（仅在目标不存在时）：
+完整卸载（加 `--zap` 清除本应用设置；去掉则保留）：
 
 ```sh
-ln -s "$(brew --prefix remote2prompt)/libexec/Remote2Prompt.app" /Applications/Remote2Prompt.app
+brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt-app
+brew uninstall --formula realdgd/remote2prompt/remote2prompt
 ```
 
-详细重建、卸载与公开 tap 准备见 [构建与安装](docs/development.md)。
+Cask 管理应用程序中的本体，Formula 管理源码产物和启动命令；卸载需两条命令。系统隐私授权和音频驱动不随设置清除。开发者仍可 `make homebrew` 生成本地 tap。构建、升级、卸载与发布操作详见 [构建与安装](docs/development.md)。
 
 ## 当前进度
 
@@ -70,7 +69,7 @@ ln -s "$(brew --prefix remote2prompt)/libexec/Remote2Prompt.app" /Applications/R
 | 独立语音触发、Fn 与左右 Control/Command/Option | 已接入成对事件及音频排空后释放，目标输入法待验收 |
 | RC003 音频与虚拟设备 | 已接入协议/解码/回环输出代码；实际枚举本机 MiRemoteV 2ch，真实声音与 RC001 待验收 |
 | 在线优先虚拟输入、断开恢复实体输入 | 已接入监听、确认写入、失败限频及退出恢复；真实抢占矩阵待验收 |
-| Homebrew 源码安装与 CI | 提供本地 tap，CI 覆盖 arm64/Intel CLT 和源码安装；实际结果见 Actions，公开 tap 待建立 |
+| Homebrew 源码安装与 CI | 固定源码 tap 与应用生命周期配方已接入；CI 覆盖 arm64/Intel CLT、安装和卸载，实际结果见 Actions |
 
 ## 公开维护
 

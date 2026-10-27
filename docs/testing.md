@@ -22,7 +22,7 @@ make homebrew
 # 安装命令见 development.md；安装后运行 brew test
 ```
 
-UI smoke 只确认真实窗口可见；界面布局、侧栏、滚动、暗色和键盘导航需要目视检查。`--smoke-test-guide` 额外检查拖入帮助面板可见，不打开系统授权、不访问 HID/蓝牙；`--preview-directory` 导出的自身视图缓存不能代替完整原生控件检查。设置保存还需关闭重开核验。Homebrew `test` 只检查已安装应用的无界面自检与版本，不能证明蓝牙、语音或系统权限可用。
+UI smoke 只确认真实窗口可见；界面布局、侧栏、滚动、暗色和键盘导航需要目视检查。`--smoke-test-guide` 额外检查拖入帮助面板可见，不打开系统授权、不访问 HID/蓝牙；`--preview-directory` 导出的自身视图缓存不能代替完整原生控件检查。设置保存还需关闭重开核验。Homebrew `test` 检查源码安装的无界面自检、版本、源码校验标记；默认 Applications 路径存在时还核对其为本体且代码与 Formula 一致。CI 实际安装 Cask 后再运行该检查，随后验证卸载和 `--zap` 清理。不能据此证明蓝牙、语音或系统权限可用。
 
 普通检查新增覆盖 schema 3 独立语音开关及迁移、ATVV 能力包与合成 IMA/DVI 解码、仅语音模式的源租约恢复和修饰键释放。单独执行 `Remote2PromptMacChecks --loopback-output-smoke` 会向已识别回环设备写入 800 个静音样本并检查排空及默认设备快照；普通 `make test` 不运行它。此硬件检查不读取麦克风，不证明蓝牙音频和目标输入法工作。
 

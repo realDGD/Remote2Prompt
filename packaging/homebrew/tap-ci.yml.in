@@ -1,0 +1,58 @@
+name: Source installation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    env:
+      DEVELOPER_DIR: /Library/Developer/CommandLineTools
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      HOMEBREW_NO_ANALYTICS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build source and install Applications bundle
+        run: |
+          brew tap --custom-remote @TAP@ "$PWD"
+          if brew command trust >/dev/null 2>&1; then
+            brew trust --formula @TAP@/remote2prompt
+            brew trust --cask @TAP@/remote2prompt-app
+          fi
+          brew install --build-from-source @TAP@/remote2prompt
+          brew install --cask @TAP@/remote2prompt-app
+          test -d /Applications/Remote2Prompt.app
+          test ! -L /Applications/Remote2Prompt.app
+          brew test @TAP@/remote2prompt
+          codesign --verify --deep --strict /Applications/Remote2Prompt.app
+      - name: Verify settings cleanup and uninstall
+        run: |
+          defaults write dev.remote2prompt.app homebrewCICheck -bool true
+          brew uninstall --cask --zap @TAP@/remote2prompt-app
+          test ! -e /Applications/Remote2Prompt.app
+          test ! -e "$HOME/Library/Preferences/dev.remote2prompt.app.plist"
+          brew uninstall --formula @TAP@/remote2prompt
+          test ! -e "$(brew --prefix)/bin/remote2prompt"
+      - name: Clean up after failures
+        if: always()
+        run: |
+          if brew list --cask remote2prompt-app >/dev/null 2>&1; then
+            brew uninstall --cask --zap @TAP@/remote2prompt-app
+          fi
+          if brew list --formula remote2prompt >/dev/null 2>&1; then
+            brew uninstall --formula @TAP@/remote2prompt
+          fi

@@ -19,7 +19,7 @@ make build
 
 macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问”，旧的 Privacy_Accessibility deep link 仍指向该页。输入监听未允许时直接使用 IOHIDRequestAccess，未获允许时再调用 CGRequestListenEventAccess。未知状态的首次请求不立即打开设置抢走系统提示的焦点；原状态已拒绝时打开设置，另有独立设置入口。已允许时只提供设置入口；macOS 不保证重复弹窗或自动列出条目。监听检查返回 granted 也可能来自设备控制授权，不能据此确认输入监控列表中的独立条目。运行时以实际 HID 打开和报告接收结果验证设备可用性；失败则恢复原生映射并停止。
 
-交互授权验证时仅保留一个构建路径。临时 Homebrew 安装使用同一 Bundle ID，曾影响系统对授权目标的选择；先完成源码安装验证并清理临时副本，再冻结 `dist` 构建进行权限与硬件验收。不要为触发首次弹窗擅自重置 TCC 或改动隐私数据库。
+交互授权验证时仅保留一个构建路径。临时 Homebrew 安装使用同一 Bundle ID，曾影响系统对授权目标的选择；先完成源码安装验证并清理临时副本，再固定 `/Applications/Remote2Prompt.app` 进行权限与硬件验收。不要为触发首次弹窗擅自重置 TCC 或改动隐私数据库。
 
 获用户明确授权后，可用 `tccutil reset ListenEvent dev.remote2prompt.app` 仅清理本应用输入监控选择；先退出应用，再重开相同构建。此命令成功仅证明重置请求成功，不证明系统弹窗恢复；当前机器的重试结果见 [M1 记录](validation/2026-10-27-m1.md)。不要扩大为全应用或其他权限重置。
 
@@ -33,54 +33,68 @@ macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问�
 
 `make run` 会打开设置窗口。菜单栏可重开窗口；关闭窗口不会退出进程。执行程序支持 `--version`、`--self-check`；`--smoke-test` 启动真实 AppKit/SwiftUI 窗口，确认存在后自行退出，不访问硬件。
 
-## 本地 Homebrew 路径
+## Homebrew 源码与应用安装
 
-源码仓库已公开在 [GitHub](https://github.com/realDGD/Remote2Prompt)，但尚无固定发布 Tag 或公开 tap。运行 `make homebrew`，生成本地源码安装入口：
+源码仓库为 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)，公开 tap 为 [realDGD/homebrew-remote2prompt](https://github.com/realDGD/homebrew-remote2prompt)。Formula 固定完整 commit 的归档 URL 和 SHA-256，不引用移动的 main，也不下载预编译二进制。
 
-```text
-dist/homebrew/
-  remote2prompt-<version>-<digest>.tar.gz   固定本次内容的源码归档
-  tap/                                   仅含本地 Formula 的生成 Git 仓库
-    Formula/remote2prompt.rb
+```sh
+brew tap realdgd/remote2prompt
+brew install --build-from-source realdgd/remote2prompt/remote2prompt
+brew install --cask realdgd/remote2prompt/remote2prompt-app
+brew test realdgd/remote2prompt/remote2prompt
+open /Applications/Remote2Prompt.app
 ```
 
-生成器仅归档显式允许的源码、脚本和文档，排除 `.git`、`.build`、`dist` 和本地环境文件。Formula 使用归档的 `file://` URL 与 SHA-256，不访问未知远程仓库。tap 的自动提交只发生在忽略的生成目录，不提交本项目源码，也不修改用户 Git 身份。
+Homebrew 7 若提示第三方来源尚未信任，可用 `brew trust --formula realdgd/remote2prompt/remote2prompt` 与 `brew trust --cask realdgd/remote2prompt/remote2prompt-app` 仅信任这两个条目。旧版没有 `trust` 命令时无需执行；CI 自动检测这一差异。
+
+Formula 先运行检查、CLT Release 构建及 bundle 验证，把 app 保存在 keg 的 `libexec/`。Cask 依赖 Formula，校验源码 SHA-256 标记后复制编译结果，通过标准 `app` artifact 安装本体到 `/Applications`，不是链接。启动命令在应用程序副本与编译结果一致时打开该副本；仅装 Formula 时仍可运行 keg 内应用。默认 Applications 路径下，`brew test` 会核对本体不是软链接、代码与本次构建一致，并运行无界面自检。
+
+升级先更新 tap，再升级 Formula，最后升级 Cask：
+
+```sh
+brew update
+brew upgrade --build-from-source realdgd/remote2prompt/remote2prompt
+brew upgrade --cask realdgd/remote2prompt/remote2prompt-app
+brew test realdgd/remote2prompt/remote2prompt
+```
+
+先退出应用，确认原生按键恢复完成后再清理设置。完整卸载：
+
+```sh
+brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt-app
+brew uninstall --formula realdgd/remote2prompt/remote2prompt
+brew untap realdgd/remote2prompt
+```
+
+普通 Cask 卸载移除应用程序本体；加 `--zap` 清理本应用偏好、ByHost 偏好、缓存、保存状态和 Application Support。Formula 卸载移除 keg 内构建结果和启动命令。不要用全局 `autoremove` 代替这两个精确目标，也不要删除尚有待恢复映射的恢复记录。系统 TCC 授权、音频驱动和其他应用不在清理范围。
+
+### 本地生成与公开 tap 更新
+
+`make homebrew` 仍提供开发用本地归档和 tap：
 
 ```sh
 make homebrew
 brew tap --custom-remote remote2prompt/local "$PWD/dist/homebrew/tap"
 brew install --build-from-source remote2prompt/local/remote2prompt
+brew install --cask remote2prompt/local/remote2prompt-app
 brew test remote2prompt/local/remote2prompt
-remote2prompt --version
-remote2prompt
 ```
 
-Formula 将应用放在 keg 的 `libexec/`，提供 `remote2prompt` 启动命令，不自动复制到 `/Applications`，不安装音频驱动。需要“应用程序”入口时，可按 README 自行建立链接。已有同名路径时先确认归属，不覆盖其他应用。
+生成器仅归档显式允许的源码、脚本和文档，排除 `.git`、`.build`、`dist` 和本地环境文件。生成目录包含源码归档、Formula、Cask、tap README 和 CI，全部忽略。再次生成后需在安装的 tap checkout 执行 `git pull --ff-only`；不要同时安装本地和远端 Formula。清理 `dist` 会使本地 `file://` 来源失效，远端来源不受影响。
 
-改动源码后再次生成和安装：
+维护者公开新源码时先更新 `VERSION`，完成脱敏、检查和源码提交、推送，再生成固定该提交的 tap：
 
 ```sh
-make homebrew
-git -C "$(brew --repo remote2prompt/local)" pull --ff-only
-brew reinstall --build-from-source remote2prompt/local/remote2prompt
+ruby scripts/prepare-homebrew.rb --remote "$(git rev-parse HEAD)" --tap realdgd/remote2prompt
 ```
 
-本地 tap 引用 `dist/homebrew` 内的归档；清理生成文件会使该 tap 无法重新取回旧源码。重装前重新执行 `make homebrew` 并更新 tap。卸载与清理：
+远端模式要求干净工作树和完整 HEAD SHA，下载真实 GitHub 源码归档计算 SHA-256，输出到 `dist/homebrew-remote/tap`。人工审阅生成目录，不发布本地路径或日志；将生成的 Formula/Cask/README/CI 提交推送到 tap，并等待其 CI。生成操作本身不推送、不安装。每次源码更新需要更新 tap；源码仓库之后的文档提交不会自动更改已固定的构建来源。
 
-```sh
-brew uninstall remote2prompt/local/remote2prompt
-brew untap remote2prompt/local
-```
-
-若曾手动创建 `/Applications/Remote2Prompt.app` 软链接，卸载后仅删除该软链接。保留的本机偏好不随 Homebrew 卸载删除。
-
-## 公开发布前
-
-真实源码地址现为 `https://github.com/realDGD/Remote2Prompt`。公开 tap 或二进制发布前，仍须确定许可证、发布用 Bundle ID 和版本，再将 [Formula 模板](../packaging/homebrew/remote2prompt.rb.in) 的生成来源换为固定 Tag/归档 URL，核对 SHA-256。公开 tap 不能使用本机 `file://` 路径。Homebrew Formula 的源码构建与 Cask 的预编译分发是两条路径；当前不创建公开 tap、Tag、Release 或自动更新服务。
+公开源码和 tap 尚未选择许可证；本流程不擅自声明开源授权、不生成 Release/Tag、不分发驱动，也不引入证书或公证。分发理由见 [Agent Note](../.agents/notes/proposed/architecture/2026-10-27-source-tap-app-lifecycle.md)。
 
 ## 持续集成
 
-[工作流](../.github/workflows/ci.yml) 响应 main push、pull request 和手动触发。Linux job 检查文档、全部可达历史的本机信息、Gitleaks 凭据及 actionlint 语法；macOS 15 的 arm64 和 Intel job 明确设置独立 CLT，运行 `make check`，再生成本地 tap、在 Homebrew 沙箱中源码安装、`brew test` 和卸载。
+[工作流](../.github/workflows/ci.yml) 响应 main push、pull request 和手动触发。Linux job 检查文档、全部可达历史的本机信息、Gitleaks 凭据及 actionlint 语法；macOS 15 的 arm64 和 Intel job 明确设置独立 CLT，运行 `make check`，再生成本地 tap、在 Homebrew 沙箱中源码安装、用 Cask 安装应用程序本体、`brew test` 和卸载/设置清理。公开 tap 自身的两架构 CI 则下载固定远端源码进行同一检查。
 
 第三方 Action 固定提交，检查工具固定版本及 SHA-256，工作流仅使用读取内容权限，不上传二进制或原始诊断。CI 不请求输入监控、辅助功能、蓝牙或麦克风权限，不运行音频输出检查、GUI smoke 或遥控器验收。最低 macOS 14 和实际输入法仍需单独验证。
 

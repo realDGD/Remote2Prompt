@@ -81,20 +81,37 @@ jobs:
       - name: Core checks, adapter checks, Release bundle and repository checks
         run: /usr/bin/make check
       - name: Generate local Homebrew source archive and formula
-        run: /usr/bin/make homebrew
+        run: /usr/bin/ruby scripts/prepare-homebrew.rb --tap remote2prompt/ci
       - name: Install and test from source in Homebrew sandbox
         run: |
           brew tap --custom-remote remote2prompt/ci "$PWD/dist/homebrew/tap"
+          if brew command trust >/dev/null 2>&1; then
+            brew trust --formula remote2prompt/ci/remote2prompt
+            brew trust --cask remote2prompt/ci/remote2prompt-app
+          fi
           brew install --build-from-source remote2prompt/ci/remote2prompt
+          brew install --cask remote2prompt/ci/remote2prompt-app
+          test -d /Applications/Remote2Prompt.app
+          test ! -L /Applications/Remote2Prompt.app
           brew test remote2prompt/ci/remote2prompt
           remote2prompt --version
           remote2prompt --self-check
+      - name: Verify Applications uninstall and settings cleanup
+        run: |
+          defaults write dev.remote2prompt.app homebrewCICheck -bool true
+          brew uninstall --cask --zap remote2prompt/ci/remote2prompt-app
+          test ! -e /Applications/Remote2Prompt.app
+          test ! -e "$HOME/Library/Preferences/dev.remote2prompt.app.plist"
       - name: Remove CI-only Homebrew installation
         if: always()
         run: |
+          if brew list --cask remote2prompt-app >/dev/null 2>&1; then
+            brew uninstall --cask --zap remote2prompt/ci/remote2prompt-app
+          fi
           if brew list --formula remote2prompt >/dev/null 2>&1; then
             brew uninstall --formula remote2prompt
           fi
+          test ! -e "$(brew --prefix)/bin/remote2prompt"
           if brew tap | /usr/bin/grep -qx 'remote2prompt/ci'; then
             brew untap remote2prompt/ci
           fi
