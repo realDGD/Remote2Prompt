@@ -5,8 +5,8 @@ struct CheckFailure: Error, CustomStringConvertible {
     let description: String
 }
 
-func expect(_ value: @autoclosure () -> Bool, _ message: String) throws {
-    if !value() { throw CheckFailure(description: message) }
+func expect(_ value: @autoclosure () throws -> Bool, _ message: String) throws {
+    if try !value() { throw CheckFailure(description: message) }
 }
 
 func observation(
@@ -168,7 +168,7 @@ let checks: [(String, () throws -> Void)] = [
         try expect(session.cancelAll().isEmpty, "Shutdown emitted a second release")
         try expect(session.begin(owner: "a", trigger: .leftControl).first?.isDown == true, "Cancelled owner could not restart")
     })
-] + mappingChecks() + setupChecks()
+] + mappingChecks() + setupChecks() + voiceProtocolChecks()
 
 var failed = 0
 for (name, check) in checks {

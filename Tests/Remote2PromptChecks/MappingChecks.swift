@@ -5,7 +5,7 @@ func mappingChecks() -> [(String, () throws -> Void)] {
     [
         ("schema 1 migrates without enabling device takeover", {
             let config = try AppConfiguration.decode(Data("{\"schemaVersion\":1,\"voiceTrigger\":\"rightControl\"}".utf8))
-            try expect(config.schemaVersion == 2 && config.voiceTrigger == .rightControl, "Migration lost preferences")
+            try expect(config.schemaVersion == AppConfiguration.currentSchemaVersion && config.voiceTrigger == .rightControl, "Migration lost preferences")
             try expect(!config.mappingsEnabled, "Migration enabled mappings")
         }),
         ("arbitrary shortcut round trips", {

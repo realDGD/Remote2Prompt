@@ -24,6 +24,7 @@ struct SetupWizard: View {
     @ViewState private var step: SetupStep = .welcome
     @ViewState private var voiceTrigger: VoiceTrigger = .function
     @ViewState private var enableMappings = true
+    @ViewState private var enableVoice = true
     @ViewState private var fillNavigation = true
 
     var body: some View {
@@ -74,7 +75,7 @@ struct SetupWizard: View {
                     .foregroundStyle(.secondary)
             }
             Section("本版本的语音能力") {
-                Text("可以把语音键转换为 Fn、左或右 Control 等触发键，暂不支持遥控器音频输入。此向导只检测按键，不验证语音识别结果。")
+                Text("可以把语音键转换为 Fn、左或右 Control 等触发键。此向导只检测按键；遥控器音频需在“连接与语音”页单独选择回环设备并连接，不验证语音识别结果。")
             }
         case .permissions:
             Section { PermissionControls() }
@@ -131,6 +132,7 @@ struct SetupWizard: View {
                 Label(runtime.setupInput.complete ? "已检测到普通键和语音键的按下与松开" : "需要重新检测按键", systemImage: runtime.setupInput.complete ? "checkmark.circle" : "exclamationmark.circle")
                 LabeledContent("语音触发键", value: voiceTrigger.title)
                 Toggle("完成后启用自定义映射", isOn: $enableMappings)
+                Toggle("完成后启用语音触发", isOn: $enableVoice)
                 Toggle("补齐空的基本导航单击动作", isOn: $fillNavigation)
                 Text("保留已有快捷键、双击和长按。取消不会保存本次选择。")
                     .foregroundStyle(.secondary)
@@ -140,7 +142,7 @@ struct SetupWizard: View {
                 connectionProblem
             }
             Section {
-                Text("语音键检测不代表目标输入法已经启动。此版本不传输遥控器音频，日常使用前请在目标应用中核对触发键和麦克风。")
+                Text("语音键检测不代表目标输入法已经启动。日常使用前请连接所需音频，并在目标应用中核对触发键和回环麦克风。")
                     .foregroundStyle(.secondary)
             }
         }
@@ -176,6 +178,7 @@ struct SetupWizard: View {
         if step == .finish {
             store.update {
                 $0.voiceTrigger = voiceTrigger
+                $0.voiceEnabled = enableVoice
                 $0.mappingsEnabled = enableMappings
                 if fillNavigation { $0.fillBasicNavigationBindings() }
             }

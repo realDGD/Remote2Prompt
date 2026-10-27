@@ -2,9 +2,11 @@ import Foundation
 
 /// Versioned persisted preferences. Device identifiers must be macOS UIDs, never transient numeric IDs.
 public struct AppConfiguration: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
     public var schemaVersion: Int = currentSchemaVersion
     public var mappingsEnabled = false
+    public var voiceEnabled = false
+    public var remoteAudioEnabled = false
     public var preferVirtualInput = false
     public var voiceTrigger: VoiceTrigger = .function
     public var selectedVirtualInputUID: String?
@@ -68,13 +70,15 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, mappingsEnabled, preferVirtualInput, voiceTrigger, selectedVirtualInputUID, bindings
+        case schemaVersion, mappingsEnabled, voiceEnabled, remoteAudioEnabled, preferVirtualInput, voiceTrigger, selectedVirtualInputUID, bindings
     }
 
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? Self.currentSchemaVersion
         mappingsEnabled = try values.decodeIfPresent(Bool.self, forKey: .mappingsEnabled) ?? false
+        voiceEnabled = try values.decodeIfPresent(Bool.self, forKey: .voiceEnabled) ?? (schemaVersion < 3 && mappingsEnabled)
+        remoteAudioEnabled = try values.decodeIfPresent(Bool.self, forKey: .remoteAudioEnabled) ?? false
         preferVirtualInput = try values.decodeIfPresent(Bool.self, forKey: .preferVirtualInput) ?? false
         voiceTrigger = try values.decodeIfPresent(VoiceTrigger.self, forKey: .voiceTrigger) ?? .function
         selectedVirtualInputUID = try values.decodeIfPresent(String.self, forKey: .selectedVirtualInputUID)

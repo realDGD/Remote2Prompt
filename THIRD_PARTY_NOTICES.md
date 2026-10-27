@@ -12,4 +12,6 @@ M1 的 HID usage、VID/PID、report 1 布局及语音键 F5 行为参考上游 R
 
 设置布局与向导的真实事件门槛参考上游 SettingsView.swift 及 first-run-onboarding/PRODUCT_SPEC.md 的产品行为，采用本项目四页与 M1 按键检测范围。遥控器示意图、向导、临时检测状态机及界面代码独立编写，仅使用系统 SF Symbols，没有复制上游图像、实现或完整语音向导。
 
+本轮语音适配独立实现 ATVV 的公开协议事实：AB5E 服务/特征 UUID、能力包、麦克风开关命令、RC003 高半字节优先的 IMA/DVI ADPCM、同步 predictor/index 和 16 kHz PCM。协议事实经上游 TECHNICAL.md、ATVVProtocol.swift 与 XiaomiBluetoothBridge.swift 核对；未复制上游蓝牙状态机、解码器实现或音频执行器。IMA/DVI 的标准步长与索引表是编码格式数据。MiRemoteV2ch_UID / BlackHole2ch_UID 仅用于识别已安装的回环设备，仍不分发或安装驱动。
+
 本项目自身的分发许可证尚未由维护者确定；当前不添加推测的 LICENSE 或在 Formula 中声明未经确认的许可证。建立公开发布前确定许可证并更新本文件及 Formula。

@@ -11,9 +11,9 @@ struct RemoteDiagram: View {
     var body: some View {
         VStack(spacing: 20) {
             HStack {
-                key(.power, "power", light: true)
+                key(.power, "power", light: true, size: 42)
                 Spacer()
-                key(nil, "mic", light: true)
+                key(nil, "mic", light: true, size: 42)
             }
             .padding(.horizontal, 4)
             ZStack {
@@ -46,7 +46,7 @@ struct RemoteDiagram: View {
             Spacer(minLength: 45)
         }
         .padding(.horizontal, 16).padding(.top, 24).padding(.bottom, 24)
-        .frame(width: 186, height: 500)
+        .frame(width: 186, height: 690)
         .background(LinearGradient(stops: [.init(color: Color(white: 0.60), location: 0), .init(color: Color(white: 0.92), location: 0.05), .init(color: Color(white: 0.78), location: 0.18), .init(color: Color(white: 0.84), location: 0.85), .init(color: Color(white: 0.55), location: 1)], startPoint: .leading, endPoint: .trailing), in: RoundedRectangle(cornerRadius: 15))
         .overlay(RoundedRectangle(cornerRadius: 15).stroke(Color.black.opacity(0.25)))
     }
@@ -56,7 +56,10 @@ struct RemoteDiagram: View {
         return Button { selection = button } label: {
             ZStack {
                 Circle().fill(light ? Color(white: 0.85) : dark)
-                if let symbol { Image(systemName: symbol).font(.system(size: 19, weight: .regular)).foregroundStyle(light ? Color(white: 0.30) : Color(white: 0.72)) }
+                if button == .tv {
+                    Text("TV").font(.system(size: 10, weight: .semibold)).padding(.horizontal, 3).padding(.vertical, 1)
+                        .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color(white: 0.7), lineWidth: 1.3)).foregroundStyle(Color(white: 0.7))
+                } else if let symbol { Image(systemName: symbol).font(.system(size: 19, weight: .regular)).foregroundStyle(light ? Color(white: 0.30) : Color(white: 0.72)) }
                 Circle().stroke(pressed ? .green : selection == button ? Color.accentColor : Color(white: light ? 0.54 : 0.46), lineWidth: pressed || selection == button ? 2 : 1)
             }.frame(width: size, height: size)
         }

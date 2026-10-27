@@ -59,20 +59,24 @@ struct MappingsPage: View {
                         }.padding(.vertical, 14)
                     }
                     .padding(.horizontal, 12)
-                    .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
-                }
-                GroupBox("按键监控") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        LabeledContent("遥控器输入", value: inputTitle)
-                        LabeledContent("发送的快捷键 / 动作", value: outputTitle)
-                        Text("只显示最近的按键和发送请求，不保存输入文字。语音键按住时，其他映射暂停。")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }.padding(8).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
                 }
                 Text("三列分别设置单击、双击、长按。未设置双击或长按时，单击立即响应；补齐导航只填空项。")
                     .font(.callout).foregroundStyle(.secondary)
             }
             .padding(24)
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    LabeledContent("遥控器输入", value: inputTitle)
+                    Divider().frame(height: 18)
+                    LabeledContent("最近发送", value: outputTitle)
+                }
+                Text("只显示最近按键和发送请求，不保存输入文字；语音键按住时暂停其他映射。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(14).frame(maxWidth: .infinity, alignment: .leading).background(.bar)
         }
         .sheet(item: $capture) { target in
             ShortcutCaptureView(initial: store.configuration.invocation(for: target.button, gesture: target.gesture).shortcut) { result in

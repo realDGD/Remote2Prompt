@@ -29,11 +29,50 @@ final class FakeService {
 @main
 enum MacChecks {
     @MainActor
-    static func main() throws {
+    static func main() async throws {
+        if CommandLine.arguments.contains("--loopback-output-smoke") {
+            guard let before = LoopbackDevices.defaultSnapshot() else { throw Failure(message: "Cannot read default audio devices") }
+            guard let device = LoopbackDevices.available().first else { throw Failure(message: "No compatible loopback device installed") }
+            let writer = LoopbackWriter()
+            let failure: String? = await withCheckedContinuation { continuation in
+                writer.configure(uid: device.uid) { result in
+                    switch result {
+                    case .failure(let error): continuation.resume(returning: error.localizedDescription)
+                    case .success:
+                        writer.append([Int16](repeating: 0, count: 800)) { error in
+                            if let error {
+                                writer.stop { continuation.resume(returning: error.localizedDescription) }
+                            } else {
+                                writer.finish { completed in
+                                    writer.stop { continuation.resume(returning: completed ? nil : "Silent PCM did not drain") }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if let failure { throw Failure(message: failure) }
+            try check(LoopbackDevices.defaultSnapshot() == before, "System default input/output changed during the output check")
+            print("PASS loopback output smoke: \(device.name), 800 silent PCM samples drained; no microphone capture or default-device changes")
+            return
+        }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let cases: [(String, @MainActor () throws -> Void)] = [
+            ("voice-only lease preserves ordinary native keys across recovery", {
+                let service = FakeService()
+                let power = UsageMapping(source: UInt64(7) << 32 | 0x66, destination: 123)
+                service.mappings = [power]
+                let path = directory.appendingPathComponent("voice-only.json")
+                let lease = try NativeKeyLease(url: path, boot: 1, services: { [service.service()] })
+                let voiceSource = UInt64(7) << 32 | UInt64(XiaomiRemote.voiceUsage)
+                try lease.acquire(sources: [voiceSource])
+                try check(service.mappings.count == 2 && service.mappings.contains(power), "Voice-only mode changed ordinary keys")
+                let next = try NativeKeyLease(url: path, boot: 1, services: { [service.service()] })
+                try next.restore()
+                try check(service.mappings == [power], "Voice-only recovery lost scope")
+            }),
             ("device lease restores original and preserves unrelated edits", {
                 let service = FakeService()
                 let original = UsageMapping(source: UInt64(7) << 32 | 0x66, destination: UInt64(7) << 32 | 0x6F)
@@ -168,6 +207,29 @@ enum MacChecks {
                 try sender.releaseAll()
                 try check(events.last?.flags.contains(.maskShift) == true, "Release discarded a physically held Shift")
                 try check(events.last?.flags.contains(.maskControl) == false, "Release left synthetic Control held")
+            }),
+            ("voice release clears stale synthetic flags from the global snapshot", {
+                var events: [CGEvent] = []
+                let flags: CGEventFlags = [.maskControl, .maskShift, CGEventFlags(rawValue: UInt64(NX_DEVICELCTLKEYMASK))]
+                let sender = SystemActionSender(permission: { true }, physicalKeyDown: { _ in false }, physicalFlags: { flags }, post: { events.append($0) })
+                try sender.voice(VoiceKeyEvent(trigger: .leftControl, isDown: true)); try sender.releaseAll()
+                try check(events.last?.flags == .maskShift, "Synthetic hold survived its own release")
+            }),
+            ("voice release keeps a physical opposite-side modifier", {
+                var events: [CGEvent] = []
+                let sender = SystemActionSender(permission: { true }, physicalKeyDown: { $0 == 62 }, physicalFlags: { .maskControl }, post: { events.append($0) })
+                try sender.voice(VoiceKeyEvent(trigger: .leftControl, isDown: true)); try sender.releaseAll()
+                try check(events.last?.flags.contains(.maskControl) == true, "Physical right Control was cleared")
+                try check((events.last?.flags.rawValue ?? 0) & UInt64(NX_DEVICELCTLKEYMASK) == 0, "Synthetic left Control remained")
+                try check((events.last?.flags.rawValue ?? 0) & UInt64(NX_DEVICERCTLKEYMASK) != 0, "Physical right-side flag lost")
+            }),
+            ("Fn voice trigger uses its own flag and releases it", {
+                var events: [CGEvent] = []
+                let sender = SystemActionSender(permission: { true }, physicalKeyDown: { _ in false }, physicalFlags: { [.maskSecondaryFn, .maskShift] }, post: { events.append($0) })
+                try sender.voice(VoiceKeyEvent(trigger: .function, isDown: true)); try sender.releaseAll()
+                try check(events.count == 2 && events.first?.getIntegerValueField(.keyboardEventKeycode) == 63, "Fn keycode or pair missing")
+                try check(events.first?.flags.contains(.maskSecondaryFn) == true && events.first?.flags.contains(.maskControl) == false, "Fn became a Control combination")
+                try check(events.last?.flags == .maskShift, "Fn flag remained held")
             }),
             ("shortcuts and media create tagged down/up pairs", {
                 var events: [CGEvent] = []

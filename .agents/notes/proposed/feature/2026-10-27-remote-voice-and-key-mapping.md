@@ -10,7 +10,7 @@ Status: proposed
 
 先支持小米蓝牙遥控器 2 / 2 Pro，通过限定设备的 HID 通道处理普通按键，CoreBluetooth/ATVV 接收语音，经解码和回环设备交给目标输入法。语音会话独立于普通键的手势识别，在排空尾音后成对释放触发键。
 
-当前已实现配置、原生 UI、HID 接入、普通键手势、系统事件发送和设备原生键恢复；RC003 的系统枚举已确认，真实按键端到端验收进行中。CoreBluetooth/ATVV、解码和真实音频路径仍未接入，因此完整语音首版继续保持 proposed。实现顺序见 [路线图](../../../../docs/roadmap.md)。
+当前已接入三列映射、候选确认录入、RC003 图示、独立语音触发、HID 与恢复；CoreBluetooth/ATVV、合成样例验证的解码和回环输出代码也已接入。本机 MiRemoteV 2ch 的静音 PCM 排空检查通过，但真实遥控器说话、目标输入法和完整故障矩阵尚未验收，因此完整语音首版继续保持 proposed。实现顺序见 [路线图](../../../../docs/roadmap.md)。
 
 ## Alternatives considered
 

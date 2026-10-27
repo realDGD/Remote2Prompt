@@ -77,7 +77,7 @@ public final class SystemActionSender {
             post(key)
         } else {
             guard heldVoice == trigger else { return }
-            let key = try keyboard(code: trigger.virtualKeyCode, down: false, flags: physicalFlags())
+            let key = try keyboard(code: trigger.virtualKeyCode, down: false, flags: releaseFlags(for: trigger))
             key.type = .flagsChanged
             post(key)
             heldVoice = nil
@@ -128,5 +128,27 @@ public final class SystemActionSender {
         case 63: .maskSecondaryFn
         default: nil
         }
+    }
+
+    private func releaseFlags(for trigger: VoiceTrigger) -> CGEventFlags {
+        var result = physicalFlags()
+        let codes: [UInt16]
+        let generic: CGEventFlags
+        switch trigger {
+        case .leftControl, .rightControl: codes = [59, 62]; generic = .maskControl
+        case .leftCommand, .rightCommand: codes = [55, 54]; generic = .maskCommand
+        case .leftOption, .rightOption: codes = [58, 61]; generic = .maskAlternate
+        case .function: codes = [63]; generic = .maskSecondaryFn
+        }
+        // The global flags snapshot can still contain our synthetic hold. Rebuild only this family
+        // from physical key state; preserve the other side and unrelated physical modifiers.
+        for code in codes { if let flags = modifierFlags(code) { result.subtract(flags) } }
+        var physicallyHeld = false
+        for code in codes where physicalKeyDown(code) {
+            physicallyHeld = true
+            if let flags = modifierFlags(code) { result.formUnion(flags) }
+        }
+        if physicallyHeld { result.formUnion(generic) }
+        return result
     }
 }

@@ -41,6 +41,7 @@ public final class NativeKeyLease {
         let version: Int
         let boot: Int64
         var originals: [String: [UsageMapping]]
+        var sources: [UInt64]?
     }
     public static let ownedSources: Set<UInt64> = Set(
         (Array(XiaomiRemote.buttonUsages.keys) + [XiaomiRemote.voiceUsage]).map { UInt64(7) << 32 | UInt64($0) }
@@ -54,9 +55,9 @@ public final class NativeKeyLease {
         self.url = url; self.services = services
         if FileManager.default.fileExists(atPath: url.path) {
             let saved = try JSONDecoder().decode(Journal.self, from: Data(contentsOf: url))
-            guard saved.version == 1 else { throw MappingFailure.invalidProperty }
-            journal = saved.boot == boot ? saved : Journal(version: 1, boot: boot, originals: [:])
-        } else { journal = Journal(version: 1, boot: boot, originals: [:]) }
+            guard (1...2).contains(saved.version) else { throw MappingFailure.invalidProperty }
+            journal = saved.boot == boot ? Journal(version: 2, boot: boot, originals: saved.originals, sources: saved.sources) : Journal(version: 2, boot: boot, originals: [:])
+        } else { journal = Journal(version: 2, boot: boot, originals: [:]) }
     }
 
     public var hasPendingRecovery: Bool { !journal.originals.isEmpty }
@@ -69,13 +70,17 @@ public final class NativeKeyLease {
             let mappings = try service.read()
             try validate(mappings)
             let neutral = Set(mappings.filter { $0.destination == 0 }.map(\.source))
-            guard Self.ownedSources.isSubset(of: neutral) else { return false }
+            guard owned.isSubset(of: neutral) else { return false }
         }
         return true
     }
 
-    public func acquire() throws {
+    private var owned: Set<UInt64> { Set(journal.sources ?? Array(Self.ownedSources)) }
+
+    public func acquire(sources: Set<UInt64> = NativeKeyLease.ownedSources) throws {
         try restore()
+        guard !sources.isEmpty, sources.isSubset(of: Self.ownedSources) else { throw MappingFailure.invalidProperty }
+        journal.sources = sources.sorted()
         let targets = try services()
         guard !targets.isEmpty else { throw MappingFailure.noService }
         var before: [UInt64: [UsageMapping]] = [:]
@@ -83,13 +88,13 @@ public final class NativeKeyLease {
             let mappings = try service.read()
             try validate(mappings)
             before[service.id] = mappings
-            journal.originals[String(service.id)] = mappings.filter { Self.ownedSources.contains($0.source) }
+            journal.originals[String(service.id)] = mappings.filter { owned.contains($0.source) }
         }
         try persist()
         do {
             for service in targets {
-                let desired = (before[service.id] ?? []).filter { !Self.ownedSources.contains($0.source) }
-                    + Self.ownedSources.sorted().map { UsageMapping(source: $0, destination: 0) }
+                let desired = (before[service.id] ?? []).filter { !owned.contains($0.source) }
+                    + owned.sorted().map { UsageMapping(source: $0, destination: 0) }
                 guard service.write(desired), try equivalent(service.read(), desired) else { throw MappingFailure.writeFailed }
             }
         } catch {
@@ -108,7 +113,7 @@ public final class NativeKeyLease {
             do {
                 let current = try service.read()
                 try validate(current)
-                let stillOwned = Set(current.filter { Self.ownedSources.contains($0.source) && $0.destination == 0 }.map(\.source))
+                let stillOwned = Set(current.filter { owned.contains($0.source) && $0.destination == 0 }.map(\.source))
                 let desired = current.filter { !stillOwned.contains($0.source) } + original.filter { stillOwned.contains($0.source) }
                 guard service.write(desired), try equivalent(service.read(), desired) else { throw MappingFailure.recoveryFailed }
             } catch { pending[id] = original }

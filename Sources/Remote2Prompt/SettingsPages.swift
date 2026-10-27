@@ -27,11 +27,7 @@ struct ConnectionPage: View {
                 LabeledContent("当前按键", value: runtime.voiceHeld ? "按住中" : "已松开")
             }
             Section("语音音频") {
-                Label("暂不支持遥控器音频输入", systemImage: "waveform.slash")
-                Text("当前可以将语音键转换为输入法触发键，但不会传输遥控器声音。请在目标输入法中选择其他可用的麦克风。")
-                    .foregroundStyle(.secondary)
-                Text("本版本不切换系统麦克风，也不安装音频驱动。")
-                    .foregroundStyle(.secondary)
+                VoiceAudioControls(audio: runtime.audio)
             }
             Section {
                 DisclosureGroup("连接详情") {
@@ -50,13 +46,17 @@ struct VoiceTriggerControls: View {
     @EnvironmentObject private var store: ConfigurationStore
 
     var body: some View {
+        Toggle("启用语音触发", isOn: Binding(
+            get: { store.configuration.voiceEnabled },
+            set: { value in store.update { $0.voiceEnabled = value } }
+        ))
         Picker("语音触发键", selection: Binding(
             get: { store.configuration.voiceTrigger },
             set: { value in store.update { $0.voiceTrigger = value } }
         )) {
             ForEach(VoiceTrigger.allCases) { Text($0.title).tag($0) }
         }
-        Text("按住语音键立即按下所选键，松开即释放。请在目标输入法中设置相同触发键；左右 Control 是各自独立的按键。")
+        Text("独立于普通按键映射。按住语音键立即按下所选键；接入遥控器音频时，尾音输出完再释放。请在输入法中设置相同触发键；左右 Control 各自独立。")
             .foregroundStyle(.secondary)
     }
 }
@@ -66,12 +66,12 @@ struct PermissionsPage: View {
         Form {
             Section("按键所需权限") { PermissionControls() }
             Section("蓝牙与麦克风") {
-                Text("遥控器由系统蓝牙配对，当前按键功能不请求蓝牙或麦克风权限。")
+                Text("按键由系统蓝牙配对。启用遥控器音频后才通过 CoreBluetooth 请求蓝牙访问；不读取 Mac 本机麦克风。")
                 Button("打开蓝牙设置…") { openBluetoothSettings() }
             }
             Section("隐私") {
                 Label("只处理兼容遥控器的按键", systemImage: "shield.lefthalf.filled")
-                Text("快捷键录入仅接收当前窗口的按键，不读取其他应用输入。本版本不采集音频、不保存输入文字，也不联网。")
+                Text("快捷键录入仅接收当前窗口的按键，不读取其他应用输入。遥控器音频仅在启用后保留在内存，并写入你选择的回环设备；不录音存盘、不上传、不保存输入文字。")
                 Text("设置和原生按键恢复记录保存在本机；不记录完整 HID 报告或设备硬件地址。")
                     .foregroundStyle(.secondary)
             }
@@ -99,8 +99,12 @@ struct PermissionControls: View {
                 Button("请求输入监控权限") { runtime.requestInputMonitoring() }
                     .disabled(runtime.requestingPermission)
             }
-            Button("打开输入监控设置…") { runtime.openInputMonitoringSettings() }
+            Button("打开输入监控设置…") {
+                runtime.openInputMonitoringSettings()
+                if !runtime.inputMonitoring { showDragGuide() }
+            }
         }
+        .onChange(of: runtime.manualInputHelpRequest) { _, _ in showDragGuide() }
         Text(runtime.inputMonitoring ? "系统已允许读取按键，可能来自设备控制授权。这个状态不代表已在输入监控列表中单独开启，无需重复申请。" : "设备控制授权也包含监听能力。需要单独申请时，按钮会直接发出系统请求；系统不再提示时，可打开输入监控设置检查。")
             .foregroundStyle(.secondary)
         if let notice = runtime.permissionNotice {
@@ -117,6 +121,10 @@ struct PermissionControls: View {
                 Button("刷新权限状态") { runtime.refresh() }
             }
         }
+    }
+
+    private func showDragGuide() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { PermissionDragGuide.shared.show() }
     }
 }
 
@@ -140,7 +148,7 @@ struct AboutPage: View {
                     .foregroundStyle(.secondary)
                 LabeledContent("版本", value: version)
                 LabeledContent("系统要求", value: "macOS 14 或更高版本")
-                Text("当前支持按键映射和语音触发键；暂不支持遥控器音频输入。")
+                Text("提供按键映射、语音触发键与遥控器音频回环输出。需要在目标输入法中配置相同触发键及回环麦克风。")
                     .foregroundStyle(.secondary)
             }
             Section("项目") {
