@@ -7,6 +7,9 @@ dist/
 *.app/
 *.dmg
 *.pkg
+*.zip
+*.tar.gz
+*.tgz
 
 # Local credentials and signing material
 .env
