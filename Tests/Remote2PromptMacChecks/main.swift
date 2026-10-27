@@ -59,7 +59,7 @@ enum MacChecks {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let cases: [(String, @MainActor () throws -> Void)] = [
+        var cases: [(String, @MainActor () throws -> Void)] = [
             ("voice-only lease preserves ordinary native keys across recovery", {
                 let service = FakeService()
                 let power = UsageMapping(source: UInt64(7) << 32 | 0x66, destination: 123)
@@ -244,6 +244,7 @@ enum MacChecks {
                 try check(events[4].getIntegerValueField(.keyboardEventKeycode) == Int64(resolved!.keyCode) && events[4].flags == .maskCommand, "Displayed output differs from posted copy shortcut")
             })
         ]
+        cases.append(contentsOf: inputPriorityAdapterChecks())
         var failures = 0
         for (name, run) in cases {
             do { try run(); print("PASS \(name)") }

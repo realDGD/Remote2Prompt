@@ -13,6 +13,7 @@ public struct AudioDefaultsSnapshot: Equatable, Sendable {
 }
 
 public enum LoopbackDevices {
+    static let supportedUIDs: Set<String> = ["MiRemoteV2ch_UID", "BlackHole2ch_UID"]
     public static func defaultSnapshot() -> AudioDefaultsSnapshot? {
         func read(_ selector: AudioObjectPropertySelector) -> AudioDeviceID? {
             var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
@@ -26,7 +27,7 @@ public enum LoopbackDevices {
     public static func available() -> [LoopbackDevice] {
         devices().compactMap { id in
             guard let uid = string(id, kAudioDevicePropertyDeviceUID),
-                  ["MiRemoteV2ch_UID", "BlackHole2ch_UID"].contains(uid),
+                  supportedUIDs.contains(uid),
                   channelCount(id, scope: kAudioDevicePropertyScopeInput) >= 2,
                   channelCount(id, scope: kAudioDevicePropertyScopeOutput) >= 2,
                   alive(id), let name = string(id, kAudioObjectPropertyName) else { return nil }
