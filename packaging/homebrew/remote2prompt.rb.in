@@ -1,0 +1,40 @@
+# Local source-build template. Configure a public homepage/source and license before public release.
+class Remote2prompt < Formula
+  desc "Native macOS remote voice and key-mapping app foundation"
+  url @SOURCE_URL@
+  version @VERSION@
+  sha256 @SHA256@
+
+  depends_on macos: :sonoma
+
+  def install
+    ENV["DEVELOPER_DIR"] = "/Library/Developer/CommandLineTools"
+    ENV["REMOTE2PROMPT_HOMEBREW_BUILD"] = "1"
+    ENV.delete("SDKROOT")
+    system "./scripts/test.sh"
+    system "./scripts/build-app.sh"
+    system "./scripts/verify-app.sh"
+    libexec.install "dist/Remote2Prompt.app"
+    (bin/"remote2prompt").write <<~SH
+      #!/bin/sh
+      if [ "$#" -eq 0 ]; then
+        exec /usr/bin/open "#{libexec}/Remote2Prompt.app"
+      fi
+      exec "#{libexec}/Remote2Prompt.app/Contents/MacOS/Remote2Prompt" "$@"
+    SH
+  end
+
+  def caveats
+    <<~EOS
+      This is a development foundation; real remote/audio adapters are not connected.
+      Run remote2prompt to open settings. No audio driver is installed.
+      Optional Applications shortcut (only if the destination does not exist):
+        ln -s "#{opt_libexec}/Remote2Prompt.app" /Applications/Remote2Prompt.app
+    EOS
+  end
+
+  test do
+    assert_match "self-check passed", shell_output("#{bin}/remote2prompt --self-check")
+    assert_match version.to_s, shell_output("#{bin}/remote2prompt --version")
+  end
+end
