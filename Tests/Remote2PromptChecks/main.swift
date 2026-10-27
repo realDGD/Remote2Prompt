@@ -29,7 +29,7 @@ func observation(
     )
 }
 
-let checks: [(String, () throws -> Void)] = [
+var checks: [(String, () throws -> Void)] = [
     ("configuration defaults are opt-in", {
         let config = AppConfiguration()
         try expect(!config.preferVirtualInput && !config.mappingsEnabled, "Opt-in defaults changed")
@@ -168,7 +168,11 @@ let checks: [(String, () throws -> Void)] = [
         try expect(session.cancelAll().isEmpty, "Shutdown emitted a second release")
         try expect(session.begin(owner: "a", trigger: .leftControl).first?.isDown == true, "Cancelled owner could not restart")
     })
-] + mappingChecks() + setupChecks() + voiceProtocolChecks()
+]
+// Keep each inference boundary explicit for standalone CLT's Swift 6.1 compiler.
+checks.append(contentsOf: mappingChecks())
+checks.append(contentsOf: setupChecks())
+checks.append(contentsOf: voiceProtocolChecks())
 
 var failed = 0
 for (name, check) in checks {
