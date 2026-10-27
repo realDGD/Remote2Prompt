@@ -176,6 +176,7 @@ checks.append(contentsOf: setupChecks())
 checks.append(contentsOf: voiceProtocolChecks())
 checks.append(contentsOf: inputPriorityChecks())
 checks.append(contentsOf: voiceInputSnapshotChecks())
+checks.append(contentsOf: configurationTransferChecks())
 
 var failed = 0
 for (name, check) in checks {

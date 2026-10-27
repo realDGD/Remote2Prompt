@@ -33,4 +33,12 @@ final class ConfigurationStore: ObservableObject {
             persistenceError = "设置无法保存：\(error.localizedDescription)"
         }
     }
+
+    /// Explicit import is allowed to replace unreadable bytes only after the user's confirmation.
+    func replace(with value: AppConfiguration) throws {
+        let next = try AppConfiguration.decode(value.encoded())
+        defaults.set(try next.encoded(), forKey: key)
+        persistenceError = nil
+        configuration = next
+    }
 }

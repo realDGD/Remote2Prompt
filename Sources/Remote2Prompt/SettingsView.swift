@@ -38,6 +38,7 @@ struct SettingsView: View {
             .navigationSplitViewColumnWidth(min: 170, ideal: 195, max: 245)
             .safeAreaInset(edge: .bottom) {
                 VStack(alignment: .leading, spacing: 12) {
+                    ConfigurationTransferControls()
                     Button { store.isSetupPresented = true } label: {
                         Label("运行设置向导…", systemImage: "wand.and.stars")
                     }

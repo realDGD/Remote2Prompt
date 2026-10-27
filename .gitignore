@@ -25,6 +25,9 @@ dist/
 diagnostics/
 captures/
 recordings/
+configuration-exports/
+*.remote2prompt.json
+Remote2Prompt-config*.json
 *.log
 *.trace
 *.crash
