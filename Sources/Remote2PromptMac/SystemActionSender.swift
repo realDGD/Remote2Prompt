@@ -22,13 +22,15 @@ public final class SystemActionSender {
     private let post: (CGEvent) -> Void
     private let permission: () -> Bool
     private let physicalKeyDown: (UInt16) -> Bool
+    private let physicalFlags: () -> CGEventFlags
     private var heldVoice: VoiceTrigger?
 
     public init(
         permission: @escaping () -> Bool = { AXIsProcessTrusted() },
         physicalKeyDown: @escaping (UInt16) -> Bool = { CGEventSource.keyState(.hidSystemState, key: $0) },
+        physicalFlags: @escaping () -> CGEventFlags = { CGEventSource.flagsState(.hidSystemState) },
         post: @escaping (CGEvent) -> Void = { $0.post(tap: .cghidEventTap) }
-    ) { self.permission = permission; self.physicalKeyDown = physicalKeyDown; self.post = post }
+    ) { self.permission = permission; self.physicalKeyDown = physicalKeyDown; self.physicalFlags = physicalFlags; self.post = post }
 
     public func perform(_ invocation: MappedInvocation) throws {
         guard invocation.action != .none else { return }
@@ -75,7 +77,7 @@ public final class SystemActionSender {
             post(key)
         } else {
             guard heldVoice == trigger else { return }
-            let key = try keyboard(code: trigger.virtualKeyCode, down: false, flags: CGEventSource.flagsState(.hidSystemState))
+            let key = try keyboard(code: trigger.virtualKeyCode, down: false, flags: physicalFlags())
             key.type = .flagsChanged
             post(key)
             heldVoice = nil

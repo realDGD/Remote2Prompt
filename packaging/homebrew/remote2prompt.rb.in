@@ -1,6 +1,6 @@
 # Local source-build template. Configure a public homepage/source and license before public release.
 class Remote2prompt < Formula
-  desc "Native macOS remote voice and key-mapping app foundation"
+  desc "Native macOS remote key mapping and voice-trigger app"
   url @SOURCE_URL@
   version @VERSION@
   sha256 @SHA256@
@@ -26,7 +26,7 @@ class Remote2prompt < Formula
 
   def caveats
     <<~EOS
-      This is a development foundation; real remote/audio adapters are not connected.
+      Remote key mapping is a development preview; remote audio is not connected yet.
       Run remote2prompt to open settings. No audio driver is installed.
       Optional Applications shortcut (only if the destination does not exist):
         ln -s "#{opt_libexec}/Remote2Prompt.app" /Applications/Remote2Prompt.app

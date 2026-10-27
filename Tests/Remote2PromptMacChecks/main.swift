@@ -136,7 +136,7 @@ enum MacChecks {
             ("Control events use distinct keycodes and sided flags", {
                 for (trigger, mask) in [(VoiceTrigger.leftControl, NX_DEVICELCTLKEYMASK), (.rightControl, NX_DEVICERCTLKEYMASK)] {
                     var events: [CGEvent] = []
-                    let sender = SystemActionSender(permission: { true }, physicalKeyDown: { _ in false }, post: { events.append($0) })
+                    let sender = SystemActionSender(permission: { true }, physicalKeyDown: { _ in false }, physicalFlags: { [] }, post: { events.append($0) })
                     try sender.voice(VoiceKeyEvent(trigger: trigger, isDown: true))
                     try sender.releaseAll()
                     try sender.releaseAll()
@@ -147,7 +147,7 @@ enum MacChecks {
             }),
             ("release is attempted after permission loss", {
                 var granted = true; var events: [CGEvent] = []
-                let sender = SystemActionSender(permission: { granted }, physicalKeyDown: { _ in false }, post: { events.append($0) })
+                let sender = SystemActionSender(permission: { granted }, physicalKeyDown: { _ in false }, physicalFlags: { [] }, post: { events.append($0) })
                 try sender.voice(VoiceKeyEvent(trigger: .rightControl, isDown: true))
                 granted = false; try sender.releaseAll()
                 try check(events.count == 2, "Permission loss prevented cleanup")
@@ -156,14 +156,22 @@ enum MacChecks {
             }),
             ("held physical modifier blocks synthetic takeover", {
                 var events: [CGEvent] = []
-                let sender = SystemActionSender(permission: { true }, physicalKeyDown: { _ in true }, post: { events.append($0) })
+                let sender = SystemActionSender(permission: { true }, physicalKeyDown: { _ in true }, physicalFlags: { [] }, post: { events.append($0) })
                 do { try sender.voice(VoiceKeyEvent(trigger: .leftControl, isDown: true)); throw Failure(message: "Physical modifier taken over") }
                 catch ActionFailure.physicalModifier {}
                 try check(events.isEmpty, "Physical conflict posted an event")
             }),
+            ("voice release preserves other physical modifiers", {
+                var events: [CGEvent] = []
+                let sender = SystemActionSender(permission: { true }, physicalKeyDown: { _ in false }, physicalFlags: { .maskShift }, post: { events.append($0) })
+                try sender.voice(VoiceKeyEvent(trigger: .leftControl, isDown: true))
+                try sender.releaseAll()
+                try check(events.last?.flags.contains(.maskShift) == true, "Release discarded a physically held Shift")
+                try check(events.last?.flags.contains(.maskControl) == false, "Release left synthetic Control held")
+            }),
             ("shortcuts and media create tagged down/up pairs", {
                 var events: [CGEvent] = []
-                let sender = SystemActionSender(permission: { true }, post: { events.append($0) })
+                let sender = SystemActionSender(permission: { true }, physicalKeyDown: { _ in false }, physicalFlags: { [] }, post: { events.append($0) })
                 try sender.perform(MappedInvocation(action: .customShortcut, shortcut: KeyboardShortcut(keyCode: 99, modifiers: [.control, .shift])))
                 try check(events.count == 2 && events[0].flags.contains([.maskControl, .maskShift]), "Shortcut flags lost")
                 try sender.perform(MappedInvocation(action: .volumeUp))
