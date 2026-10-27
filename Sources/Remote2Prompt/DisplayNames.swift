@@ -11,6 +11,7 @@ extension RemoteButton {
         case .back: "返回"
         case .home: "主页"
         case .menu: "菜单"
+        case .tv: "TV"
         case .volumeUp: "音量 +"
         case .volumeDown: "音量 −"
         case .power: "电源"
@@ -46,6 +47,7 @@ extension MappedAction {
         case .volumeDown: "减小音量"
         case .mute: "静音"
         case .playPause: "播放 / 暂停"
+        case .customShortcut: "自定义快捷键…"
         }
     }
 }

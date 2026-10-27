@@ -15,7 +15,9 @@ packaging/homebrew/        源码 Formula 模板
 .agents/skills/            两个本项目工作流技能
 ```
 
-`Remote2PromptCore` 不发送系统事件，不连接设备，不读写系统音频。`AudioInputPriority.reconcile` 接收最新快照并返回可选目标 UID，返回意图不等于写入成功。`VoiceSession` 返回按键事件意图，系统适配器尚未实现。配置 schema 为 1，缺失字段使用安全默认值，未知版本、格式错误和重复绑定拒绝加载；应用保留原始数据并暂停编辑。
+`Remote2PromptCore` 不发送系统事件，不连接设备，不读写系统音频。`AudioInputPriority.reconcile` 接收最新快照并返回可选目标 UID，返回意图不等于写入成功。`VoiceSession` 返回按键事件意图，系统适配器尚未实现。配置 schema 为 2，读取 schema 1 时保留原有设置并迁移；新增按键 TV 与可选的任意快捷键。未知版本、格式错误、重复绑定及不完整快捷键拒绝加载，应用保留原始数据并暂停编辑。
+
+`XiaomiRemote` 解析 report 1 中三个 little-endian 16-bit usage，支持 6 字节及带 ID 前缀的 7 字节格式。`ButtonGestures` 用外部传入的单调时钟区分即时单击、0.30 秒双击、0.55 秒长按；普通可重复动作在 0.45 秒后每 0.08 秒重复，迟到的计时器不补发积压动作。语音 usage 0x3E 不进入普通手势。
 
 `ConfigurationStore` 在 MainActor 上通过 UserDefaults 保存整个配置，键为 `configuration.v1`，应用标识符为 `dev.remote2prompt.app`。当前应用只读取辅助功能与输入监控授权状态，不发起授权请求。SwiftUI `NavigationSplitView` 和分组 `Form` 构成原生设置；菜单栏入口重开同一窗口。
 
