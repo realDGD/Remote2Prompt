@@ -26,7 +26,7 @@ Status: implemented
 
 ## Consequences
 
-本机实际远端源码安装、应用程序本体检查、`brew test`、签名验证与硬件禁用的 UI smoke 已通过；Cask `--zap` 和 Formula 卸载实际清除了应用、命令、构建文件及合成设置。最终再次从本仓库固定源码清洁安装 0.1.2。完整证据与 CI 链接见 [验证记录](../../../../docs/validation/2026-10-27-homebrew-app-lifecycle.md)。
+本机 0.2.1 已从固定远端源码清洁安装，应用程序本体、`brew test`、源码校验标记、与 keg 代码一致性、严格签名及旧设置清理均通过，详见[当前安装记录](../../../../docs/validation/2026-10-28-menu-release.md)。原生菜单仍因锁屏未补验，不能用安装检查代替。历史 0.1.2 的应用生命周期与禁用硬件 UI smoke 结果见[早期验证](../../../../docs/validation/2026-10-27-homebrew-app-lifecycle.md)，0.2.0 见[对应记录](../../../../docs/validation/2026-10-28-source-install.md)。
 
 源码产物和安装本体占用两份空间，分两条卸载命令管理；升级时必须先升级 Formula 再升级 Cask。固定源码提交和更新配方分两次提交；之后的文档提交不自动改变已固定的构建来源。误建的独立 tap 仓库已由用户手动删除，当前仅维护本源码仓库。
 
