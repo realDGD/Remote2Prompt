@@ -81,56 +81,56 @@ var checks: [(String, () throws -> Void)] = [
     }),
     ("priority disabled respects system input", {
         var policy = AudioInputPriority()
-        try expect(policy.reconcile(observation(enabled: false)) == nil, "Disabled policy changed input")
+        try expect(policy.simulateSuccessfulSwitch(observation(enabled: false)) == nil, "Disabled policy changed input")
     }),
     ("connected remote selects virtual input", {
         var policy = AudioInputPriority()
-        try expect(policy.reconcile(observation()) == "virtual", "Virtual input was not requested")
-        try expect(policy.reconcile(observation(current: "virtual")) == nil, "Self-notification caused a write loop")
+        try expect(policy.simulateSuccessfulSwitch(observation()) == "virtual", "Virtual input was not requested")
+        try expect(policy.simulateSuccessfulSwitch(observation(current: "virtual")) == nil, "Self-notification caused a write loop")
     }),
     ("AirPods preemption is remembered and restored", {
         var policy = AudioInputPriority()
-        _ = policy.reconcile(observation())
-        try expect(policy.reconcile(observation(current: "airpods")) == "virtual", "AirPods stole the input")
-        try expect(policy.reconcile(observation(remotes: [], current: "virtual")) == "airpods", "Most recent physical input was not restored")
-        try expect(policy.reconcile(observation(remotes: [], current: "airpods")) == nil, "Restore caused a write loop")
+        _ = policy.simulateSuccessfulSwitch(observation())
+        try expect(policy.simulateSuccessfulSwitch(observation(current: "airpods")) == "virtual", "AirPods stole the input")
+        try expect(policy.simulateSuccessfulSwitch(observation(remotes: [], current: "virtual")) == "airpods", "Most recent physical input was not restored")
+        try expect(policy.simulateSuccessfulSwitch(observation(remotes: [], current: "airpods")) == nil, "Restore caused a write loop")
     }),
     ("only the last remote disconnect restores", {
         var policy = AudioInputPriority()
-        _ = policy.reconcile(observation(remotes: ["remote-a", "remote-b"]))
-        try expect(policy.reconcile(observation(remotes: ["remote-b"], current: "virtual")) == nil, "An active remote lost priority")
-        try expect(policy.reconcile(observation(remotes: [], current: "virtual")) == "built-in", "Last disconnect did not restore")
+        _ = policy.simulateSuccessfulSwitch(observation(remotes: ["remote-a", "remote-b"]))
+        try expect(policy.simulateSuccessfulSwitch(observation(remotes: ["remote-b"], current: "virtual")) == nil, "An active remote lost priority")
+        try expect(policy.simulateSuccessfulSwitch(observation(remotes: [], current: "virtual")) == "built-in", "Last disconnect did not restore")
     }),
     ("disabling active priority restores physical input", {
         var policy = AudioInputPriority()
-        _ = policy.reconcile(observation())
-        try expect(policy.reconcile(observation(enabled: false, current: "virtual")) == "built-in", "Disabling failed to restore")
+        _ = policy.simulateSuccessfulSwitch(observation())
+        try expect(policy.simulateSuccessfulSwitch(observation(enabled: false, current: "virtual")) == "built-in", "Disabling failed to restore")
     }),
     ("manual choice after disconnect is preserved", {
         var policy = AudioInputPriority()
-        _ = policy.reconcile(observation())
-        try expect(policy.reconcile(observation(remotes: [], current: "airpods")) == nil, "Manual input selection was overwritten")
+        _ = policy.simulateSuccessfulSwitch(observation())
+        try expect(policy.simulateSuccessfulSwitch(observation(remotes: [], current: "airpods")) == nil, "Manual input selection was overwritten")
     }),
     ("missing virtual device never selects a physical device as virtual", {
         var policy = AudioInputPriority()
-        try expect(policy.reconcile(observation(selected: "missing")) == nil, "Missing device produced a switch")
-        try expect(policy.reconcile(observation(selected: "built-in")) == nil, "Physical device was treated as virtual")
+        try expect(policy.simulateSuccessfulSwitch(observation(selected: "missing")) == nil, "Missing device produced a switch")
+        try expect(policy.simulateSuccessfulSwitch(observation(selected: "built-in")) == nil, "Physical device was treated as virtual")
     }),
     ("removed restore device falls back to available physical input", {
         var policy = AudioInputPriority()
-        _ = policy.reconcile(observation(current: "airpods"))
+        _ = policy.simulateSuccessfulSwitch(observation(current: "airpods"))
         let inputs = [AudioInput(uid: "built-in", isVirtual: false), AudioInput(uid: "virtual", isVirtual: true)]
-        try expect(policy.reconcile(observation(remotes: [], current: "virtual", inputs: inputs)) == "built-in", "Unavailable fallback was requested")
+        try expect(policy.simulateSuccessfulSwitch(observation(remotes: [], current: "virtual", inputs: inputs)) == "built-in", "Unavailable fallback was requested")
     }),
     ("no physical fallback leaves the default alone", {
         var policy = AudioInputPriority()
-        _ = policy.reconcile(observation())
+        _ = policy.simulateSuccessfulSwitch(observation())
         let inputs = [AudioInput(uid: "virtual", isVirtual: true)]
-        try expect(policy.reconcile(observation(remotes: [], current: "virtual", inputs: inputs)) == nil, "Policy invented a fallback")
+        try expect(policy.simulateSuccessfulSwitch(observation(remotes: [], current: "virtual", inputs: inputs)) == nil, "Policy invented a fallback")
     }),
     ("empty device snapshots are harmless", {
         var policy = AudioInputPriority()
-        try expect(policy.reconcile(observation(current: nil, inputs: [])) == nil, "Empty device list produced a write")
+        try expect(policy.simulateSuccessfulSwitch(observation(current: nil, inputs: [])) == nil, "Empty device list produced a write")
     }),
     ("left and right Control use distinct macOS keycodes", {
         try expect(VoiceTrigger.leftControl.virtualKeyCode == 59, "Left Control keycode changed")
@@ -173,6 +173,7 @@ var checks: [(String, () throws -> Void)] = [
 checks.append(contentsOf: mappingChecks())
 checks.append(contentsOf: setupChecks())
 checks.append(contentsOf: voiceProtocolChecks())
+checks.append(contentsOf: inputPriorityChecks())
 
 var failed = 0
 for (name, check) in checks {
