@@ -37,6 +37,8 @@ app_dir="$stage_dir/Remote2Prompt.app"
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
 cp "$binary_dir/Remote2Prompt" "$app_dir/Contents/MacOS/Remote2Prompt"
 cp "$repo_dir/Resources/Info.plist" "$app_dir/Contents/Info.plist"
+/usr/bin/xcrun swift -module-cache-path "$repo_dir/.build/icon-module-cache" "$repo_dir/scripts/build-icon.swift" "$stage_dir/AppIcon.iconset"
+/usr/bin/iconutil --convert icns "$stage_dir/AppIcon.iconset" --output "$app_dir/Contents/Resources/AppIcon.icns"
 version="$(cat "$repo_dir/VERSION")"
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "VERSION must contain a numeric major.minor.patch version" >&2

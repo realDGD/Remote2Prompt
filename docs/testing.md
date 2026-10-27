@@ -20,7 +20,9 @@ make homebrew
 # 安装命令见 development.md；安装后运行 brew test
 ```
 
-UI smoke 只确认真实窗口可见；界面布局、侧栏、滚动、暗色和键盘导航需要目视检查。设置保存还需关闭重开核验。Homebrew `test` 只检查已安装应用的无界面自检与版本，不能证明蓝牙、语音或系统权限可用。
+UI smoke 只确认真实窗口可见；界面布局、侧栏、滚动、暗色和键盘导航需要目视检查。`--smoke-test-guide` 额外检查拖入帮助面板可见，不打开系统授权、不访问 HID/蓝牙；`--preview-directory` 导出的自身视图缓存不能代替完整原生控件检查。设置保存还需关闭重开核验。Homebrew `test` 只检查已安装应用的无界面自检与版本，不能证明蓝牙、语音或系统权限可用。
+
+普通检查新增覆盖 schema 3 独立语音开关及迁移、ATVV 能力包与合成 IMA/DVI 解码、仅语音模式的源租约恢复和修饰键释放。单独执行 `Remote2PromptMacChecks --loopback-output-smoke` 会向已识别回环设备写入 800 个静音样本并检查排空及默认设备快照；普通 `make test` 不运行它。此硬件检查不读取麦克风，不证明蓝牙音频和目标输入法工作。
 
 ## 真机验收矩阵
 
@@ -41,4 +43,4 @@ UI smoke 只确认真实窗口可见；界面布局、侧栏、滚动、暗色�
 | 权限撤销/应用退出 | 停止接管，清理 listener、任务、按键与设备映射 |
 | Apple Silicon 与 Intel、macOS 14 与当前版本 | CLT 编译与运行分别记录，不能从单机结果推断 |
 
-M0 结果保存在 [初始化记录](validation/2026-10-27-bootstrap.md)。M1 的设备、权限、按键和 UI 验证边界见 [M1 记录](validation/2026-10-27-m1.md)。输入法语音、CoreAudio 切换与驱动安装仍未验收。
+M0 结果保存在 [初始化记录](validation/2026-10-27-bootstrap.md)。M1 的设备、权限、按键和 UI 验证边界见 [M1 记录](validation/2026-10-27-m1.md)。最新设置、权限引导和 MiRemoteV 输出结果见 [设置与语音记录](validation/2026-10-27-settings-and-voice.md)。输入法语音、默认输入优先切换与驱动安装仍未验收。

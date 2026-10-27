@@ -27,7 +27,7 @@ macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问�
 
 默认仍是临时签名，其 designated requirement 绑定本次代码哈希，代码变化后系统可能不再接受旧授权。可通过 `CODE_SIGN_IDENTITY='证书名称或指纹' make build` 使用本机已有的代码签名身份；保持同一身份可让系统识别后续版本。该选项不创建证书、不改钥匙串，也不自动签名公证或发布。
 
-无线麦的源码开发构建为临时签名显式指定 `identifier` 识别规则，本项目提供相同语义的可选模式：`REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1 make build`。它只按 `dev.remote2prompt.app` 匹配、没有签名者约束，其他本地程序也能声明同一标识；因此默认关闭，仅在维护者明确接受这一身份边界后用于本地开发，不作为公开分发方案。当前测试应用尚未应用此选项。推荐使用稳定的代码签名证书。
+无线麦的源码开发构建为临时签名显式指定 `identifier` 识别规则，本项目提供相同语义的可选模式：`REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1 make build`。它只按 `dev.remote2prompt.app` 匹配、没有签名者约束，其他本地程序也能声明同一标识；因此默认关闭，仅在维护者明确接受这一身份边界后用于本地开发，不作为公开分发方案。当前测试应用尚未应用此选项。这些入口仅供后续明确选择；本轮保持默认临时签名，不创建证书、不改钥匙串，也不启用放宽的 identifier 规则。
 
 改变签名方式后，已有授权可能仍须重新关联当前构建。稳定签名用于避免后续身份漂移，不等于保证系统首次弹窗出现；必须另行记录实际授权和按键结果。
 
@@ -77,3 +77,9 @@ brew untap remote2prompt/local
 ## 公开发布前
 
 必须先明确真实仓库地址、许可证、Bundle ID 和版本，再将 [Formula 模板](../packaging/homebrew/remote2prompt.rb.in) 的生成来源换为固定 Tag/归档 URL，核对 SHA-256。公开 tap 不能使用本机 `file://` 路径。Homebrew Formula 的源码构建与 Cask 的预编译分发是两条路径；当前不创建公开 tap、Tag、Release 或自动更新服务。
+
+## 本轮诊断入口
+
+`--list-loopback-devices` 只读列出兼容回环设备名称。`--smoke-test-guide` 以不访问 HID/蓝牙的模式检查设置与拖入帮助面板可见；配合 `--preview-directory /绝对路径` 可导出应用自己的视图预览，缓存图不代替完整原生交互检查。
+
+macOS 检查程序的 `--loopback-output-smoke` 是单独、显式的硬件检查：仅向已识别回环设备写入 800 个静音样本，等待排空，并比较前后系统默认设备快照。普通 `make test` 不运行此硬件检查。

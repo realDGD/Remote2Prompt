@@ -5,6 +5,8 @@
     <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
     <key>CFBundleIdentifier</key><string>dev.remote2prompt.app</string>
     <key>CFBundleName</key><string>Remote2Prompt</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleDisplayName</key><string>Remote2Prompt</string>
     <key>CFBundleExecutable</key><string>Remote2Prompt</string>
     <key>CFBundlePackageType</key><string>APPL</string>

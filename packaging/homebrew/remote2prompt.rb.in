@@ -26,7 +26,7 @@ class Remote2prompt < Formula
 
   def caveats
     <<~EOS
-      Remote key mapping is a development preview; remote audio is not connected yet.
+      Remote key mapping and voice audio are development previews; real remote acceptance is pending.
       Run remote2prompt to open settings. No audio driver is installed.
       Optional Applications shortcut (only if the destination does not exist):
         ln -s "#{opt_libexec}/Remote2Prompt.app" /Applications/Remote2Prompt.app

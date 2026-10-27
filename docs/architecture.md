@@ -1,41 +1,42 @@
 # 架构
 
-## 当前源码
+## 模块
 
-```text
-Sources/
-  Remote2PromptCore/        配置格式、按键模型、语音键会话、输入优先策略
-  Remote2Prompt/            SwiftUI/AppKit 入口、左栏设置、本机配置保存
-  Remote2PromptMac/         HID、按设备原生键租约、系统事件发送、运行时协调
-Tests/Remote2PromptChecks/  无 XCTest 的核心行为检查可执行程序
-Resources/                 应用 Info.plist
-scripts/                   CLT 构建、验证、文档检查、本地 tap 生成
-packaging/homebrew/        源码 Formula 模板
-.agents/notes/             持久决策及尚未完成的提案
-.agents/plans/             实施清单与交接
-.agents/skills/            两个本项目工作流技能
-```
+- `Remote2PromptCore`：配置、映射、手势、语音键会话、ATVV 数据格式、IMA/DVI 解码及输入优先策略，不依赖 UI、蓝牙、CoreAudio 或系统事件发送。
+- `Remote2PromptMac`：设备与权限、原生按键租约、系统动作、CoreBluetooth、回环设备与音频输出。
+- `Remote2Prompt`：SwiftUI/AppKit 原生设置、配置保存和操作引导。
+- `Tests/Remote2PromptChecks`、`Tests/Remote2PromptMacChecks`：不依赖 XCTest 的检查入口。macOS 模拟检查注入设备服务与事件出口，不向桌面发送按键。
+- `scripts/` 与 `packaging/homebrew/`：独立 CLT 构建、bundle/仓库检查与本地源码 tap。
+- `.agents/notes/`：持久决策；`.agents/plans/`：实施清单；`.agents/skills/`：项目检查与 Note 工作流。
 
-`Remote2PromptCore` 不发送系统事件，不连接设备，不读写系统音频。`AudioInputPriority.reconcile` 接收最新快照并返回可选目标 UID，返回意图不等于写入成功。`VoiceSession` 返回按键事件意图，由 macOS 适配器发送。配置 schema 为 2，读取 schema 1 时保留原有设置并迁移；新增按键 TV 与可选的任意快捷键。未知版本、格式错误、重复绑定及不完整快捷键拒绝加载，应用保留原始数据并暂停编辑。
+## 配置与界面
 
-`XiaomiRemote` 解析 report 1 中三个 little-endian 16-bit usage，支持 6 字节及带 ID 前缀的 7 字节格式。`ButtonGestures` 用外部传入的单调时钟区分即时单击、0.30 秒双击、0.55 秒长按；普通可重复动作在 0.45 秒后每 0.08 秒重复，迟到的计时器不补发积压动作。语音 usage 0x3E 不进入普通手势。
+`ConfigurationStore` 在 MainActor 上保存整个配置，存储键保持 `configuration.v1`，应用标识为 `dev.remote2prompt.app`。数据 schema 为 3：新增独立 `voiceEnabled` 和默认关闭的 `remoteAudioEnabled`。读取 schema 1/2 保留原设置；原映射已开则迁移语音触发为开，不自动启用遥控器音频。未知版本、重复绑定及无效快捷键拒绝加载，保留原始数据并暂停编辑。
 
-`ConfigurationStore` 在 MainActor 上通过 UserDefaults 保存整个配置，存储键保持 `configuration.v1` 以读取旧配置，数据内的 schema 为 2，应用标识符为 `dev.remote2prompt.app`。权限请求仅由用户点击界面按钮触发。SwiftUI `NavigationSplitView` 和分组 `Form` 构成原生设置；菜单栏入口重开同一窗口。
+原生四页设置使用 `NavigationSplitView`。映射页为所有键同时显示三列，录入器只处理当前窗口，候选确认前不改配置。遥控器图由 SwiftUI 几何绘制，不包含品牌图片。`SetupWizard` 使用临时检测模式，复用 HID 链路而不执行普通映射或语音触发；仅完成时合并选择，取消恢复原状态。`SetupInputCheck` 限定本次阶段与同一来源的成对事件，断连或停止清除结果，不证明音频或输入法可用。
 
-`SetupWizard` 使用运行时的临时检测模式，复用原生键租约和 HID 回调，但不调用动作执行器。`SetupInputCheck` 只保存本次检测的临时来源和成对事件，来源不写入设置；断连、停止或重新检测会使结果失效。向导只在完成时合并所选设置，退出后按原配置恢复接管。普通按键与语音按键的检测不证明音频或目标输入法可用。
+SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>` 显式引用公开 `SwiftUI.State<Value>` 包装器。不能未经独立 CLT 验证改回裸宏。
 
-SDK 27 另外声明了 `@State` 宏，但当前独立 CLT 不附带 SwiftUIMacros 插件。`ViewState<Value>` 显式引用公开的 `SwiftUI.State<Value>` 属性包装器，保留旧 SDK 语义并避免依赖 Xcode 中的宏插件；不要直接改回裸 `@State` 而未在独立 CLT 下验证。
+## 设备、权限与事件
 
-## 系统适配器
+发现阶段只读 IORegistry 属性，不实例化 HID user client。接管时 `HIDRemoteMonitor` 才打开限定 VID/PID 的原始键盘报告通道。`XiaomiRemote` 解析三个 little-endian 16-bit usage，支持 report 1 的 6/7 字节布局，语音 0x3E 不进入普通手势。`ButtonGestures` 使用外部单调时间：双击 0.30 秒、长按 0.55 秒；可重复动作 0.45 秒后每 0.08 秒重复，不补发积压。
 
-HID、系统动作与按键运行时已接入；音频相关职责仍为规划：
+`NativeKeyLease` 按服务与所属源写入、验证和恢复原生映射。恢复日志 v2 记录本次源范围，兼容旧 v1；仅开启语音时只接管语音键，普通映射开而语音关时不接管语音键。日志在设备写入前原子保存；外部软件后来的修改保留。理由见 [设备租约决策](../.agents/notes/implemented/architecture/2026-10-27-device-scoped-key-lease.md)。
 
-- **设备适配器**：`HIDRemoteMonitor` 管理限定设备的原始键盘报告与热插拔，`NativeKeyLease` 拥有原生键抑制与恢复。CoreBluetooth/ATVV 留待 M2。HID 连接不等于音频 ready。
-- **音频适配器**：经过验证的解码器输出 PCM，通过 AVAudioEngine/CoreAudio 送入明确选定的回环设备；拥有队列排空、溢出、失效与停止。
-- **输入设备协调器**：监听 CoreAudio 设备列表和默认输入，转换成 UID 快照交给策略；串行写入后读取验证，处理失败、限频和 listener 清理。不得在渲染回调中做设备枚举或系统输入切换。
-- **动作执行器**：`SystemActionSender` 将映射和语音键事件转换为 CoreGraphics/系统媒体动作，负责辅助功能检查、左右修饰标记、合成事件标记和释放。录入器仅接收当前窗口事件。
-- **运行时协调器**：`RemoteMappingRuntime` 串行处理按键、设备接口变化、设置修改、权限丢失、休眠和退出。语音按住期间暂停普通映射，避免组合键副作用。音频开始、排空和结束的协调留待 M2。
+`PermissionProbe` 在串行后台队列处理同步 TCC 查询与请求，主线程交付状态，不堆积轮询。监听已允许不等于独立输入监控条目，可能来自设备控制授权。只在用户请求时调用公开授权 API；失败时可打开真实设置，并以原生可拖动 app URL、图标和箭头辅助人工添加，不伪造系统授权框。相同状态不持续发布，避免无意义地重建整个设置页。
 
-当前新增 `Remote2PromptMac` target，使 macOS 适配器可以由独立检查程序注入模拟设备服务与事件出口，检查不向真实桌面发送按键。HID 输入和映射清理的理由见 [设备租约决策](../.agents/notes/implemented/architecture/2026-10-27-device-scoped-key-lease.md)。音频适配器、ATVV 和默认输入协调器仍未实现。
+`SystemActionSender` 成对发送普通键、媒体键和独立修饰键，持有物理冲突检查与释放。释放时重建本次修饰键家族的真实物理状态，清掉快照中可能残留的合成标记，保留另一侧及其他修饰键。`RemoteMappingRuntime` 统一处理 HID、设置、权限、断连、休眠和退出；语音持有期间暂停普通映射。
 
-为什么采用此分层与工具链，见 [CLT 与应用分层决策](../.agents/notes/implemented/architecture/2026-10-27-swift-clt-foundation.md)。
+## 音频代码链路
+
+`RemoteVoiceBluetooth` 管理单个 RC003 候选，订阅 Audio/Control 通知并确认支持 16 kHz 的能力后才 ready；初始化超时 8 秒，失败后 3 秒重建连接。旧连接的 delegate 被清理，不跨连接处理回调。只连接明确设备名或匹配 ATVV 服务的已限定候选；不记录外设 UUID、地址或完整数据。
+
+核心 `RemoteVoiceDecoder` 处理高半字节优先的 IMA/DVI、分片和 predictor/index 同步，拒绝异常尺寸。解码检查使用合成固定样例，不包含真实录音。
+
+`LoopbackDevices` 以已知 UID 加双向声道验证识别 MiRemoteV 2ch / BlackHole 2ch。瞬时 AudioDeviceID 仅存在适配器，配置保存 UID。`LoopbackWriter` 在串行队列中拥有 AVAudioEngine，只绑定明确选中的回环设备。没有回退扬声器或写系统默认输入/输出的路径，设备失效或队列溢出时停止。
+
+`RemoteAudioRuntime` 拥有路由、协议连接和会话代际。开始前确认音频与 HID 接管准备，再发送触发键；结束保留 120 ms 尾部通知，排队 PCM 播放完成后释放，排空最长等待 1 秒。取消、断连或失效立即清理。快速重按会中断旧排空，新会话等协议 start 后接收数据，避免旧音频混入。测试音在内存生成，只写所选回环，真实语音优先并取消测试音。
+
+以上为代码接入事实，不能替代实际说话、首尾音、低延迟及目标输入法验收。默认输入优先协调器仍未实现；`AudioInputPriority` 目前只返回切换意图，不执行系统写入。
+
+工具链与分层理由见 [CLT 决策](../.agents/notes/implemented/architecture/2026-10-27-swift-clt-foundation.md)。
