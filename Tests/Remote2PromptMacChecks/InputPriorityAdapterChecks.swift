@@ -65,7 +65,75 @@ func inputPriorityAdapterChecks() -> [(String, @MainActor () throws -> Void)] {
     cases.append(contentsOf: inputLifecycleChecks())
     cases.append(contentsOf: voiceInputRuntimeChecks())
     cases.append(contentsOf: voicePrerollChecks())
+    cases.append(contentsOf: menuInputChecks())
     return cases
+}
+
+@MainActor
+private func menuInputChecks() -> [(String, @MainActor () throws -> Void)] {
+    func idle(_ mode: FakeAudioInputs.Mode = .immediate) -> (FakeAudioInputs, InputPriorityCoordinator, InputClock) {
+        let system = FakeAudioInputs(); system.mode = mode
+        let clock = InputClock()
+        let coordinator = InputPriorityCoordinator(system: system, clock: { clock.now })
+        coordinator.start()
+        return (system, coordinator, clock)
+    }
+    return [
+        ("menu input catalog follows system without writing", {
+            let (system, coordinator, _) = idle()
+            system.current = "airpods"; system.callback?()
+            try check(coordinator.state.defaultUID == "airpods" && coordinator.state.inputs.count == 3 && system.writes.isEmpty, "Menu observation changed input or kept a stale catalog")
+            coordinator.selectInput(uid: "airpods")
+            try check(system.writes.isEmpty, "Selecting current input wrote unnecessarily")
+            coordinator.stop()
+        }),
+        ("explicit menu choice is confirmed without voice ownership", {
+            let (system, coordinator, _) = idle()
+            coordinator.selectInput(uid: "airpods")
+            try check(system.current == "airpods" && system.writes.count == 1 && system.writes[0].purpose == .userSelection, "Menu selection did not use explicit write")
+            try check(coordinator.state.defaultUID == "airpods" && !coordinator.hasUnrestoredSession && !coordinator.state.selectingInput, "Menu choice took voice ownership or skipped readback")
+            coordinator.stop()
+        }),
+        ("menu rejects a disconnected target and source race", {
+            let (system, coordinator, _) = idle()
+            coordinator.selectInput(uid: "missing")
+            try check(system.writes.isEmpty && coordinator.state.selectionError != nil, "Stale target accepted")
+            system.raceBeforeWrite = true
+            coordinator.selectInput(uid: "virtual")
+            try check(system.writes.isEmpty && system.current == "airpods" && coordinator.state.selectionError != nil, "Menu clobbered a concurrent system choice")
+            coordinator.stop()
+        }),
+        ("delayed menu write requires readback and blocks another choice", {
+            let (system, coordinator, _) = idle(.delayed)
+            coordinator.selectInput(uid: "airpods")
+            try check(coordinator.state.selectingInput && coordinator.state.defaultUID == "built-in" && !coordinator.canSelectInput, "Delayed write claimed success")
+            coordinator.selectInput(uid: "virtual")
+            try check(system.writes.count == 1, "A second choice raced pending input")
+            system.applyPending()
+            try check(!coordinator.state.selectingInput && coordinator.state.defaultUID == "airpods", "Delayed readback not reflected")
+            coordinator.stop()
+        }),
+        ("ignored and rejected menu writes remain visible failures", {
+            let (system, coordinator, clock) = idle(.ignored)
+            coordinator.selectInput(uid: "airpods"); clock.now = 1; coordinator.refresh()
+            try check(!coordinator.state.selectingInput && coordinator.state.selectionError != nil && system.current == "built-in", "Ignored write reported success")
+            system.mode = .denied; coordinator.selectInput(uid: "airpods")
+            try check(coordinator.state.selectionError != nil && !coordinator.hasUnrestoredSession, "Denied menu write created restore transaction")
+            coordinator.stop()
+        }),
+        ("voice ownership and pending restoration block menu writes", {
+            let (system, coordinator, _) = fixture()
+            coordinator.selectInput(uid: "airpods")
+            try check(system.writes.count == 1 && system.current == "virtual", "Menu interrupted held voice")
+            system.mode = .delayed
+            coordinator.configure(enabled: true, selectedUID: "virtual", activeVoices: [])
+            coordinator.selectInput(uid: "airpods")
+            try check(system.writes.count == 2 && !coordinator.canSelectInput, "Menu raced restore")
+            system.applyPending()
+            try check(coordinator.canSelectInput, "Menu stayed locked after restore")
+            coordinator.stop()
+        })
+    ]
 }
 
 @MainActor

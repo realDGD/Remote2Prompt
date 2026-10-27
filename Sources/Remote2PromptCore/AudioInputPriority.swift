@@ -16,11 +16,14 @@ public struct AudioInput: Equatable, Sendable {
 }
 
 public struct InputPriorityRequest: Equatable, Sendable {
-    public enum Purpose: Sendable { case prioritize, restore }
+    public enum Purpose: Sendable { case prioritize, restore, userSelection }
     public let sequence: UInt64
     public let sourceUID: String
     public let targetUID: String
     public let purpose: Purpose
+    public init(sequence: UInt64, sourceUID: String, targetUID: String, purpose: Purpose) {
+        self.sequence = sequence; self.sourceUID = sourceUID; self.targetUID = targetUID; self.purpose = purpose
+    }
 }
 
 /// A fresh observation of CoreAudio and active voice sessions. Runtime AudioDeviceIDs must stay in the adapter.
@@ -118,6 +121,7 @@ public struct AudioInputPriority: Sendable {
         guard proposal == request, observedUID == request.targetUID else { return false }
         lastConfirmedUID = request.targetUID
         switch request.purpose {
+        case .userSelection: return false
         case .prioritize:
             confirmedVirtualUID = request.targetUID; established = true
         case .restore:

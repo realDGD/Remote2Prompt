@@ -41,9 +41,13 @@ public final class AudioInputPriorityRuntime: ObservableObject {
         ready = value; apply()
     }
     public func retry() { guard hardwareEnabled, !closing, !closed else { return }; coordinator.retry() }
+    public var canSelectInput: Bool { hardwareEnabled && !closing && !closed && coordinator.canSelectInput }
+    public func selectInput(uid: String) { guard canSelectInput else { return }; coordinator.selectInput(uid: uid) }
+    public func refreshInputs() { guard hardwareEnabled, !closing, !closed else { return }; coordinator.refresh() }
     /// The trigger may be sent only after a fresh, matching CoreAudio readback.
     public func beginVoiceSession(completion: @escaping (Bool) -> Void) {
         guard hardwareEnabled, !closing, !closed else { completion(false); return }
+        guard !state.selectingInput else { completion(false); return }
         guard configuration.preferVirtualInput else { completion(true); return }
         guard ready, configuration.voiceEnabled, configuration.remoteAudioEnabled else { completion(false); return }
         completeBegin(false)

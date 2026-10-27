@@ -13,6 +13,10 @@ public struct InputPriorityState: Equatable, Sendable {
     public var pending = false
     public var readyForVoice = false
     public var usingFallback = false
+    public var inputs: [SystemAudioInput] = []
+    public var defaultUID: String?
+    public var selectingInput = false
+    public var selectionError: String?
     public init() {}
 }
 
@@ -44,6 +48,7 @@ public final class InputPriorityCoordinator {
     private var selectedUID: String?
     private var activeVoices: Set<String> = []
     private var pending: Pending?
+    private var userSelection: Pending?
     private var intent: Intent?
     private var failures = 0
     private var nextWrite: TimeInterval = 0
@@ -84,6 +89,29 @@ public final class InputPriorityCoordinator {
         if running { refresh() } else { start() }
     }
 
+    public var canSelectInput: Bool {
+        running && !stopped && activeVoices.isEmpty && !policy.hasSession && pending == nil && userSelection == nil
+    }
+
+    /// Explicit menu action, separate from automatic ownership. Never guesses a stale source UID.
+    public func selectInput(uid: String) {
+        guard canSelectInput else { return }
+        state.selectionError = nil
+        do {
+            let snapshot = try system.snapshot()
+            guard snapshot.inputs.contains(where: { $0.policy.uid == uid }), let source = snapshot.defaultUID else {
+                throw InputSystemFailure.unavailable
+            }
+            guard source != uid else { refresh(); return }
+            let request = InputPriorityRequest(sequence: 0, sourceUID: source, targetUID: uid, purpose: .userSelection)
+            userSelection = Pending(request: request, deadline: clock() + 1)
+            try system.setDefaultInput(request)
+        } catch {
+            userSelection = nil; state.selectionError = error.localizedDescription
+        }
+        refresh()
+    }
+
     public func refresh() {
         guard running, !stopped else { return }
         guard !refreshing else { refreshAgain = true; return }
@@ -93,6 +121,7 @@ public final class InputPriorityCoordinator {
             refreshing = false
             if refreshAgain { refreshAgain = false; wake(at: clock() + 0.05) }
             state.pending = pending != nil
+            state.selectingInput = userSelection != nil
             state.ownsInput = policy.confirmedVirtualUID != nil
             state.readyForVoice = fresh.map { snapshot in
                 enabled && !activeVoices.isEmpty && pending == nil && policy.restoreInputUID != nil
@@ -100,6 +129,8 @@ public final class InputPriorityCoordinator {
                     && snapshot.inputs.contains { $0.policy.uid == selectedUID && $0.policy.supportsPriority }
             } ?? false
             if let fresh {
+                state.inputs = fresh.inputs
+                state.defaultUID = fresh.defaultUID
                 state.restoreInput = fresh.name(for: policy.restorationTarget(in: fresh.inputs.map(\.policy))?.uid)
                 state.usingFallback = policy.restoreInputUID != nil && fresh.name(for: policy.restoreInputUID) == nil && state.restoreInput != nil
             }
@@ -111,6 +142,15 @@ public final class InputPriorityCoordinator {
             fresh = snapshot
             let observed = observation(snapshot)
             observe(snapshot, observed)
+            if let selection = userSelection {
+                if snapshot.defaultUID == selection.request.targetUID {
+                    userSelection = nil; state.selectionError = nil
+                } else if now >= selection.deadline {
+                    userSelection = nil; state.selectionError = "系统未确认声音输入切换，请重试。"
+                } else {
+                    wake(at: min(selection.deadline, now + 0.1)); return
+                }
+            }
             if let active = pending {
                 if snapshot.defaultUID == active.request.targetUID {
                     finish(active.request, snapshot: snapshot)
@@ -159,13 +199,17 @@ public final class InputPriorityCoordinator {
             } else { wake(at: min(now + 0.1, pending!.deadline)) }
         } catch {
             fresh = nil
+            state.inputs = []; state.defaultUID = nil
             state.observedInput = nil
             // Keep pending evidence until the deadline; a transient read failure must not invent success.
             state.phase = .failed; state.error = error.localizedDescription
             if let pending, now >= pending.deadline {
                 policy.reject(pending.request); self.pending = nil
                 fail(error.localizedDescription, now: now)
-            } else { wake(at: now + (pending == nil ? 2 : 0.1)) }
+            } else { wake(at: now + (pending == nil && userSelection == nil ? 2 : 0.1)) }
+            if let selection = userSelection, now >= selection.deadline {
+                userSelection = nil; state.selectionError = error.localizedDescription
+            }
         }
     }
 
@@ -174,7 +218,8 @@ public final class InputPriorityCoordinator {
         guard !stopped else { return }
         stopped = true; running = false; nextWakeup = nil
         if let pending { policy.reject(pending.request) }
-        pending = nil; system.stop()
+        pending = nil; userSelection = nil; system.stop()
+        state.selectingInput = false
         state.pending = false; state.phase = .stopped
         state.readyForVoice = false
         onUpdate?(); onUpdate = nil

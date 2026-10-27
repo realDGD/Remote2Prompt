@@ -73,12 +73,12 @@ extension VoiceTrigger {
     var title: String {
         switch self {
         case .function: "Fn / 地球键"
-        case .leftControl: "左 Control"
-        case .rightControl: "右 Control"
-        case .leftCommand: "左 Command"
-        case .rightCommand: "右 Command"
-        case .leftOption: "左 Option"
-        case .rightOption: "右 Option"
+        case .leftControl: "⌃ 左 Control"
+        case .rightControl: "⌃ 右 Control"
+        case .leftCommand: "⌘ 左 Command"
+        case .rightCommand: "⌘ 右 Command"
+        case .leftOption: "⌥ 左 Option"
+        case .rightOption: "⌥ 右 Option"
         }
     }
 }

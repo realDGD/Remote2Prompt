@@ -35,7 +35,8 @@ public protocol AudioInputSystem: AnyObject {
     func stop()
 }
 
-/// Owns CoreAudio listeners and the only system-default write path. Never opens an input stream.
+/// Owns CoreAudio listeners and the only system-default write path (voice policy or explicit menu choice).
+/// Never opens an input stream.
 @MainActor
 public final class CoreAudioInputSystem: AudioInputSystem {
     private struct Listener {

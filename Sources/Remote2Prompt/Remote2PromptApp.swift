@@ -84,6 +84,7 @@ struct Remote2PromptApp: App {
         MenuBarExtra("Remote2Prompt", systemImage: "mic.badge.plus") {
             MenuContents()
                 .environmentObject(store)
+                .environmentObject(runtime)
         }
     }
 }
@@ -91,9 +92,11 @@ struct Remote2PromptApp: App {
 private struct MenuContents: View {
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var store: ConfigurationStore
+    @EnvironmentObject private var runtime: RemoteMappingRuntime
 
     var body: some View {
         Text("Remote2Prompt")
+        MenuAudioInputs(priority: runtime.inputPriority, audio: runtime.audio, setupActive: runtime.setupActive)
         Divider()
         Button("打开设置…") {
             openWindow(id: "settings")
