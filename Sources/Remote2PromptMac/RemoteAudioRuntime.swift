@@ -63,7 +63,7 @@ public final class RemoteAudioRuntime: ObservableObject {
         bluetooth.onSync = { [weak self] data in
             guard let self, self.sessionActive, !self.draining, self.protocolStarted || self.allowEarlyAudio else { return }
             do { try self.decoder.synchronize(packet: data) }
-            catch { self.cancel(message: "遥控器音频同步数据无效。") }
+            catch { self.invalidateOutput("遥控器音频同步数据无效，请重新连接音频。") }
         }
         bluetooth.onAudio = { [weak self] data in self?.receive(data) }
         refreshDevices()
@@ -194,10 +194,15 @@ public final class RemoteAudioRuntime: ObservableObject {
                 guard let error else { return }
                 Task { @MainActor in
                     guard let self, self.generation == token else { return }
-                    self.cancel(message: error.localizedDescription)
+                    self.invalidateOutput(error.localizedDescription)
                 }
             }
-        } catch { cancel(message: "遥控器音频帧无效，已结束语音。") }
+        } catch { invalidateOutput("遥控器音频帧无效，请重新连接音频。") }
+    }
+    private func invalidateOutput(_ message: String) {
+        outputReady = false; bluetoothReady = false; isReady = false
+        routeFailures = 3; outputStatus = message
+        cancel(message: message); bluetooth.stop(); writer.stop()
     }
     public func cancel(message: String? = nil) {
         generation &+= 1; tail?.cancel(); startTimeout?.cancel()
@@ -217,7 +222,7 @@ public final class RemoteAudioRuntime: ObservableObject {
         writer.append(samples) { [weak self] error in
             Task { @MainActor in
                 guard let self, self.generation == token else { return }
-                if let error { self.testingTone = false; self.outputStatus = error.localizedDescription; return }
+                if let error { self.invalidateOutput(error.localizedDescription); return }
                 self.writer.finish { [weak self] completed in
                     Task { @MainActor in
                         guard let self, self.generation == token else { return }

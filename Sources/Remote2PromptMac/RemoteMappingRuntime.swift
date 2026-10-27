@@ -21,6 +21,7 @@ public enum MappingOutput {
 @MainActor
 public final class RemoteMappingRuntime: ObservableObject {
     public let audio: RemoteAudioRuntime
+    public let inputPriority: AudioInputPriorityRuntime
     @Published public private(set) var status = "自定义映射已关闭"
     @Published public private(set) var errorMessage: String?
     @Published public private(set) var detectedCount = 0
@@ -54,11 +55,17 @@ public final class RemoteMappingRuntime: ObservableObject {
     private var pendingPermission: PermissionRequest?
     private let permissionProbe = PermissionProbe()
     private var hasShutdown = false
+    private var audioReady = false
+    private var audioReadiness: AnyCancellable?
 
     public init(hardwareEnabled: Bool = true) {
         self.hardwareEnabled = hardwareEnabled
         audio = RemoteAudioRuntime(hardwareEnabled: hardwareEnabled)
+        inputPriority = AudioInputPriorityRuntime(hardwareEnabled: hardwareEnabled)
         guard hardwareEnabled else { status = "界面检查模式，未访问设备"; return }
+        audioReadiness = audio.$isReady.removeDuplicates().sink { [weak self] ready in
+            self?.audioReady = ready; self?.updateInputPriority()
+        }
         audio.canStart = { [weak self] in
             guard let self else { return false }
             return !self.hasShutdown && self.isRunning && !self.setupActive && self.accessibility && self.configuration.voiceEnabled && self.detectedCount == 1
@@ -117,7 +124,9 @@ public final class RemoteMappingRuntime: ObservableObject {
         if configuration.mappingsEnabled != value.mappingsEnabled || configuration.voiceEnabled != value.voiceEnabled || configuration.remoteAudioEnabled != value.remoteAudioEnabled || configuration.selectedVirtualInputUID != value.selectedVirtualInputUID { stop() }
         if configuration.bindings != value.bindings { gestures.cancelAll() }
         configuration = value
+        inputPriority.configure(value)
         audio.configure(value)
+        updateInputPriority()
         if !value.mappingsEnabled && !value.voiceEnabled && !setupActive { stop(); status = "按键映射和语音触发已关闭" }
         else {
             if !wasEnabled { retryAllowed = true }
@@ -146,6 +155,7 @@ public final class RemoteMappingRuntime: ObservableObject {
         let listening = snapshot.listen == kIOHIDAccessTypeGranted
         if inputMonitoring != listening { inputMonitoring = listening }
         if accessibility != snapshot.control { accessibility = snapshot.control }
+        updateInputPriority()
         if oldCount != detectedCount || oldInput != inputMonitoring || oldAX != accessibility { retryAllowed = true }
         guard configuration.mappingsEnabled || configuration.voiceEnabled || setupActive else { return }
         // Accessibility includes event posting/listening. The HID open remains authoritative for this device.
@@ -169,6 +179,7 @@ public final class RemoteMappingRuntime: ObservableObject {
             try lease?.acquire(sources: leaseSources)
             try monitor.start()
             isRunning = true; errorMessage = nil
+            updateInputPriority()
             status = setupActive ? "设置向导正在检测按键，日常映射已暂停" : configuration.mappingsEnabled ? "按键映射已启用" : "语音触发已启用，普通映射已关闭"
             gestureTimer = Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { [weak self] _ in
                 MainActor.assumeIsolated { self?.tick() }
@@ -258,8 +269,21 @@ public final class RemoteMappingRuntime: ObservableObject {
     }
 
     public func shutdown() {
+        stopResources()
+        inputPriority.shutdownImmediately()
+    }
+
+    public func prepareToTerminate(completion: @escaping () -> Void) {
+        stopResources()
+        inputPriority.shutdown(completion: completion)
+    }
+
+    private func stopResources() {
+        guard !hasShutdown else { return }
         hasShutdown = true
+        inputPriority.setReady(false)
         audio.shutdown()
+        audioReadiness = nil
         pollTimer?.invalidate(); pollTimer = nil
         stop()
         observations.forEach(NotificationCenter.default.removeObserver); observations.removeAll()
@@ -313,6 +337,7 @@ public final class RemoteMappingRuntime: ObservableObject {
         } catch { fail(error.localizedDescription) }
     }
     private func disconnected(_ owner: String) {
+        audio.setRemoteCount(monitor.deviceCount)
         audio.cancel(message: configuration.remoteAudioEnabled ? "遥控器已断开，语音已结束。" : nil)
         setupInput.disconnected(owner: owner)
         held.removeValue(forKey: owner); gestures.cancel(owner: owner)
@@ -337,6 +362,7 @@ public final class RemoteMappingRuntime: ObservableObject {
         if voiceHeld != speaking { voiceHeld = speaking }
     }
     private func stop() {
+        inputPriority.setReady(false)
         guard isRunning || !held.isEmpty || voice.heldTrigger != nil || lease?.hasPendingRecovery == true || setupInput.stage != .idle || audio.sessionActive else { return }
         if audio.sessionActive { audio.cancel() }
         isRunning = false
@@ -352,6 +378,10 @@ public final class RemoteMappingRuntime: ObservableObject {
         errorMessage = nil
         stop(); retryAllowed = false; errorMessage = errorMessage ?? message
         status = "按键接管已停止"
+    }
+
+    private func updateInputPriority() {
+        inputPriority.setReady(!hasShutdown && audioReady && isRunning && !setupActive && accessibility && detectedCount == 1)
     }
 
     private var leaseSources: Set<UInt64> {

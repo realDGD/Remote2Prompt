@@ -33,6 +33,19 @@ enum Launcher {
             for device in devices { print(device.name) }
             return
         }
+        if CommandLine.arguments.contains("--check-input-catalog") {
+            let system = CoreAudioInputSystem()
+            do {
+                let before = LoopbackDevices.defaultSnapshot()
+                try system.start(onChange: {})
+                let snapshot = try system.snapshot()
+                let listeners = system.listenerCount
+                system.stop()
+                guard system.listenerCount == 0, before == LoopbackDevices.defaultSnapshot() else { throw InputSystemFailure.unavailable }
+                print("Input catalog check passed: \(snapshot.inputs.count) inputs, \(snapshot.inputs.filter { $0.policy.isPhysical }.count) physical, \(snapshot.inputs.filter { $0.policy.supportsPriority }.count) eligible loopbacks; \(listeners) listeners removed; defaults unchanged; no input capture")
+            } catch { system.stop(); fputs("Input catalog check failed: \(error.localizedDescription)\n", stderr); exit(1) }
+            return
+        }
         Remote2PromptApp.main()
     }
 }
@@ -47,6 +60,7 @@ struct Remote2PromptApp: App {
             SettingsView()
                 .environmentObject(store)
                 .environmentObject(runtime)
+                .onAppear { delegate.attach(runtime) }
                 .onReceive(store.$configuration) { runtime.configure($0) }
         }
         .defaultSize(width: 1120, height: 760)
@@ -85,6 +99,24 @@ private struct MenuContents: View {
 
 @MainActor
 final class ApplicationDelegate: NSObject, NSApplicationDelegate {
+    private weak var runtime: RemoteMappingRuntime?
+    func attach(_ value: RemoteMappingRuntime) { runtime = value }
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let runtime else { return .terminateNow }
+        var completed = false
+        var waiting = false
+        runtime.prepareToTerminate {
+            if waiting {
+                // A quit initiated on GCD may keep that queue occupied inside AppKit's modal loop.
+                RunLoop.main.perform(inModes: [.default, .modalPanel, .eventTracking]) {
+                    MainActor.assumeIsolated { sender.reply(toApplicationShouldTerminate: true) }
+                }
+            } else { completed = true }
+        }
+        if completed { return .terminateNow }
+        waiting = true
+        return .terminateLater
+    }
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         if CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide") {

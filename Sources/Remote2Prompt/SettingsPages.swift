@@ -29,6 +29,9 @@ struct ConnectionPage: View {
             Section("语音音频") {
                 VoiceAudioControls(audio: runtime.audio)
             }
+            Section("系统输入优先") {
+                InputPriorityControls(priority: runtime.inputPriority)
+            }
             Section {
                 DisclosureGroup("连接详情") {
                     LabeledContent("收到的按键报告", value: String(runtime.reportCount))

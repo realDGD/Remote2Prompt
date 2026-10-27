@@ -42,10 +42,10 @@
 
 ### 3. 运行时、设置与退出
 
-- [ ] 新建 `AudioInputPriorityRuntime.swift`、原生设置控件；显示实际输入、最近请求、最近确认、实体恢复目标及错误/重试。
-- [ ] `RemoteMappingRuntime` 按已初始化音频、HID 接管、权限和向导状态驱动 ready；取消、断连和休眠撤销就绪。
-- [ ] 正常退出延后至有界恢复完成，移除 listener、计时器及订阅；强制结束的限制明确记录。
-- [ ] 默认关闭、hardware-disabled smoke 不修改设备，完成相关检查并提交。
+- [x] 新建 `AudioInputPriorityRuntime.swift`、原生设置控件；显示实际输入、最近请求、最近确认、实体恢复目标及错误/重试。
+- [x] `RemoteMappingRuntime` 按已初始化音频、HID 接管、权限和向导状态驱动 ready；断连、音频故障、权限失效、向导和休眠撤销就绪。
+- [x] 正常退出最多等待 3.5 秒恢复，移除 listener、计时器及订阅；模态运行循环的延迟确认及失败重试检查通过。强制结束的限制明确记录。
+- [x] 默认关闭及 hardware-disabled 不写设备，核心 52/52、macOS 模拟 40/40；自身窗口 smoke 显示并正常退出，按阶段提交。
 
 ### 4. 交付记录
 

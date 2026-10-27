@@ -36,7 +36,7 @@ struct VoiceAudioControls: View {
             .foregroundStyle(.secondary)
         LabeledContent("遥控器音频", value: audio.status)
         Button("重新连接音频") { audio.retry() }
-        Text("仅向明确选择的回环设备输出，不切换系统默认输入或输出。测试音在内存中生成，语音开始时立即取消测试音。")
+        Text("仅向明确选择的回环设备输出。系统默认输入由下方独立开关控制，默认输出保持不变。测试音在内存中生成，语音开始时立即取消测试音。")
             .font(.caption).foregroundStyle(.secondary)
     }
 }

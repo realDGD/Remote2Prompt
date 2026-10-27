@@ -1,3 +1,4 @@
+import AppKit
 import CoreAudio
 import Remote2PromptCore
 import Remote2PromptMac
@@ -172,6 +173,66 @@ private func inputFailureChecks() -> [(String, @MainActor () throws -> Void)] {
 @MainActor
 private func inputLifecycleChecks() -> [(String, @MainActor () throws -> Void)] {
     [
+        ("graceful priority shutdown drains delayed writes in the modal run loop", {
+            let system = FakeAudioInputs(); system.mode = .delayed
+            let runtime = AudioInputPriorityRuntime(system: system)
+            defer { runtime.shutdownImmediately() }
+            var configuration = AppConfiguration()
+            configuration.preferVirtualInput = true; configuration.voiceEnabled = true
+            configuration.remoteAudioEnabled = true; configuration.selectedVirtualInputUID = "virtual"
+            runtime.configure(configuration); runtime.setReady(true)
+            var completed = false
+            runtime.shutdown { completed = true }
+            let delivery = Timer(timeInterval: 0.1, repeats: false) { _ in
+                MainActor.assumeIsolated { system.applyPending(); system.mode = .immediate }
+            }
+            RunLoop.main.add(delivery, forMode: .modalPanel)
+            defer { delivery.invalidate() }
+            let limit = Date().addingTimeInterval(2)
+            while !completed && Date() < limit { _ = RunLoop.main.run(mode: .modalPanel, before: Date().addingTimeInterval(0.02)) }
+            try check(completed && system.current == "built-in" && !system.listening, "Modal shutdown did not confirm restoration and clean up")
+        }),
+        ("graceful shutdown reports failed restoration without endless retries", {
+            let system = FakeAudioInputs()
+            let runtime = AudioInputPriorityRuntime(system: system)
+            defer { runtime.shutdownImmediately() }
+            var configuration = AppConfiguration()
+            configuration.preferVirtualInput = true; configuration.voiceEnabled = true
+            configuration.remoteAudioEnabled = true; configuration.selectedVirtualInputUID = "virtual"
+            runtime.configure(configuration); runtime.setReady(true)
+            system.mode = .denied
+            var completed = false
+            runtime.shutdown { completed = true }
+            let limit = Date().addingTimeInterval(2.5)
+            while !completed && Date() < limit { _ = RunLoop.main.run(mode: .modalPanel, before: Date().addingTimeInterval(0.02)) }
+            try check(completed && system.current == "virtual" && system.writes.count == 4 && runtime.state.error != nil && !system.listening, "Failed restoration was hidden or retried without bound")
+        }),
+        ("hardware-disabled priority runtime never starts or writes", {
+            let system = FakeAudioInputs()
+            let runtime = AudioInputPriorityRuntime(hardwareEnabled: false, system: system)
+            var configuration = AppConfiguration()
+            configuration.preferVirtualInput = true; configuration.voiceEnabled = true
+            configuration.remoteAudioEnabled = true; configuration.selectedVirtualInputUID = "virtual"
+            runtime.configure(configuration); runtime.setReady(true); runtime.retry()
+            var completed = false
+            runtime.shutdown { completed = true }
+            runtime.shutdownImmediately()
+            try check(completed && system.reads == 0 && system.writes.isEmpty && !system.listening, "UI smoke accessed audio hardware")
+        }),
+        ("priority runtime requires explicit opt-in and actual audio readiness", {
+            let system = FakeAudioInputs()
+            let runtime = AudioInputPriorityRuntime(system: system)
+            var configuration = AppConfiguration()
+            configuration.preferVirtualInput = true; configuration.selectedVirtualInputUID = "virtual"
+            runtime.configure(configuration); runtime.setReady(true)
+            configuration.voiceEnabled = true; runtime.configure(configuration)
+            try check(system.writes.isEmpty, "Trigger-only mode took over system input")
+            configuration.remoteAudioEnabled = true; runtime.configure(configuration)
+            try check(system.current == "virtual" && system.writes.count == 1, "Ready opted-in audio did not take over")
+            system.current = "airpods"
+            runtime.shutdownImmediately()
+            try check(system.current == "airpods" && !system.listening, "Shutdown overwrote a later external choice")
+        }),
         ("physical hot unplug uses stable eligible fallback", {
             let (system, coordinator, clock) = fixture()
             system.inputs.removeAll { $0.policy.uid == "built-in" }
