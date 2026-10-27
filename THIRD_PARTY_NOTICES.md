@@ -10,4 +10,6 @@ MiRemoteV/BlackHole 仅作为可选回环设备的兼容目标；本项目不分
 
 M1 的 HID usage、VID/PID、report 1 布局及语音键 F5 行为参考上游 RemoteButtons.swift 与 RemoteVoiceFunctionMapper.swift 进行协议核查；实现独立编写，未复制上游状态机、键盘执行器或恢复日志实现。按设备原生键接管使用 Apple 的公开 [TN2450](https://developer.apple.com/library/archive/technotes/tn2450/_index.html) API。
 
+设置布局与向导的真实事件门槛参考上游 SettingsView.swift 及 first-run-onboarding/PRODUCT_SPEC.md 的产品行为，采用本项目四页与 M1 按键检测范围。遥控器示意图、向导、临时检测状态机及界面代码独立编写，仅使用系统 SF Symbols，没有复制上游图像、实现或完整语音向导。
+
 本项目自身的分发许可证尚未由维护者确定；当前不添加推测的 LICENSE 或在 Formula 中声明未经确认的许可证。建立公开发布前确定许可证并更新本文件及 Formula。

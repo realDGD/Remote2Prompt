@@ -188,21 +188,9 @@ public final class RemoteMappingRuntime: ObservableObject {
         LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
         switch request {
         case .input:
-            let alert = NSAlert()
-            alert.messageText = "为 Remote2Prompt 请求输入监控"
-            alert.informativeText = "此权限用于读取遥控器按键。点击“继续请求”后由 macOS 决定是否显示系统授权提示。已有设备控制授权时也可能允许监听，无需重复授权。若系统不再提示，可打开输入监控设置检查当前应用。"
-            alert.addButton(withTitle: "继续请求")
-            alert.addButton(withTitle: "打开系统设置…")
-            alert.addButton(withTitle: "取消")
-            switch alert.runModal() {
-            case .alertFirstButtonReturn:
-                let granted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
-                permissionNotice = granted ? "系统已允许输入监听。" : "已发送系统请求。若没有系统提示，请打开输入监控设置；列表没有当前应用时，可用“＋”添加，或先使用设备控制授权尝试连接。"
-            case .alertSecondButtonReturn:
-                openInputMonitoringSettings()
-                permissionNotice = "已打开输入监控设置。请核对下方显示的当前应用路径。"
-            default: permissionNotice = "已取消输入监控请求。"
-            }
+            let granted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+            permissionNotice = granted ? "系统已允许监听按键，无需再次申请。这可能来自设备控制授权，不表示已在输入监控列表单独授权。" : "已向 macOS 请求输入监控并打开设置。请启用当前应用；若列表没有条目，可点击“＋”添加下方路径的应用。系统不会为每次请求重新弹窗。"
+            if !granted { openInputMonitoringSettings() }
         case .accessibility:
             let granted = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
             permissionNotice = granted ? "设备控制权限已授予。" : "已向 macOS 请求设备控制权限。完成后返回本应用会自动刷新状态；系统不再提示时请打开对应设置页。"

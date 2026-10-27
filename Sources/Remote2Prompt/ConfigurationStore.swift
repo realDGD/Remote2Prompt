@@ -6,6 +6,7 @@ import Remote2PromptCore
 final class ConfigurationStore: ObservableObject {
     @Published private(set) var configuration = AppConfiguration()
     @Published private(set) var persistenceError: String?
+    @Published var isSetupPresented = false
     private let defaults: UserDefaults
     private let key = "configuration.v1"
 

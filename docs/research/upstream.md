@@ -17,5 +17,8 @@
 - [#433](https://github.com/HD838A/remote-mic-app/issues/433) 要求左右 Control 单键语音触发。核查时 open、无评论。
 - [VoiceKeyMode.swift](https://github.com/HD838A/remote-mic-app/blob/main/Sources/RemoteMic/VoiceKeyMode.swift) 只有 Fn、左右 Command、左右 Option，`init?(standaloneModifier:)` 对左右 Control 返回 nil。文件 blob 为 `0b4a21ebd0903caf9d23743fdbd15d1bef8d9df3`。普通快捷键编辑器支持 Control 不等于语音触发支持 Control。
 - [TECHNICAL.md](https://github.com/HD838A/remote-mic-app/blob/main/TECHNICAL.md) 说明 ATVV、音频和 HID 职责；本项目仅用于技术路线调查，尚未据此完成硬件实现。
+- [SettingsView.swift](https://github.com/HD838A/remote-mic-app/blob/main/Sources/RemoteMic/SettingsView.swift)（blob `2b9bf41615f1f41faca6527820e44ebfe00671f9`）提供设置结构、权限请求与设置入口的行为参考。用户选择仅保留按键映射、连接与语音、权限与隐私、关于，不加入组合动作、统计或回眸。
+- [Onboarding 产品规范](https://github.com/HD838A/remote-mic-app/blob/main/feature/first-run-onboarding/PRODUCT_SPEC.md)（blob `560d38515aa120529473abd2b13e0226186bf57e`）强调生产链路、真实事件、配置暂存、旧结果失效。Remote2Prompt 当前只实现 M1 按键向导，支持取消与重跑，不复制其完整语音测试流程或不可跳过政策，不宣称已完成音频或识别验收。
+- [HIDRemoteMonitor.swift](https://github.com/HD838A/remote-mic-app/blob/main/Sources/RemoteMic/HIDRemoteMonitor.swift) 的授权方法同样直接调用 `IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)`。没有独立于 macOS 权限状态、可强制重弹输入监控系统授权框的替代实现。
 
 本次没有复制上游 Swift 实现、品牌或图标，没有拉入 MiRemoteV/BlackHole 二进制。复用代码或派生驱动是后续独立决策，来源记录见 [THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES.md)。

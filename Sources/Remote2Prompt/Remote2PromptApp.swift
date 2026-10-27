@@ -48,21 +48,29 @@ struct Remote2PromptApp: App {
 
         MenuBarExtra("Remote2Prompt", systemImage: "mic.badge.plus") {
             MenuContents()
+                .environmentObject(store)
         }
     }
 }
 
 private struct MenuContents: View {
     @Environment(\.openWindow) private var openWindow
+    @EnvironmentObject private var store: ConfigurationStore
 
     var body: some View {
-        Text("Remote2Prompt · 开发预览")
+        Text("Remote2Prompt")
         Divider()
         Button("打开设置…") {
             openWindow(id: "settings")
             NSApp.activate(ignoringOtherApps: true)
         }
         .keyboardShortcut(",")
+        Button("运行设置向导…") {
+            openWindow(id: "settings")
+            store.isSetupPresented = true
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        .disabled(store.persistenceError != nil)
         Divider()
         Button("退出 Remote2Prompt") { NSApp.terminate(nil) }
             .keyboardShortcut("q")

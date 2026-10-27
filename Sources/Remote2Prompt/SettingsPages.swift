@@ -1,171 +1,128 @@
 import AppKit
-import ApplicationServices
 import Remote2PromptCore
 import Remote2PromptMac
 import SwiftUI
 
 struct ConnectionPage: View {
+    @EnvironmentObject private var store: ConfigurationStore
     @EnvironmentObject private var runtime: RemoteMappingRuntime
+
     var body: some View {
         Form {
-            Section {
+            Section("遥控器连接") {
                 Label(runtime.status, systemImage: "appletvremote.gen4")
                     .font(.headline)
-                LabeledContent("发现的键盘接口", value: String(runtime.detectedCount))
-                LabeledContent("语音键", value: runtime.voiceHeld ? "按住中" : "已释放")
-                LabeledContent("收到的按键报告", value: String(runtime.reportCount))
-                if let activity = runtime.lastActivity {
-                    LabeledContent("最后按键", value: "\(activity.isVoice ? "语音键" : activity.button?.title ?? "未知")：\(activity.isDown ? "按下" : "松开")")
-                }
+                LabeledContent("已发现的遥控器接口", value: String(runtime.detectedCount))
                 if let error = runtime.errorMessage { Text(error).foregroundStyle(.red) }
-                Button("重试连接 / 恢复原生按键") { runtime.retry() }
-                Text("请先在系统蓝牙中配对遥控器，再在按键映射页启用。语音键可以发送输入法触发按键；音频采集尚未启用。")
+                HStack {
+                    Button("打开蓝牙设置…") { openBluetoothSettings() }
+                    Button("重试连接") { runtime.retry() }
+                }
+                Text("先在系统蓝牙中配对 RC003，再启用按键映射。请退出其他遥控器映射软件，避免重复响应。")
                     .foregroundStyle(.secondary)
-            } header: {
-                Text("遥控器状态")
+                Button("运行设置向导…") { store.isSetupPresented = true }
             }
-            Section("兼容设备") {
-                LabeledContent("遥控器", value: "小米蓝牙遥控器 2 / 2 Pro")
-                LabeledContent("使用方式", value: "按住说话，松开结束")
-                LabeledContent("语音音频", value: "留待后续版本接入")
+            Section("语音键") {
+                VoiceTriggerControls()
+                LabeledContent("当前按键", value: runtime.voiceHeld ? "按住中" : "已松开")
+            }
+            Section("语音音频") {
+                Label("暂不支持遥控器音频输入", systemImage: "waveform.slash")
+                Text("当前可以将语音键转换为输入法触发键，但不会传输遥控器声音。请在目标输入法中选择其他可用的麦克风。")
+                    .foregroundStyle(.secondary)
+                Text("本版本不切换系统麦克风，也不安装音频驱动。")
+                    .foregroundStyle(.secondary)
+            }
+            Section {
+                DisclosureGroup("连接详情") {
+                    LabeledContent("收到的按键报告", value: String(runtime.reportCount))
+                    if let activity = runtime.lastActivity {
+                        LabeledContent("最后按键", value: "\(activity.isVoice ? "语音键" : activity.button?.title ?? "未知")：\(activity.isDown ? "按下" : "松开")")
+                    }
+                }
             }
         }
         .formStyle(.grouped)
     }
 }
 
-struct MappingsPage: View {
-    @EnvironmentObject private var store: ConfigurationStore
-    @EnvironmentObject private var runtime: RemoteMappingRuntime
-    @ViewState private var gesture: ButtonGesture = .click
-    @ViewState private var captureButton: RemoteButton?
-
-    var body: some View {
-        Form {
-            Section {
-                Toggle("启用自定义映射", isOn: preference(\.mappingsEnabled))
-                Button("补齐基本导航映射") {
-                    let defaults: [RemoteButton: MappedAction] = [.up: .arrowUp, .down: .arrowDown, .left: .arrowLeft, .right: .arrowRight, .select: .enter, .back: .backspace, .power: .escape, .volumeUp: .volumeUp, .volumeDown: .volumeDown]
-                    store.update { configuration in
-                        for (button, action) in defaults where configuration.action(for: button, gesture: .click) == .none {
-                            configuration.setAction(action, for: button, gesture: .click)
-                        }
-                    }
-                }
-                Text("仅补齐空的单击映射，保留已配置的动作和其他手势。")
-                    .font(.caption).foregroundStyle(.secondary)
-                Text(runtime.status).foregroundStyle(runtime.isRunning ? .green : .secondary)
-                Text("语音键即时发送，不参与双击或长按。说话按键按住时，其他映射暂停，避免触发修饰键组合。")
-                    .foregroundStyle(.secondary)
-            }
-            Section("按键动作") {
-                Picker("操作方式", selection: $gesture) {
-                    ForEach(ButtonGesture.allCases) { Text($0.title).tag($0) }
-                }
-                ForEach(RemoteButton.allCases) { button in
-                    Picker(selection: action(for: button)) {
-                        ForEach(MappedAction.allCases) { action in
-                            Text(action == .customShortcut ? (store.configuration.invocation(for: button, gesture: gesture).shortcut?.displayTitle ?? action.title) : action.title).tag(action)
-                        }
-                    } label: {
-                        Label(button.title, systemImage: runtime.activeButtons.contains(button) ? "circle.fill" : "circle")
-                    }
-                    if store.configuration.action(for: button, gesture: gesture) == .customShortcut {
-                        Button("重新录入\(button.title)快捷键") { captureButton = button }
-                    }
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .sheet(item: $captureButton) { button in
-            ShortcutCaptureView { shortcut in
-                if let shortcut { store.update { $0.setShortcut(shortcut, for: button, gesture: gesture) } }
-                captureButton = nil
-            }
-        }
-    }
-
-    private func preference(_ path: WritableKeyPath<AppConfiguration, Bool>) -> Binding<Bool> {
-        Binding(get: { store.configuration[keyPath: path] }, set: { value in
-            store.update { $0[keyPath: path] = value }
-        })
-    }
-
-    private func action(for button: RemoteButton) -> Binding<MappedAction> {
-        Binding(get: { store.configuration.action(for: button, gesture: gesture) }, set: { value in
-            if value == .customShortcut { captureButton = button }
-            else { store.update { $0.setAction(value, for: button, gesture: gesture) } }
-        })
-    }
-}
-
-struct VoicePage: View {
+struct VoiceTriggerControls: View {
     @EnvironmentObject private var store: ConfigurationStore
 
     var body: some View {
-        Form {
-            Section {
-                Picker("语音触发键", selection: Binding(
-                    get: { store.configuration.voiceTrigger },
-                    set: { value in store.update { $0.voiceTrigger = value } }
-                )) {
-                    ForEach(VoiceTrigger.allCases) { Text($0.title).tag($0) }
-                }
-                Text("启用按键映射后，按住语音键会即时按下所选触发键，松开即释放。请在输入法中配置相同触发键；当前版本尚不传输遥控器音频。")
-                    .foregroundStyle(.secondary)
-            } header: {
-                Text("语音触发")
-            }
-            Section {
-                Toggle("遥控器在线时优先使用虚拟麦克风", isOn: Binding(
-                    get: { store.configuration.preferVirtualInput },
-                    set: { value in store.update { $0.preferVirtualInput = value } }
-                ))
-                Text("默认关闭。启用后，计划在遥控器就绪期间保持所选虚拟输入；最后一只遥控器断开后恢复最近的实体麦克风。")
-                    .foregroundStyle(.secondary)
-                LabeledContent("音频链路", value: "尚未启用")
-                Text("当前版本不会切换系统麦克风，也不安装音频驱动。")
-                    .foregroundStyle(.secondary)
-            } header: {
-                Text("输入设备优先级")
-            }
+        Picker("语音触发键", selection: Binding(
+            get: { store.configuration.voiceTrigger },
+            set: { value in store.update { $0.voiceTrigger = value } }
+        )) {
+            ForEach(VoiceTrigger.allCases) { Text($0.title).tag($0) }
         }
-        .formStyle(.grouped)
+        Text("按住语音键立即按下所选键，松开即释放。请在目标输入法中设置相同触发键；左右 Control 是各自独立的按键。")
+            .foregroundStyle(.secondary)
     }
 }
 
 struct PermissionsPage: View {
+    var body: some View {
+        Form {
+            Section("按键所需权限") { PermissionControls() }
+            Section("蓝牙与麦克风") {
+                Text("遥控器由系统蓝牙配对，当前按键功能不请求蓝牙或麦克风权限。")
+                Button("打开蓝牙设置…") { openBluetoothSettings() }
+            }
+            Section("隐私") {
+                Label("只处理兼容遥控器的按键", systemImage: "shield.lefthalf.filled")
+                Text("快捷键录入仅接收当前窗口的按键，不读取其他应用输入。本版本不采集音频、不保存输入文字，也不联网。")
+                Text("设置和原生按键恢复记录保存在本机；不记录完整 HID 报告或设备硬件地址。")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+struct PermissionControls: View {
     @EnvironmentObject private var runtime: RemoteMappingRuntime
 
     var body: some View {
-        Form {
-            Section("系统权限") {
-                LabeledContent(IOHIDPermission.controlPermissionTitle, value: runtime.accessibility ? "已授权" : "未授权")
-                LabeledContent("输入监控", value: runtime.inputMonitoring ? "已单独授权" : "未单独授权")
-                LabeledContent("蓝牙", value: "尚未请求")
-                Text("按键映射需要设备控制授权。该权限也包含事件监听；如果系统仍拒绝打开遥控器，再单独授予输入监控。macOS 27 将原“辅助功能”改名为“设备控制和数据访问”。授权或本地构建更新后，请重开应用再核对。")
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Button("请求输入监控权限") { runtime.requestInputMonitoring() }
-                    Button("打开输入监控设置…") { runtime.openInputMonitoringSettings() }
-                }
-                HStack {
-                    Button("请求\(IOHIDPermission.controlPermissionTitle)权限") { runtime.requestAccessibility() }
-                    Button("打开对应设置…") { runtime.openAccessibilitySettings() }
-                }
-                if let notice = runtime.permissionNotice { Text(notice).foregroundStyle(.secondary) }
-                Text("若系统没有再次弹出提示，请在打开的权限列表中启用 Remote2Prompt；列表中没有时，点击“＋”添加当前应用。")
-                    .foregroundStyle(.secondary)
+        LabeledContent(IOHIDPermission.controlPermissionTitle, value: runtime.accessibility ? "已授权" : "未授权")
+        HStack {
+            Button("请求\(IOHIDPermission.controlPermissionTitle)权限") { runtime.requestAccessibility() }
+                .disabled(runtime.requestingPermission)
+            Button("打开对应设置…") { runtime.openAccessibilitySettings() }
+        }
+        Text("用于发送映射后的按键。macOS 27 将原“辅助功能”改名为“设备控制和数据访问”。")
+            .foregroundStyle(.secondary)
+        Divider()
+        LabeledContent("按键监听", value: runtime.inputMonitoring ? "系统已允许" : "系统未允许")
+        HStack {
+            if !runtime.inputMonitoring {
+                Button("请求输入监控权限") { runtime.requestInputMonitoring() }
+                    .disabled(runtime.requestingPermission)
+            }
+            Button("打开输入监控设置…") { runtime.openInputMonitoringSettings() }
+        }
+        Text(runtime.inputMonitoring ? "系统已允许读取按键，可能来自设备控制授权。这个状态不代表已在输入监控列表中单独开启，无需重复申请。" : "设备控制授权也包含监听能力。需要单独申请时，按钮会直接发出系统请求并打开输入监控设置；macOS 不会为每次点击重复弹窗。")
+            .foregroundStyle(.secondary)
+        if let notice = runtime.permissionNotice {
+            Text(notice).foregroundStyle(.secondary).accessibilityLabel("授权请求结果：\(notice)")
+        }
+        DisclosureGroup("授权后仍未生效？") {
+            Text("请确认系统列表中的应用来自下方路径。若列表没有当前应用，可点击“＋”添加。本地构建更新后可能需要重新授权并重开应用。")
+            Text(Bundle.main.bundleURL.path)
+                .font(.caption).textSelection(.enabled)
+            HStack {
                 Button("在 Finder 中显示当前应用") {
                     NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
                 }
                 Button("刷新权限状态") { runtime.refresh() }
             }
-            Section("隐私") {
-                Text("仅处理匹配遥控器的按键。快捷键录入仅在当前窗口内生效，不读取其他应用输入，不采集音频，也不联网。")
-            }
         }
-        .formStyle(.grouped)
+    }
+}
+
+func openBluetoothSettings() {
+    if let url = URL(string: "x-apple.systempreferences:com.apple.BluetoothSettings") {
+        NSWorkspace.shared.open(url)
     }
 }
 
@@ -182,8 +139,9 @@ struct AboutPage: View {
                 Text("把遥控器变成 Mac 的语音与按键入口。")
                     .foregroundStyle(.secondary)
                 LabeledContent("版本", value: version)
-                LabeledContent("状态", value: "按键映射开发预览 · 音频尚未接入")
                 LabeledContent("系统要求", value: "macOS 14 或更高版本")
+                Text("当前支持按键映射和语音触发键；暂不支持遥控器音频输入。")
+                    .foregroundStyle(.secondary)
             }
             Section("项目") {
                 Text("面向 macOS，以 Swift 编写。开发和源码安装使用 Command Line Tools。")

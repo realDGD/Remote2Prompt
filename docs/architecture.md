@@ -22,6 +22,8 @@ packaging/homebrew/        源码 Formula 模板
 
 `ConfigurationStore` 在 MainActor 上通过 UserDefaults 保存整个配置，存储键保持 `configuration.v1` 以读取旧配置，数据内的 schema 为 2，应用标识符为 `dev.remote2prompt.app`。权限请求仅由用户点击界面按钮触发。SwiftUI `NavigationSplitView` 和分组 `Form` 构成原生设置；菜单栏入口重开同一窗口。
 
+`SetupWizard` 使用运行时的临时检测模式，复用原生键租约和 HID 回调，但不调用动作执行器。`SetupInputCheck` 只保存本次检测的临时来源和成对事件，来源不写入设置；断连、停止或重新检测会使结果失效。向导只在完成时合并所选设置，退出后按原配置恢复接管。普通按键与语音按键的检测不证明音频或目标输入法可用。
+
 SDK 27 另外声明了 `@State` 宏，但当前独立 CLT 不附带 SwiftUIMacros 插件。`ViewState<Value>` 显式引用公开的 `SwiftUI.State<Value>` 属性包装器，保留旧 SDK 语义并避免依赖 Xcode 中的宏插件；不要直接改回裸 `@State` 而未在独立 CLT 下验证。
 
 ## 系统适配器
