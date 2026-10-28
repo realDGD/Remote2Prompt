@@ -24,3 +24,16 @@
 - [build-app.sh](https://github.com/HD838A/remote-mic-app/blob/59260d5501e2d6e932966d2f2988c362b784487c/scripts/build-app.sh#L933) 在 ad-hoc 分支显式写入 `designated => identifier`。Remote2Prompt 原默认规则为 `cdhash`，每次代码变化导致身份改变。本机已安装 `/Applications/SayAll.app` 的实际规则则包含 Apple 证书链及团队，属于 Developer ID 稳定签名，不能与上游开发模式混为一谈。稳定规则可避免身份漂移，但不证明修复了系统首次授权弹窗。
 
 本次没有复制上游 Swift 实现、品牌或图标，没有拉入 MiRemoteV/BlackHole 二进制。复用代码或派生驱动是后续独立决策，来源记录见 [THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES.md)。
+
+
+## 2026-10-28 持续音频实现对照
+
+本次固定核对上游提交 `2ce3ec65b02b2746109da267bc9a6eee04ec516b`，仅阅读协议与实现，没有复制其代码。
+
+- [蓝牙收流](https://github.com/HD838A/remote-mic-app/blob/2ce3ec65b02b2746109da267bc9a6eee04ec516b/Sources/RemoteMic/XiaomiBluetoothBridge.swift)：订阅 ATVV 控制与音频，确认能力后按帧解码；同步通知重设解码状态，记录收包、解码和中断计数。
+- [播放输出](https://github.com/HD838A/remote-mic-app/blob/2ce3ec65b02b2746109da267bc9a6eee04ec516b/Sources/RemoteMic/AudioOutput.swift)：采用 AVAudioEngine 和 AVAudioPlayerNode，串行配置，先连接 player/mixer 再绑定设备并验证输出；使用 dataPlayedBack 回调计数，排空请求区分正常、超时和中断，并用代次拒绝旧完成。配置变化异步进入引擎队列，重新检查健康状态再通知上层恢复。
+- [解码协议](https://github.com/HD838A/remote-mic-app/blob/2ce3ec65b02b2746109da267bc9a6eee04ec516b/Sources/RemoteMic/ATVVProtocol.swift)：RC003 高半字节优先 IMA ADPCM，120 字节对应 240 个16 kHz样本；另有滤波与增益处理。
+
+本项目0.2.6当前使用独立 Audio Queue，并在欠载后刷新转换器、给新缓冲指定未来时间；这是当前实现取舍，并非上游的播放后端。不能因为本机旧引擎恢复失败，就推断上游引擎方案本身不可用。按会话记录交付进度、区分消费与实际播放、旧回调隔离及异步设备恢复，均值得继续保持。
+
+上游还定义 microphoneExtend，但已查到的代码搜索只包含定义及调试/一分钟超时记录，未见生产调用；不能据此认定几秒失声需要添加保活定时器。键盘输入法选择与系统默认麦克风也属于不同状态，不能将 PreferredInputSourceMonitor 直接当作麦克风恢复实现。
