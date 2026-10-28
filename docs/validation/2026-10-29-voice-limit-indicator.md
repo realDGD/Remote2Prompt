@@ -38,7 +38,7 @@
 
 直接启动检查实际只生成了菜单栏窗口，设置没有自动出现，原“必须有设置窗口”的smoke失败。源码同时揭示配置/语音订阅原来等首次onAppear才建立，菜单栏冷启动会漏掉配置应用。现改为ApplicationDelegate初始化时强持有并建立订阅，不更改系统窗口恢复策略；新增background检查在任何设置创建前修改隔离位置配置并确认到达运行时。后续系统可能恢复窗口，不把它计为持续无窗口验收。
 
-新的reminder原生检查与设置检查分开：实际面板可见且isOnActiveSpace/occlusionState.visible成立、橙色倒计时、红色阶段、约5秒后不可见，本应用key/main窗口及激活状态不变、ignoresMouseEvents为true，检查通过；导出自身视图目视核对。这不证明向目标输入法输入时焦点不变或实际点透。CLI使用独立配置，不接触HID、蓝牙、输入设备或生产设置。
+新的reminder原生检查与设置检查分开：实际面板可见且isOnActiveSpace/occlusionState.visible成立、橙色倒计时、红色阶段、约5秒后不可见，从首次展示前到自动隐藏，本应用key/main窗口及激活状态不变、ignoresMouseEvents为true，检查通过；导出自身视图目视核对。这不证明向目标输入法输入时焦点不变或实际点透。CLI使用独立配置，不接触HID、蓝牙、输入设备或生产设置。
 
 全屏/Spaces/Stage Manager、多屏/Dock不同位置、浅色/减少动态效果、目标输入法焦点/真实鼠标点透及RC003真实START/STOP与50秒提醒仍未验收。当前版本仍仅本地提交；不据独立预览宣称已安装应用拥有新功能。
 

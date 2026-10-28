@@ -161,6 +161,8 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         if CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide") || CommandLine.arguments.contains("--smoke-test-reminder") || CommandLine.arguments.contains("--smoke-test-background") {
             if CommandLine.arguments.contains("--smoke-test-guide") { PermissionDragGuide.shared.show() }
+            let reminderKeyBefore = NSApp.keyWindow
+            let reminderActiveBefore = NSApp.isActive
             if CommandLine.arguments.contains("--smoke-test-reminder") { reminder.preview() }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 if CommandLine.arguments.contains("--smoke-test-background") {
@@ -180,7 +182,8 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
                     fputs("UI smoke failed: permission guide is not visible\n", stderr)
                     exit(1)
                 }
-                if CommandLine.arguments.contains("--smoke-test-reminder"), !self.reminder.previewIsNonactivating {
+                if CommandLine.arguments.contains("--smoke-test-reminder"),
+                   !self.reminder.previewIsNonactivating || NSApp.keyWindow !== reminderKeyBefore || NSApp.isActive != reminderActiveBefore {
                     fputs("UI smoke failed: voice reminder is missing, interactive or key/main\n", stderr)
                     exit(1)
                 }
