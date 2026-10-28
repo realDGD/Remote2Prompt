@@ -2,12 +2,14 @@ import Foundation
 
 /// Versioned persisted preferences. Device identifiers must be macOS UIDs, never transient numeric IDs.
 public struct AppConfiguration: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 3
+    public static let currentSchemaVersion = 4
     public var schemaVersion: Int = currentSchemaVersion
     public var mappingsEnabled = false
     public var voiceEnabled = false
     public var remoteAudioEnabled = false
     public var preferVirtualInput = false
+    public var voiceLimitReminderEnabled = false
+    public var voiceLimitReminderPosition: VoiceLimitReminderPosition = .bottomCenter
     public var voiceTrigger: VoiceTrigger = .function
     public var selectedVirtualInputUID: String?
     public var bindings: [KeyBinding] = []
@@ -66,6 +68,7 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
+        case voiceLimitReminderEnabled, voiceLimitReminderPosition
         case schemaVersion, mappingsEnabled, voiceEnabled, remoteAudioEnabled, preferVirtualInput, voiceTrigger, selectedVirtualInputUID, bindings
     }
 
@@ -76,6 +79,8 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
         voiceEnabled = try values.decodeIfPresent(Bool.self, forKey: .voiceEnabled) ?? (schemaVersion < 3 && mappingsEnabled)
         remoteAudioEnabled = try values.decodeIfPresent(Bool.self, forKey: .remoteAudioEnabled) ?? false
         preferVirtualInput = try values.decodeIfPresent(Bool.self, forKey: .preferVirtualInput) ?? false
+        voiceLimitReminderEnabled = try values.decodeIfPresent(Bool.self, forKey: .voiceLimitReminderEnabled) ?? false
+        voiceLimitReminderPosition = try values.decodeIfPresent(VoiceLimitReminderPosition.self, forKey: .voiceLimitReminderPosition) ?? .bottomCenter
         voiceTrigger = try values.decodeIfPresent(VoiceTrigger.self, forKey: .voiceTrigger) ?? .function
         selectedVirtualInputUID = try values.decodeIfPresent(String.self, forKey: .selectedVirtualInputUID)
         bindings = try values.decodeIfPresent([KeyBinding].self, forKey: .bindings) ?? []
@@ -86,4 +91,8 @@ public enum ConfigurationError: Error, Equatable, Sendable {
     case unsupportedVersion(Int)
     case duplicateBinding
     case invalidShortcut
+}
+
+public enum VoiceLimitReminderPosition: String, Codable, CaseIterable, Sendable {
+    case bottomCenter, bottomTrailing
 }

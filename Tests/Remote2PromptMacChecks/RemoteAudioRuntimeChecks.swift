@@ -27,13 +27,14 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
     var onStatus: ((String) -> Void)?
     var onFailure: ((String) -> Void)?
     var starts = 0, stops = 0, opens = 0, closes = 0
+    var sendsStartedOnOpen = true
     var events: ((String) -> Void)?
     func start() {
         starts += 1
         onReady?(try! VoiceCapabilities(packet: Data([11, 1, 0, 2, 3, 0, 120])))
     }
     func stop() { stops += 1; events?("transport.stop") }
-    func open() -> Bool { opens += 1; onStarted?(); return true }
+    func open() -> Bool { opens += 1; if sendsStartedOnOpen { onStarted?() }; return true }
     func close() -> Bool { closes += 1; return true }
 }
 
@@ -91,6 +92,37 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
 
 @MainActor func remoteAudioRuntimeChecks() -> [(String, @MainActor () async throws -> Void)] {
     [
+        ("voice limit origin requires actual START and reported stop stays neutral", {
+            let h = AudioHarness(); defer { h.runtime.shutdown() }; h.enable()
+            try await eventually { h.runtime.isReady }; h.transport.sendsStartedOnOpen = false
+            try check(h.runtime.press(), "Press failed")
+            try check(h.runtime.voiceLimit.segmentID == nil, "HID press invented START")
+            h.transport.onAudio?(Data(repeating: 0, count: 120))
+            try check(h.runtime.voiceLimit.segmentID == nil, "Audio packet invented START")
+            h.now = 2; h.transport.onStarted?(); h.now = 20; h.transport.onStarted?()
+            try check(h.runtime.voiceLimit.presentation(at: 52) == .countdown(seconds: 10, urgent: false), "Duplicate START rebased origin")
+            h.now = 62; h.transport.onStopped?(.timeLimitReported)
+            try check(h.runtime.voiceLimit.presentation(at: 62) == .endedUnconfirmed, "Reported reason became confirmed timeout or release erased it")
+            h.runtime.release()
+            try check(h.runtime.voiceLimit.presentation(at: 64) == .endedUnconfirmed, "Duplicate release erased end hint")
+            h.transport.sendsStartedOnOpen = true; h.now = 63
+            try check(h.runtime.press(), "Repress failed")
+            try check(h.runtime.voiceLimit.presentation(at: 113) == .countdown(seconds: 10, urgent: false), "New segment lost its own clock")
+            h.runtime.release(); h.transport.onStopped?(.timeLimitReported)
+            try check(h.runtime.voiceLimit.presentation(at: 113) == .hidden, "Host close acknowledgement created timeout hint")
+        }),
+        ("failure and old transport START cannot revive a cancelled voice limit", {
+            let h = AudioHarness(); defer { h.runtime.shutdown() }; h.enable()
+            try await eventually { h.runtime.isReady }; try check(h.runtime.press(), "Press failed")
+            let oldStart = h.transport.onStarted; let oldStop = h.transport.onStopped
+            h.transport.onFailure?("fixture loss"); h.advance(1)
+            try await eventually { h.runtime.isReady }; h.now = 10
+            try check(h.runtime.press(), "New press failed")
+            oldStart?(); oldStop?(.timeLimitReported)
+            try check(h.runtime.voiceLimit.presentation(at: 60) == .countdown(seconds: 10, urgent: false), "Old connection modified new segment")
+            h.runtime.suspend()
+            try check(h.runtime.voiceLimit.presentation(at: 60) == .hidden, "Sleep retained reminder")
+        }),
         ("audio recovery ends the voice before teardown and never reopens it automatically", {
             let h = AudioHarness(); defer { h.runtime.shutdown() }; h.enable()
             try await eventually { h.runtime.isReady }

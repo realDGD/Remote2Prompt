@@ -29,6 +29,7 @@ public enum ConfigurationTransfer {
         configuration.voiceEnabled = false
         configuration.remoteAudioEnabled = false
         configuration.preferVirtualInput = false
+        configuration.voiceLimitReminderEnabled = false
         return configuration
     }
 

@@ -13,6 +13,14 @@ func configurationTransferChecks() -> [(String, () throws -> Void)] {
         catch { }
     }
     return [
+        ("legacy reminder defaults off and new preferences survive local roundtrip", {
+            let legacy = try AppConfiguration.decode(Data("{\"schemaVersion\":3,\"voiceEnabled\":true}".utf8))
+            try expect(!legacy.voiceLimitReminderEnabled && legacy.voiceLimitReminderPosition == .bottomCenter && legacy.voiceEnabled, "Migration changed capabilities")
+            var config = legacy; config.voiceLimitReminderEnabled = true; config.voiceLimitReminderPosition = .bottomTrailing
+            try expect(try AppConfiguration.decode(config.encoded()) == config, "Local reminder preferences lost")
+            let imported = try ConfigurationTransfer.load(ConfigurationTransfer.export(config))
+            try expect(!imported.voiceLimitReminderEnabled && imported.voiceLimitReminderPosition == .bottomTrailing, "Import activated reminder or lost placement")
+        }),
         ("portable config retains gestures and side-specific trigger with capabilities off", {
             var original = AppConfiguration()
             original.voiceTrigger = .rightOption

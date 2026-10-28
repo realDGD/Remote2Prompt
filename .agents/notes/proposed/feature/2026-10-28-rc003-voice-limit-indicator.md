@@ -6,7 +6,7 @@ Status: proposed
 
 本机已确认RC003持续按住时约一分钟自动结束，而同一输入法经键盘触发可持续两分钟。用户希望在结束前获得优雅、无声的提示，避免继续说话而未被接收。背景与实测见[生命周期回归](../../../../docs/validation/2026-10-28-audio-health-lifecycle.md)及[上游#679](https://github.com/HD838A/remote-mic-app/issues/679)。
 
-原有传输层把所有0x00停止事件折叠成无参数onStopped。当前框架已保留带分类的停止回调：ordinaryReported、timeLimitReported及unspecified；生产音频运行时暂时忽略分类，保持原释放行为。当前UI计数仍不记录结束原因。不能仅凭墙钟达到60秒就宣称固件已断开。
+原有传输层把所有0x00停止事件折叠成无参数onStopped。当前框架已保留带分类的停止回调：ordinaryReported、timeLimitReported及unspecified；生产音频运行时已发布真实START起点，并将报告的时限码转为中性结束展示意图；窗口尚未接入。不能仅凭墙钟达到60秒就宣称固件已断开。
 
 ## Proposal
 
@@ -20,7 +20,7 @@ Status: proposed
 
 设置仅保留“临近语音时限时提醒”和少量位置选择，归入遥控器语音输入，关闭虚拟麦克风时隐藏相关设置。推荐随已启用的RC003语音提供提醒；默认值和配置迁移在实施时明确，导入仍保持语音能力关闭。
 
-本轮已准备不接触设备的VoiceLimitIndicator纯策略与五项时序/取消检查，尚未接入生产运行时或窗口。已制作三种可交互视觉方案：临近上限浮条、迷你圆环、菜单栏计时；未接入生产运行时或启用浮窗。具体接口与验收见[实施草案](../../../plans/2026-10-28-voice-limit-indicator.md)。
+本轮已准备不接触设备的VoiceLimitIndicator纯策略与五项时序/取消检查，已接入生产运行时，窗口尚未接入。已制作三种可交互视觉方案：临近上限浮条、迷你圆环、菜单栏计时；未接入生产运行时或启用浮窗。具体接口与验收见[实施草案](../../../plans/2026-10-28-voice-limit-indicator.md)。
 
 ## Alternatives considered
 

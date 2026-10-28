@@ -3,6 +3,8 @@ import Foundation
 public enum VoiceLimitEndReason: Equatable, Sendable {
     /// The caller has positively identified the device's limit event, not just a timer expiry.
     case deviceLimit
+    /// The device reported a code associated with a limit; local semantics remain unverified.
+    case reportedDeviceLimit
     case released, interrupted, unknown
 }
 
@@ -12,16 +14,18 @@ public enum VoiceLimitPresentation: Equatable, Sendable {
     /// Estimated duration elapsed, but no device stop event has confirmed an end.
     case approachingLimit
     case ended
+    case endedUnconfirmed
 }
 
 /// Pure presentation policy. Owns no timers, windows, Bluetooth, audio or input devices.
 /// Segment IDs must increase for every real voice segment; old events cannot revive or hide a new one.
-public struct VoiceLimitIndicator: Sendable {
+public struct VoiceLimitIndicator: Equatable, Sendable {
     public private(set) var segmentID: UInt64?
     private var latestID: UInt64?
     private var beganAt: TimeInterval?
     private var endedAt: TimeInterval?
     private var supported = false
+    private var confirmedEnd = false
     public init() {}
 
     @discardableResult
@@ -33,7 +37,9 @@ public struct VoiceLimitIndicator: Sendable {
     @discardableResult
     public mutating func end(segment id: UInt64, reason: VoiceLimitEndReason, at time: TimeInterval) -> Bool {
         guard segmentID == id, endedAt == nil, let beganAt, time.isFinite, time >= beganAt else { return false }
-        if reason == .deviceLimit && supported { endedAt = time }
+        if (reason == .deviceLimit || reason == .reportedDeviceLimit) && supported {
+            endedAt = time; confirmedEnd = reason == .deviceLimit
+        }
         else { clearActive() }
         return true
     }
@@ -47,7 +53,7 @@ public struct VoiceLimitIndicator: Sendable {
 
     public func presentation(at time: TimeInterval) -> VoiceLimitPresentation {
         guard time.isFinite, supported, let beganAt, time >= beganAt else { return .hidden }
-        if let endedAt { return time >= endedAt && time < endedAt + 3 ? .ended : .hidden }
+        if let endedAt { return time >= endedAt && time < endedAt + 3 ? (confirmedEnd ? .ended : .endedUnconfirmed) : .hidden }
         let elapsed = time - beganAt
         guard elapsed >= 50 else { return .hidden }
         guard elapsed < 60 else { return .approachingLimit }

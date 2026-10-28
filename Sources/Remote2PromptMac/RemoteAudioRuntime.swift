@@ -13,6 +13,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     @Published public private(set) var testingTone = false
     public private(set) var receivedSamples = 0
     @Published public private(set) var progress = VoiceStreamProgress()
+    @Published public private(set) var voiceLimit = VoiceLimitIndicator()
     private var receivedPackets = 0
     private var lastPacketAt: TimeInterval?
     private var signalChanging = false
@@ -87,10 +88,16 @@ public final class RemoteAudioRuntime: ObservableObject {
         bluetooth.onStarted = { [weak self] in
             guard let self, self.connectionGeneration == token, !self.stopped else { return }
             if !self.sessionActive || self.finishing { _ = self.bluetooth.close() }
-            else { self.protocolStarted = true }
+            else {
+                self.protocolStarted = true
+                self.voiceLimit.begin(segment: self.generation, at: self.clock(), hasRC003Limit: true)
+            }
         }
-        bluetooth.onStopped = { [weak self] _ in
+        bluetooth.onStopped = { [weak self] reason in
             guard let self, self.connectionGeneration == token, !self.stopped, self.protocolStarted || self.finishing else { return }
+            if !self.finishing {
+                self.voiceLimit.end(segment: self.generation, reason: reason == .timeLimitReported ? .reportedDeviceLimit : .unknown, at: self.clock())
+            }
             self.release()
         }
         bluetooth.onSync = { [weak self] data in
@@ -217,6 +224,7 @@ public final class RemoteAudioRuntime: ObservableObject {
         }
         if interruptedTail { cancel() }
         generation &+= 1; let token = generation
+        voiceLimit.cancel()
         try? decoder.reset(); receivedSamples = 0; receivedPackets = 0; lastPacketAt = nil; signalChanging = false; finishing = false; draining = false
         protocolStarted = false; allowEarlyAudio = !interruptedTail
         preparingInput = true; preroll.clear()
@@ -247,6 +255,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     public func release() {
         guard sessionActive, !finishing else { return }
         if preparingInput { cancel(message: "语音键已松开，已取消等待输入切换。"); return }
+        voiceLimit.end(segment: generation, reason: .released, at: clock())
         finishing = true; _ = bluetooth.close(); startTimeout?.cancel()
         let token = generation
         tail?.cancel()
@@ -327,6 +336,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     }
     public func cancel(message: String? = nil) {
         generation &+= 1; tail?.cancel(); startTimeout?.cancel()
+        voiceLimit.cancel()
         let wasActive = sessionActive
         sessionActive = false; finishing = false; draining = false; testingTone = false
         preparingInput = false; preroll.clear()
