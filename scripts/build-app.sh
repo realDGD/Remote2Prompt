@@ -28,7 +28,13 @@ if [[ -e "$destination" ]]; then
     fi
 fi
 cd "$repo_dir"
-r2p_swiftpm build --configuration "$configuration" --product Remote2Prompt
+# Swift Build can stamp the deployment target as the linked SDK (swift-build#1887).
+# Preserve macOS 14 support while letting AppKit use the actual SDK's native chrome.
+sdk_version="$(/usr/bin/xcrun --sdk macosx --show-sdk-version)"
+minimum_system_version="$(/usr/libexec/PlistBuddy -c 'Print LSMinimumSystemVersion' "$repo_dir/Resources/Info.plist")"
+r2p_swiftpm build --configuration "$configuration" --product Remote2Prompt \
+    -Xlinker -platform_version -Xlinker macos \
+    -Xlinker "$minimum_system_version" -Xlinker "$sdk_version"
 binary_dir="$(r2p_swiftpm build --configuration "$configuration" --show-bin-path)"
 mkdir -p "$(dirname "$destination")"
 stage_dir="$(mktemp -d "$(dirname "$destination")/.remote2prompt-build.XXXXXX")"

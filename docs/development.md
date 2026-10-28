@@ -6,6 +6,8 @@ macOS 14+，安装包含 Swift 6 的 Command Line Tools。根目录的 `Package.
 
 脚本使用 CLT 随附的 SwiftPM 默认构建系统。Formula 设置 `REMOTE2PROMPT_HOMEBREW_BUILD=1`，把 SwiftPM 缓存限制在构建目录并关闭其子进程的嵌套 sandbox-exec；Homebrew 自身的构建沙箱仍生效。普通构建不关闭 SwiftPM 沙箱。
 
+链接时明确区分最低运行要求和构建 SDK：前者取自 Info.plist 的 macOS 14.0，后者由选定 CLT 的 `xcrun --sdk macosx --show-sdk-version` 自动取得，不硬编码开发机版本，也不拿运行系统版本冒充 SDK。这样既保留旧系统支持，也让新系统使用对应的原生窗口外观。`verify-app.sh` 检查 Mach-O `LC_BUILD_VERSION` 的这两个字段，避免 Swift Build 把最低版本误写为 SDK 后仍被当作成功构建。原因见 [SDK 元数据决策](../.agents/notes/implemented/bug-fix/2026-10-28-linked-sdk-metadata.md)。
+
 ```sh
 DEVELOPER_DIR=/Library/Developer/CommandLineTools xcrun swift --version
 make test
