@@ -36,11 +36,11 @@ Interfaces: build-cask 接受 `VERSION COMMIT SHA256`，输出 `dist/Remote2Prom
 Files: `Casks/remote2prompt.rb`、移除旧 Formula/Cask、`.github/workflows/ci.yml`、README、development、testing、检查技能。
 
 - [x] 生成固定已发布源码的 Cask，移除旧配方；更新单项安装/卸载与旧版迁移命令。
-- [ ] CI 从 HTTPS 远端 tap 安装，两架构验证来源、单 app、CLI、自检、卸载与 zap；不以 checkout/file URL 安装。
-- [ ] 推送配方后，本机移除旧双项、untap，按新用户命令从远端重新 tap/install。
+- [x] 配置 CI 从 HTTPS 远端 tap 安装，两架构验证来源、单 app、CLI、自检、卸载与 zap；不以 checkout/file URL 安装。
+- [x] 推送配方后，本机移除旧双项、untap，按新用户命令从远端重新 tap/install。
 
 ### 3. 生命周期与交付
 
-- [ ] 核对只有一个 Cask，无 Formula/legacy Cask；Applications 真实本体，Caskroom 无第二个 app，构建缓存清理。
-- [ ] 实际卸载并核对 app/CLI/设置/记录清理，再从远端安装作为最终版本。
-- [ ] Note 完成后迁移状态并归档旧 Note；文档提交推送，核对最终 HEAD CI，不循环补填 CI 提交。
+- [x] 核对只有一个 Cask，无 Formula/legacy Cask；Applications 真实本体，Caskroom 无第二个 app，构建缓存清理。
+- [x] 实际卸载并核对 app/CLI/设置/记录清理，再从远端安装作为最终版本；另验证启动器链接链与带空格 appdir。
+- [x] Note 迁移为 implemented 并归档旧 Note，提交交付记录；最终 HEAD CI 由交付时核实并记入本机检查点，不循环补填 CI 提交。

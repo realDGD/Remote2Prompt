@@ -1,12 +1,12 @@
 # Agent Note: Single source Cask
 
-Status: proposed
+Status: implemented
 
 ## Problem
 
 用户要求只保留一个 Homebrew 项，仍以 CLT 编译源码、安装到 Applications、卸载一起清理，减少两份 app。旧 Formula+Cask 满足生命周期，却同时保留 keg 和 Applications 本体，操作与存储都重复。
 
-## Proposal
+## Decision
 
 以单 Cask `remote2prompt` 从固定 GitHub commit 与 SHA-256 归档构建；structured preflight 运行依赖已封闭的 SwiftPM 检查和 CLT 构建。来源信息写入 app 资源后重新临时签名，标准 app artifact 移动唯一 app 到 Applications，binary artifact 管理启动命令。postflight 清理自身构建缓存，Caskroom 的 app 只保留受 Homebrew 管理的链接，不是另一份 app。
 
@@ -18,10 +18,10 @@ Status: proposed
 - 仅保留下载二进制的普通 Cask：不能满足源码构建。
 - 保留两个包并把 Formula 隐藏：仍是两个安装项与两份 app，不能解决用户问题。
 
-## Acceptance criteria
+## Consequences
 
-远端新用户安装只有一个 Cask，无配套 Formula；实际 CLT 编译，签名内来源标记匹配。Applications 是真实 app，Caskroom 无第二个 app 目录与 .build；CLI 通过受管理链接定位。arm64/Intel CI 与本机实际安装、卸载、zap、重新安装通过，旧版不会留下悬空链接。
+本机已先卸载旧双项并 untap，再从公开 HTTPS 仓库重新克隆 tap、安装 0.2.2。实际 Homebrew sandbox 内核心 69/69、适配器 59/59、CLT 构建通过；安装后来源标记、严格签名、自检、CLI、无 Formula/旧 Cask、无第二份 app 和 .build 检查通过。实际 uninstall --zap 清除了 app、命令、Caskroom 与合成偏好，完整结果及重新安装记录见[验证](../../../../docs/validation/2026-10-28-single-source-cask.md)。
 
-## Risks
+首次安装需要 Swift 6 CLT 和编译时间，Homebrew 仍保留普通源码归档缓存与安装元数据。brew test 只支持 Formula，本项目改用安装期检查、安装后来源/签名/配置自检与实际卸载验收，不伪报 brew test 成功。此第三方 tap 的方式依赖 structured steps 的 sandbox 支持；未验证的最低系统、UI 和硬件边界仍单列。
 
-这不是 Cask 常规的预编译下载方式，首次安装需要 Swift 6 CLT 和编译时间。brew test 只支持 Formula，改用安装后只读来源/签名/自检与实际卸载验收，不伪报 brew test 成功。Homebrew structured steps 的 sandbox 必须实际验证；失败前不迁移为 implemented。来源：[Cask Cookbook](https://docs.brew.sh/Cask-Cookbook)、[brew test](https://docs.brew.sh/Manpage#test-options-installed_formula-)。
+旧双项决定作为[历史](../../archived/architecture/2026-10-27-source-tap-app-lifecycle.md)归档。来源：[Cask Cookbook](https://docs.brew.sh/Cask-Cookbook)、[brew test](https://docs.brew.sh/Manpage#test-options-installed_formula-)。

@@ -1,6 +1,7 @@
 # Agent Note: 源码 Formula 与应用生命周期分离
 
 Status: implemented
+Archived: 2026-10-28
 
 ## Problem
 

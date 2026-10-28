@@ -66,6 +66,8 @@ brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt
 
 一个卸载命令同时移除 app、启动命令、staged 记录。加 `--zap` 清本应用偏好、ByHost、缓存、保存状态与 Application Support；去掉保留设置。退出和恢复未完成时不能丢弃恢复记录。系统 TCC、音频驱动与其他应用不在清理范围。
 
+分发方式的取舍见 [Agent Note](../.agents/notes/implemented/architecture/2026-10-28-single-source-cask.md)，实际迁移、远端安装与卸载结果见[验证记录](validation/2026-10-28-single-source-cask.md)。
+
 旧双项版本的迁移命令见 [README](../README.md)。迁移不自动在后台卸载旧包；用户明确要求后才操作本机安装。
 
 ### 生成与发布
