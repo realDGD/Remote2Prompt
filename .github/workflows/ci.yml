@@ -84,7 +84,7 @@ jobs:
         run: /usr/bin/ruby scripts/prepare-homebrew.rb --tap remote2prompt/ci
       - name: Install pinned remote source and test Applications lifecycle
         run: |
-          brew tap --custom-remote realdgd/remote2prompt "$PWD"
+          brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
           if brew command trust >/dev/null 2>&1; then
             brew trust --formula realdgd/remote2prompt/remote2prompt
             brew trust --cask realdgd/remote2prompt/remote2prompt-app
