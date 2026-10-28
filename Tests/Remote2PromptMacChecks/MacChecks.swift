@@ -30,6 +30,11 @@ final class FakeService {
 enum MacChecks {
     @MainActor
     static func main() async throws {
+        if CommandLine.arguments.contains("--loopback-stream-smoke") {
+            do { try await loopbackStreamSmoke(switchInput: CommandLine.arguments.contains("--switch-input")) }
+            catch { print("FAIL continuous loopback: \(error)"); exit(1) }
+            return
+        }
         if CommandLine.arguments.contains("--loopback-output-smoke") {
             guard let before = LoopbackDevices.defaultSnapshot() else { throw Failure(message: "Cannot read default audio devices") }
             guard let device = LoopbackDevices.available().first else { throw Failure(message: "No compatible loopback device installed") }
@@ -245,6 +250,7 @@ enum MacChecks {
             })
         ]
         cases.append(contentsOf: inputPriorityAdapterChecks())
+        cases.append(contentsOf: loopbackWriterChecks())
         var failures = 0
         for (name, run) in cases {
             do { try run(); print("PASS \(name)") }

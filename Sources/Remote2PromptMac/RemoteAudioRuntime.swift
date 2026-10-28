@@ -119,7 +119,12 @@ public final class RemoteAudioRuntime: ObservableObject {
             writer.stop(); configuring = false; outputStatus = "未选择回环设备"; return
         }
         configuring = true; outputStatus = "正在打开所选回环设备"
-        writer.configure(uid: uid) { [weak self] result in
+        writer.configure(uid: uid, onFailure: { [weak self] error in
+            Task { @MainActor in
+                guard let self, !self.stopped, self.routeGeneration == token else { return }
+                self.invalidateOutput(error.localizedDescription)
+            }
+        }) { [weak self] result in
             Task { @MainActor in
                 guard let self, !self.stopped, self.routeGeneration == token else { return }
                 self.configuring = false
@@ -128,7 +133,7 @@ public final class RemoteAudioRuntime: ObservableObject {
                     self.outputReady = true; self.outputStatus = "所选回环设备已就绪"; self.routeFailures = 0
                     self.updateReady(); self.connectIfPossible()
                 case .failure(let error):
-                    self.routeFailures += 1; self.outputReady = false; self.outputStatus = error.localizedDescription
+                    self.routeFailures += 1
                     self.outputReady = false; self.isReady = false; self.outputStatus = error.localizedDescription
                     self.writer.stop(); self.cancel(message: error.localizedDescription)
                 }
@@ -137,7 +142,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     }
     private func connectIfPossible() {
         guard wanted else { return }
-        guard outputReady else { status = "请先选择可用的 MiRemoteV 2ch 或 BlackHole 2ch"; return }
+        guard outputReady else { status = outputStatus; return }
         guard deviceCount == 1 else { status = "语音音频需要恰好一只兼容遥控器"; return }
         bluetooth.start()
     }
@@ -152,7 +157,9 @@ public final class RemoteAudioRuntime: ObservableObject {
         guard !stopped, isReady, canStart?() == true else {
             if !sessionActive {
                 _ = bluetooth.close()
-                if wanted { status = "请检查语音开关、设备连接和设备控制权限" }
+                // A route/decoder/Bluetooth failure already explains why readiness is false.
+                // Keep that actionable cause instead of replacing it with a permission guess.
+                if wanted && isReady { status = "按键接管尚未就绪，请检查遥控器连接和设备控制权限。" }
             }
             return false
         }
@@ -230,6 +237,7 @@ public final class RemoteAudioRuntime: ObservableObject {
         }
     }
     private func invalidateOutput(_ message: String) {
+        routeGeneration &+= 1; configuring = false
         outputReady = false; bluetoothReady = false; isReady = false
         routeFailures = 3; outputStatus = message
         cancel(message: message); bluetooth.stop(); writer.stop()
