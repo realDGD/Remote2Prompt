@@ -1,0 +1,31 @@
+# Agent Note: 回环输出独立于系统默认输入图
+
+Status: implemented
+
+## Problem
+
+真机语音初次可用，随后遥控器仍按住时合成右 Control 已释放，输入法中断。设备状态实际显示音频队列溢出；后续按下又被笼统的权限提示覆盖。重新连接音频能暂时恢复。
+
+静音探针复现：切换默认输入后 AVAudioEngine 停止或失去所选输出绑定，播放器仍可能显示 playing，应用继续排队，最终触发 32000 样本上限。仅异步恢复引擎、重新绑定设备的候选在短测中通过，但正式主执行器检查仍会溢出，不能作为修复。Apple [配置变化通知说明](https://developer.apple.com/documentation/avfaudio/avaudioengineconfigurationchangenotification) 明确硬件格式变化可以停止并反初始化引擎。
+
+## Decision
+
+`LoopbackWriter` 的串行队列拥有独立 Audio Queue 播放后端。通过公开的 [CurrentDevice UID 属性](https://developer.apple.com/documentation/audiotoolbox/kaudioqueueproperty_currentdevice) 绑定所选回环，直接提交 16 kHz 单声道 Int16 PCM，由系统转换为设备格式。不创建 AVAudioEngine 的默认输入/输出图，不读取麦克风，不回退到系统输出。
+
+缓冲消费回调只回收容量与内存，不能当作尾音已播放。消费完成后调用 [AudioQueueStop(false)](https://developer.apple.com/documentation/audiotoolbox/audioqueuestop(_:_:))，结合 IsRunning 停止通知确认真实播放结束；整体仍有 1 秒排空预算。取消、超时和退出立即停止，释放缓冲与回调；正常队列上限仍为 32000 样本。
+
+路由代次独立于按键会话代次。设备通知异步交回所有者队列，不在系统回调中同步销毁输出。停止、替换、初始化失败的后端不能被旧通知复活；旧缓冲和旧排空回调不能结束新会话。路由验证失败通知对应音频运行时，沿用释放修饰键、恢复输入的安全路径。
+
+按下时若音频未就绪，保留已有具体失败原因；输出失效会作废未完成的配置回调，防止晚到成功覆盖终止错误。播放后端可注入，普通检查运行真实队列所有者和模拟设备，不打开 CoreAudio。
+
+## Alternatives considered
+
+- 只重启同一 AVAudioEngine：已实测仍会溢出，未采用。
+- 增大队列或移除上限：不能让停止的输出消费数据，增加延迟与内存，未采用。
+- 只要求用户反复重新连接：不能阻止下次系统输入切换中断，未作为修复。
+- 音频失败后继续持有合成修饰键：会留下无对应音频的语音会话并可能粘键，未采用。
+- 自行实现 AUHAL 实时渲染、重采样和环形缓冲：增加实时线程与格式转换的维护范围；当前使用系统 Audio Queue。
+
+## Consequences
+
+增加一个原生播放适配器及其资源生命周期，功能、配置格式、默认开关和 CLT 构建保持原样。适配器检查覆盖消费与排空区分、取消、旧通知与回调、失败和队列上限；显式静音硬件检查覆盖同一输出三次连续会话及输入往返切换。结果见[验证记录](../../../../docs/validation/2026-10-28-voice-engine-recovery.md)。真实遥控器声音、首尾音和微信输入法仍须在安装更新后复验。

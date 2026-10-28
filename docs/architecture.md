@@ -35,7 +35,7 @@ SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>
 
 核心 `RemoteVoiceDecoder` 处理高半字节优先的 IMA/DVI、分片和 predictor/index 同步，拒绝异常尺寸。解码检查使用合成固定样例，不包含真实录音。
 
-`LoopbackDevices` 以已知 UID 加双向声道验证识别 MiRemoteV 2ch / BlackHole 2ch。瞬时 AudioDeviceID 仅存在适配器，配置保存 UID。`LoopbackWriter` 在串行队列中拥有 AVAudioEngine，只绑定明确选中的回环设备。没有回退扬声器或写系统默认输入/输出的路径，设备失效或队列溢出时停止。
+`LoopbackDevices` 以已知 UID 加双向声道验证识别 MiRemoteV 2ch / BlackHole 2ch。瞬时 AudioDeviceID 仅存在适配器，配置保存 UID。`LoopbackWriter` 在串行队列中拥有独立的 Audio Queue 播放后端，按 UID 显式绑定所选回环，接收 16 kHz 单声道 PCM 并由系统转换为设备格式。它不依赖 AVAudioEngine 的默认输入/输出图，系统默认输入变化不会重新选择输出目标。缓冲消费与播放结束分别确认；只有异步停止完成才报告尾音排空，超时或取消立即停止。没有回退扬声器或写系统默认输入/输出的路径，设备失效或队列溢出时停止。
 
 `RemoteAudioRuntime` 拥有路由、协议连接和会话代际。开始前确认音频与 HID 接管准备，再发送触发键；结束保留 120 ms 尾部通知，排队 PCM 播放完成后释放，排空最长等待 1 秒。取消、断连或失效立即清理。快速重按会中断旧排空，新会话等协议 start 后接收数据，避免旧音频混入。测试音在内存生成，只写所选回环，真实语音优先并取消测试音。
 
