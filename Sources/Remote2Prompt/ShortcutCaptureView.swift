@@ -16,10 +16,11 @@ extension Remote2PromptCore.KeyboardShortcut {
         var title = ""
         if modifiers.contains(.control) { title += "⌃" }
         if modifiers.contains(.option) { title += "⌥" }
-        if modifiers.contains(.shift) { title += "⇧" }
+        let plus = keyCode == 24 && modifiers.contains(.shift)
+        if modifiers.contains(.shift) && !plus { title += "⇧" }
         if modifiers.contains(.command) { title += "⌘" }
         if modifiers.contains(.function) { title += "Fn " }
-        return title + (names[keyCode] ?? "键码 \(keyCode)")
+        return title + (plus ? "+" : names[keyCode] ?? "键码 \(keyCode)")
     }
 }
 

@@ -172,6 +172,7 @@ var checks: [(String, () throws -> Void)] = [
 ]
 // Keep each inference boundary explicit for standalone CLT's Swift 6.1 compiler.
 checks.append(contentsOf: mappingChecks())
+checks.append(contentsOf: commonMappingChecks())
 checks.append(contentsOf: setupChecks())
 checks.append(contentsOf: voiceProtocolChecks())
 checks.append(contentsOf: playoutClockChecks())

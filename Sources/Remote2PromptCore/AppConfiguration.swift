@@ -37,15 +37,11 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
         return MappedInvocation(action: binding.action, shortcut: binding.shortcut)
     }
 
-    /// Fill empty click bindings only; rerunning setup preserves every existing override and gesture.
+    /// Fill every empty preset gesture, preserving all existing overrides and feature switches.
     public mutating func fillBasicNavigationBindings() {
-        let defaults: [(RemoteButton, MappedAction)] = [
-            (.up, .arrowUp), (.down, .arrowDown), (.left, .arrowLeft), (.right, .arrowRight),
-            (.select, .enter), (.back, .backspace), (.power, .escape),
-            (.volumeUp, .volumeUp), (.volumeDown, .volumeDown)
-        ]
-        for (button, action) in defaults where self.action(for: button, gesture: .click) == .none {
-            setAction(action, for: button, gesture: .click)
+        for binding in CommonMappings.bindings where action(for: binding.button, gesture: binding.gesture) == .none {
+            if let shortcut = binding.shortcut { setShortcut(shortcut, for: binding.button, gesture: binding.gesture) }
+            else { setAction(binding.action, for: binding.button, gesture: binding.gesture) }
         }
     }
 

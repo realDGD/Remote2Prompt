@@ -101,7 +101,7 @@ struct SetupWizard: View {
         case .configuration:
             Section("普通按键") {
                 Toggle("启用自定义映射", isOn: $draft.mappingsEnabled)
-                Toggle("补齐空的常用单击动作", isOn: $fillNavigation)
+                Toggle("补齐空的常用动作", isOn: $fillNavigation)
                 Text("保留已有快捷键、双击和长按。之后可在按键映射页逐键调整。")
                     .font(.callout).foregroundStyle(.secondary)
             }
@@ -152,7 +152,7 @@ struct SetupWizard: View {
                 if draft.remoteAudioEnabled {
                     LabeledContent("按住时切换系统输入", value: draft.preferVirtualInput ? "开启" : "关闭")
                 }
-                LabeledContent("常用单击动作", value: fillNavigation ? "补齐空项" : "保留现状")
+                LabeledContent("常用动作", value: fillNavigation ? "补齐空项" : "保留现状")
             }
             Section("检查结果") {
                 Label(skippedCheck ? "已跳过检查" : checkPassed ? "按键检查通过" : "尚未完成按键检查",

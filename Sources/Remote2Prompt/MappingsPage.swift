@@ -123,7 +123,7 @@ struct MappingsPage: View {
             }
             Spacer()
             Button("填入常用动作") { store.update { $0.fillBasicNavigationBindings() } }
-                .help("仅补齐空的导航、返回、音量和电源单击动作，保留已有设置")
+                .help("补齐常用动作的空位：12 项单击、1 项双击、7 项长按，保留已有设置")
 
         }
         .padding(.horizontal, 2)

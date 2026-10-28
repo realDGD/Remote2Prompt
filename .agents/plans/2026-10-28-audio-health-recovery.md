@@ -31,9 +31,9 @@
 Files: AppConfiguration.swift, MappingActionCell.swift, MappingsPage.swift, SetupWizard.swift, ShortcutCaptureView.swift, core mapping/setup checks.
 Interfaces: `fillBasicNavigationBindings()` 保持名称；补齐12click/1doubleClick/7longPress，普通动作或明确虚拟键码与修饰键。菜单统一显示 invocation 的标题，键盘录入和清除入口保留。
 
-- [ ] 为全部20项的键码/修饰键、幂等与已有动作保留增加检查。
-- [ ] 按用户明细实现；更新向导、提示和符号显示。
-- [ ] 使用原生有边框 Menu，移除分离的纯文本快捷键按钮与自绘箭头。
+- [x] 为全部20项的键码/修饰键、幂等与已有动作保留增加检查。
+- [x] 按用户明细实现；更新向导、提示和符号显示。
+- [x] 菜单覆盖等宽动作字段，文字左对齐、箭头右置；移除分离的文本按钮和独立清除图标，键盘入口保留。用户否定按文字收缩的原生小按钮，已在隔离预览改为统一紧凑字段。
 - [ ] CLT检查、隔离预览点击菜单/录入/清除，提交。
 
 ### Task 2: 输出健康与有限恢复
@@ -68,3 +68,5 @@ Files: explicit MacChecks hardware diagnostics, docs/testing.md, new validation 
 
 - Baseline: b6e9b68, clean main, installed0.2.6. Prior final CI40671959048 verified3/3. No new installation, permissions or defaults changes at plan creation.
 - Ruling: user's listed bindings total20 (12/1/7); use detailed list including power-long Escape rather than dropping a specified binding to match the stated19.
+
+- Task1 verification: `make test`76core/75adapter; CLT Release bundle build and verify-app passed. Compact preview opened the filled20-action matrix, expanded a custom shortcut menu and showed its existing candidate; cancellation preserved it. Production app/settings untouched.
