@@ -17,6 +17,7 @@ fi
 "$repo_dir/scripts/build-app.sh" "$preview"
 /usr/libexec/PlistBuddy -c 'Set CFBundleIdentifier dev.remote2prompt.ui-preview' "$preview/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set CFBundleName Remote2Prompt Preview' "$preview/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set CFBundleDisplayName Remote2Prompt Preview' "$preview/Contents/Info.plist"
 /usr/bin/codesign --force --sign - --timestamp=none "$preview"
 /usr/bin/codesign --verify --deep --strict "$preview"
 echo "Interface preview: $preview"

@@ -23,7 +23,7 @@ struct ConnectionPage: View {
                 Text("先在系统蓝牙中配对 RC003。请退出其他遥控器映射软件，避免按键重复响应。")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            SettingsCard("遥控器声音") {
+            SettingsCard("遥控器语音输入") {
                 VoiceAudioControls(audio: runtime.audio)
                 HStack {
                     LabeledContent("语音触发键", value: store.configuration.voiceEnabled ? store.configuration.voiceTrigger.title : "未启用")
@@ -51,13 +51,13 @@ struct PermissionsPage: View {
 
     var body: some View {
         SettingsPageStack {
-            SettingsCard("发送按键") { DeviceControlPermissionRows() }
-            SettingsCard("读取遥控器按键") { InputMonitoringPermissionRows() }
+            SettingsCard("发送按键", compact: true) { DeviceControlPermissionRows() }
+            SettingsCard("读取遥控器按键", compact: true) { InputMonitoringPermissionRows() }
             if let notice = runtime.permissionNotice {
                 SettingsCard("授权提示") { Text(notice).font(.callout).foregroundStyle(.secondary) }
             }
             SettingsCard("蓝牙与声音") {
-                Label("启用遥控器声音后才请求蓝牙访问", systemImage: "antenna.radiowaves.left.and.right")
+                Label("启用遥控器麦克风后才请求蓝牙访问", systemImage: "antenna.radiowaves.left.and.right")
                 Text("应用不读取 Mac 自带麦克风。请在系统蓝牙中配对遥控器，声音写入你选择的虚拟麦克风。")
                     .font(.callout).foregroundStyle(.secondary)
                 Button("蓝牙设置…") { openBluetoothSettings() }.disabled(InterfaceInspection.enabled)
@@ -78,27 +78,29 @@ private struct SettingsPageStack<Content: View>: View {
     @ViewBuilder let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) { content }
-                .padding(24).frame(maxWidth: 820).frame(maxWidth: .infinity)
-        }.background(Color(nsColor: .windowBackgroundColor))
+        Form { content }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .frame(maxWidth: 820)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
 private struct SettingsCard<Content: View>: View {
     let title: String?
+    let compact: Bool
     @ViewBuilder let content: Content
-    init(_ title: String? = nil, @ViewBuilder content: () -> Content) {
-        self.title = title; self.content = content()
+    init(_ title: String? = nil, compact: Bool = false, @ViewBuilder content: () -> Content) {
+        self.title = title; self.compact = compact; self.content = content()
     }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if let title { Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary).padding(.leading, 2) }
-            VStack(alignment: .leading, spacing: 14) { content }
-                .padding(18).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.06)))
-        }
+    @ViewBuilder var body: some View {
+        if let title { Section(title) { rows } }
+        else { Section { rows } }
+    }
+    private var rows: some View {
+        VStack(alignment: .leading, spacing: compact ? 10 : 14) { content }
+            .padding(.vertical, compact ? 0 : 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

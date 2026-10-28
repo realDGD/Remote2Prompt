@@ -35,7 +35,6 @@ struct SettingsView: View {
                 }
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 170, ideal: 195, max: 245)
             .safeAreaInset(edge: .bottom) {
                 VStack(alignment: .leading, spacing: 12) {
                     ConfigurationTransferControls()
@@ -49,6 +48,7 @@ struct SettingsView: View {
                 }
                 .padding()
             }
+            .navigationSplitViewColumnWidth(min: 170, ideal: 195, max: 245)
         } detail: {
             VStack(spacing: 0) {
                 if let error = store.persistenceError {
@@ -68,6 +68,7 @@ struct SettingsView: View {
                 }
                 .disabled(store.persistenceError != nil)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .navigationTitle((selection ?? .mappings).title)
         }
         .sheet(isPresented: $store.isSetupPresented) { SetupWizard() }
