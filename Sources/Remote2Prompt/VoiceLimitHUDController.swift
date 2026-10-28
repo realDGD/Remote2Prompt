@@ -39,7 +39,7 @@ private final class VoiceLimitPanel: NSPanel {
     var previewIsHidden: Bool { runtime.state.presentation == .hidden && panel?.isVisible != true }
     var previewIsNonactivating: Bool {
         guard let panel else { return false }
-        return panel.isVisible && !panel.isKeyWindow && !panel.isMainWindow && !panel.canBecomeKey
+        return panel.isVisible && panel.isOnActiveSpace && panel.occlusionState.contains(.visible) && !panel.isKeyWindow && !panel.isMainWindow && !panel.canBecomeKey
             && !panel.canBecomeMain && panel.ignoresMouseEvents && panel.styleMask.contains(.nonactivatingPanel)
     }
     func shutdown() {
