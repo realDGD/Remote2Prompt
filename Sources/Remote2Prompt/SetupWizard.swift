@@ -144,7 +144,7 @@ struct SetupWizard: View {
             Section("本次配置") {
                 LabeledContent("自定义映射", value: draft.mappingsEnabled ? "开启" : "关闭")
                 LabeledContent("语音触发", value: draft.voiceEnabled ? draft.voiceTrigger.title : "关闭")
-                LabeledContent("遥控器声音", value: draft.remoteAudioEnabled ? "开启" : "关闭")
+                LabeledContent("虚拟麦克风", value: draft.remoteAudioEnabled ? "开启" : "关闭")
                 LabeledContent("按住时切换系统输入", value: draft.preferVirtualInput ? "开启" : "关闭")
                 LabeledContent("常用单击动作", value: fillNavigation ? "补齐空项" : "保留现状")
             }
@@ -194,7 +194,7 @@ private struct SetupAudioOptions: View {
     @ObservedObject var audio: RemoteAudioRuntime
     @Binding var draft: AppConfiguration
     var body: some View {
-        Toggle("接收遥控器声音", isOn: Binding(
+        Toggle("启用虚拟麦克风", isOn: Binding(
             get: { draft.remoteAudioEnabled },
             set: { draft.remoteAudioEnabled = $0; if $0 { draft.voiceEnabled = true } }
         ))

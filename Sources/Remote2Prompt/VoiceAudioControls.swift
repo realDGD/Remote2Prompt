@@ -7,12 +7,12 @@ struct VoiceAudioControls: View {
     @ObservedObject var audio: RemoteAudioRuntime
 
     var body: some View {
-        Toggle("接收遥控器声音", isOn: Binding(
+        Toggle("启用虚拟麦克风", isOn: Binding(
             get: { store.configuration.remoteAudioEnabled },
             set: { value in store.update { $0.remoteAudioEnabled = value; if value { $0.voiceEnabled = true } } }
         ))
         .toggleStyle(.switch).controlSize(.small)
-        Text("开启时会同时启用语音触发。请在目标输入法中选择下面同一个虚拟麦克风。")
+        Text("把遥控器麦克风的声音送入下方所选的虚拟麦克风，供输入法识别；同时启用语音触发。按住遥控器语音键说话，并在输入法中选择同一个虚拟麦克风。此开关不负责安装虚拟设备。")
             .font(.callout).foregroundStyle(.secondary)
         HStack {
             Picker("虚拟麦克风", selection: Binding(
