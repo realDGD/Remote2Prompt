@@ -64,4 +64,4 @@ M0 结果保存在 [初始化记录](validation/2026-10-27-bootstrap.md)。M1 �
 
 语音时限普通检查覆盖schema4旧配置默认关闭、便携导入关闭、真实运行时START与重复开始、早到音频不建立起点、中性reported结束与主机关闭确认、旧连接、50/55/60秒、预览5秒、旧deadline、重按、睡眠和退出。使用注入的时钟、传输、播放及deadline，不发实际输入。
 
-解锁后可运行`dist/Remote2Prompt.app/Contents/MacOS/Remote2Prompt --smoke-test-reminder --preview-directory .local/voice-limit-ui`，隔离配置且关闭硬件，检查提醒可见、非key/main及鼠标穿透属性并保存自身视图。实际点击穿透、前台输入焦点不变、设置关闭后继续显示、全屏/多屏/Stage Manager及真实RC003仍须原生验收；锁屏时跳过该入口。结果见[提醒检查](validation/2026-10-29-voice-limit-indicator.md)。
+解锁后可运行`dist/Remote2Prompt.app/Contents/MacOS/Remote2Prompt --smoke-test-reminder --preview-directory .local/voice-limit-ui`，隔离配置且关闭硬件，单独检查提醒橙/红/5秒隐藏、本应用key/main与激活状态不变及鼠标穿透属性并保存自身视图。它不要求设置窗口自动出现；设置窗口通过Computer Use单独检查。实际点击穿透、前台输入焦点不变、设置关闭后继续显示、全屏/多屏/Stage Manager及真实RC003仍须原生验收；锁屏时跳过该入口。`--smoke-test-background`在delegate初始化、任何设置窗口创建之前，确认配置更新已到达提醒运行时；不启用硬件。结果见[提醒检查](validation/2026-10-29-voice-limit-indicator.md)。

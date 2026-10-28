@@ -64,4 +64,4 @@ SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>
 
 `RemoteAudioRuntime`发布`VoiceLimitIndicator`快照，只由真实ATVV START建立单调起点；重复START不重置，报告的上限STOP使用中性结束态，主机关闭确认不产生到时提示。Core策略不创建计时器或系统副作用。`VoiceLimitReminderRuntime`只在下一次展示变化时安排一个deadline，代次作废旧唤醒/隐藏任务；前50秒不轮询，最后10秒最多每秒更新。
 
-`ApplicationDelegate`拥有配置和音频策略订阅以及`VoiceLimitHUDController`，关闭设置窗口不移除订阅。控制器延迟创建一个NSPanel与复用的SwiftUI内容，非激活、穿透、无声；真实段开始固定目标屏幕，屏幕消失时回退。睡眠取消，唤醒不恢复旧段；退出清理任务、订阅、观察者和窗口。开关同时要求语音及虚拟麦克风启用，预览独立于设备。RC003档案由用户明确开启，不能用共享HID身份自动确认型号。实际原因与未覆盖场景见[决策](../.agents/notes/implemented/feature/2026-10-28-rc003-voice-limit-indicator.md)。
+`ApplicationDelegate`强持有`ConfigurationStore`、`RemoteMappingRuntime`及`VoiceLimitHUDController`，在delegate初始化时建立配置/音频订阅。配置应用不依赖任何窗口onAppear，菜单栏冷启动和关闭设置后仍有效。控制器延迟创建一个NSPanel与复用的SwiftUI内容，非激活、穿透、无声；真实段开始固定目标屏幕，屏幕消失时回退。睡眠取消，唤醒不恢复旧段；退出清理任务、订阅、观察者和窗口。开关同时要求语音及虚拟麦克风启用，预览独立于设备。RC003档案由用户明确开启，不能用共享HID身份自动确认型号。实际原因与未覆盖场景见[决策](../.agents/notes/implemented/feature/2026-10-28-rc003-voice-limit-indicator.md)。

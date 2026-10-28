@@ -10,7 +10,7 @@ enum InterfaceInspection {
     static let bundleID = "dev.remote2prompt.ui-preview"
     static let preferencesDomain = "dev.remote2prompt.ui-preview.settings"
     static let interactive = Bundle.main.bundleIdentifier == bundleID || CommandLine.arguments.contains("--ui-preview")
-    static let enabled = interactive || CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide") || CommandLine.arguments.contains("--smoke-test-reminder")
+    static let enabled = interactive || CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide") || CommandLine.arguments.contains("--smoke-test-reminder") || CommandLine.arguments.contains("--smoke-test-background")
     static let defaults: UserDefaults = {
         guard enabled else { return .standard }
         let defaults = UserDefaults(suiteName: preferencesDomain)!
@@ -68,25 +68,27 @@ enum Launcher {
 
 struct Remote2PromptApp: App {
     @NSApplicationDelegateAdaptor(ApplicationDelegate.self) private var delegate
-    @StateObject private var store = ConfigurationStore(defaults: InterfaceInspection.defaults)
-    @StateObject private var runtime = RemoteMappingRuntime(hardwareEnabled: !InterfaceInspection.enabled)
+    private var store: ConfigurationStore { delegate.store }
+    private var runtime: RemoteMappingRuntime { delegate.runtime }
 
     var body: some Scene {
-        Window(InterfaceInspection.interactive ? "Remote2Prompt · 界面预览" : "Remote2Prompt", id: "settings") {
-            SettingsView()
-                .environmentObject(store)
-                .environmentObject(runtime)
-                .environmentObject(delegate.reminder)
-                .onAppear { delegate.attach(runtime, store: store) }
-        }
-        .defaultSize(width: 1200, height: 850)
-        .windowResizability(.contentMinSize)
-
+        settingsWindow
         MenuBarExtra("Remote2Prompt", systemImage: "appletvremote.gen4.fill") {
             MenuContents()
                 .environmentObject(store)
                 .environmentObject(runtime)
         }
+    }
+
+    private var settingsWindow: some Scene {
+        Window(InterfaceInspection.interactive ? "Remote2Prompt · 界面预览" : "Remote2Prompt", id: "settings") {
+            SettingsView()
+                .environmentObject(store)
+                .environmentObject(runtime)
+                .environmentObject(delegate.reminder)
+        }
+        .defaultSize(width: 1200, height: 850)
+        .windowResizability(.contentMinSize)
     }
 }
 
@@ -118,23 +120,29 @@ private struct MenuContents: View {
 
 @MainActor
 final class ApplicationDelegate: NSObject, NSApplicationDelegate {
-    private weak var runtime: RemoteMappingRuntime?
-    private weak var store: ConfigurationStore?
+    let store = ConfigurationStore(defaults: InterfaceInspection.defaults)
+    let runtime = RemoteMappingRuntime(hardwareEnabled: !InterfaceInspection.enabled)
     let reminder = VoiceLimitHUDController()
     private var subscriptions = Set<AnyCancellable>()
-    func attach(_ value: RemoteMappingRuntime, store: ConfigurationStore) {
-        guard runtime !== value || self.store !== store else { return }
-        subscriptions.removeAll(); runtime = value; self.store = store
-        store.$configuration.sink { [weak self, weak value] configuration in
-            value?.configure(configuration)
+    private var backgroundProbePassed = false
+    override init() {
+        super.init()
+        // Own configuration before any window appears, including menu-only cold launches.
+        store.$configuration.sink { [weak self] configuration in
+            self?.runtime.configure(configuration)
             self?.reminder.configure(configuration)
         }.store(in: &subscriptions)
-        value.audio.$voiceLimit.sink { [weak self] policy in self?.reminder.update(policy) }.store(in: &subscriptions)
-        if CommandLine.arguments.contains("--smoke-test-reminder") { reminder.preview() }
+        runtime.audio.$voiceLimit.sink { [weak self] policy in self?.reminder.update(policy) }.store(in: &subscriptions)
+        if CommandLine.arguments.contains("--smoke-test-background") {
+            guard NSApp?.windows.contains(where: { $0.isVisible && $0.canBecomeMain }) != true else {
+                fputs("Background smoke inconclusive: settings already visible at owner initialization\n", stderr); exit(1)
+            }
+            store.update { $0.voiceLimitReminderPosition = .bottomTrailing }
+            backgroundProbePassed = reminder.runtime.state.position == .bottomTrailing
+        }
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         reminder.shutdown()
-        guard let runtime else { return .terminateNow }
         var completed = false
         var waiting = false
         runtime.prepareToTerminate {
@@ -151,11 +159,20 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        if CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide") || CommandLine.arguments.contains("--smoke-test-reminder") {
+        if CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide") || CommandLine.arguments.contains("--smoke-test-reminder") || CommandLine.arguments.contains("--smoke-test-background") {
             if CommandLine.arguments.contains("--smoke-test-guide") { PermissionDragGuide.shared.show() }
+            if CommandLine.arguments.contains("--smoke-test-reminder") { reminder.preview() }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                guard NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }) else {
-                    fputs("UI smoke failed: settings window is not visible\n", stderr)
+                if CommandLine.arguments.contains("--smoke-test-background") {
+                    guard self.backgroundProbePassed else {
+                        fputs("Background smoke failed: configuration did not reach owner before window creation\n", stderr); exit(1)
+                    }
+                    print("Background smoke passed: configuration subscriptions active before settings creation; no hardware")
+                    NSApp.terminate(nil); return
+                }
+                guard CommandLine.arguments.contains("--smoke-test-reminder") || NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }) else {
+                    let diagnostic = NSApp.windows.map { "\($0.title):visible=\($0.isVisible),main=\($0.canBecomeMain),key=\($0.isKeyWindow)" }.joined(separator: "; ")
+                    fputs("UI smoke failed: settings window is not visible [\(diagnostic)]\n", stderr)
                     exit(1)
                 }
                 if CommandLine.arguments.contains("--smoke-test-guide"),
@@ -170,8 +187,29 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
                 if let flag = CommandLine.arguments.firstIndex(of: "--preview-directory"), CommandLine.arguments.indices.contains(flag + 1) {
                     self.savePreviews(to: URL(fileURLWithPath: CommandLine.arguments[flag + 1], isDirectory: true))
                 }
-                print("UI smoke passed: settings window is visible")
-                NSApp.terminate(nil)
+                if CommandLine.arguments.contains("--smoke-test-reminder") {
+                    let keyWindow = NSApp.keyWindow
+                    let active = NSApp.isActive
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                        guard case .countdown(_, true) = self.reminder.runtime.state.presentation,
+                              self.reminder.previewIsNonactivating, NSApp.keyWindow === keyWindow, NSApp.isActive == active else {
+                            fputs("Reminder smoke failed: urgent state or focus changed\n", stderr); exit(1)
+                        }
+                        if let flag = CommandLine.arguments.firstIndex(of: "--preview-directory"), CommandLine.arguments.indices.contains(flag + 1) {
+                            self.savePreviews(to: URL(fileURLWithPath: CommandLine.arguments[flag + 1], isDirectory: true).appendingPathComponent("urgent"))
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.1) {
+                            guard self.reminder.previewIsHidden, NSApp.keyWindow === keyWindow, NSApp.isActive == active else {
+                                fputs("Reminder smoke failed: preview did not hide or focus changed\n", stderr); exit(1)
+                            }
+                            print("Reminder lifecycle smoke passed: panel visible, urgent, hidden after five seconds; key/main and activation unchanged; click-through property true")
+                            NSApp.terminate(nil)
+                        }
+                    }
+                } else {
+                    print("UI smoke passed: settings window is visible")
+                    NSApp.terminate(nil)
+                }
             }
         }
     }
@@ -185,6 +223,11 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func statusButton(in view: NSView) -> NSStatusBarButton? {
+        if let button = view as? NSStatusBarButton { return button }
+        return view.subviews.lazy.compactMap { self.statusButton(in: $0) }.first
+    }
+
     private func savePreviews(to directory: URL) {
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -194,6 +237,15 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
                 if let data = bitmap.representation(using: .png, properties: [:]) {
                     try data.write(to: directory.appendingPathComponent("window-\(index).png"))
                 }
+            }
+            for window in NSApp.windows {
+                guard let view = window.contentView, let button = statusButton(in: view),
+                      let bitmap = button.bitmapImageRepForCachingDisplay(in: button.bounds) else { continue }
+                button.cacheDisplay(in: button.bounds, to: bitmap)
+                if let data = bitmap.representation(using: .png, properties: [:]) {
+                    try data.write(to: directory.appendingPathComponent("menu-icon.png"))
+                }
+                break
             }
             let remote = ImageRenderer(content: RemoteDiagram(selection: .constant(.select), active: [], voiceHeld: false))
             remote.scale = 2

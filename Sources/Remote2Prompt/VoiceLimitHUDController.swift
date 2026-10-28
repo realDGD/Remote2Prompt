@@ -36,6 +36,7 @@ private final class VoiceLimitPanel: NSPanel {
     func configure(_ value: AppConfiguration) { runtime.configure(value) }
     func update(_ value: VoiceLimitIndicator) { runtime.update(value) }
     func preview() { runtime.preview() }
+    var previewIsHidden: Bool { runtime.state.presentation == .hidden && panel?.isVisible != true }
     var previewIsNonactivating: Bool {
         guard let panel else { return false }
         return panel.isVisible && !panel.isKeyWindow && !panel.isMainWindow && !panel.canBecomeKey
