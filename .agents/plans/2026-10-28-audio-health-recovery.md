@@ -51,9 +51,9 @@ Interfaces: `LoopbackWriter.checkHealth(completion:)`，`RemoteVoiceTransport` �
 Files: RemoteMappingRuntime.swift, RemoteAudioRuntime.swift, lifecycle policy/checks, owning Notes.
 Interfaces: `RemoteAudioRuntime.suspend()` / `resume()`，映射运行时对应系统事件入口；监听 willSleep/didWake，并以实际权限/设备重新确认接管。
 
-- [ ] suspend取消所有恢复/配置代次，释放触发，停止HID/BLE/输出；睡眠期间配置和轮询不重开资源。
-- [ ] resume重新枚举与校验，恢复ready不代表开始语音；重复事件、睡眠中晚到完成均安全。
-- [ ] 模拟睡眠/唤醒、恢复中再次睡眠、退出后唤醒；提交。
+- [x] suspend取消所有恢复/配置代次，释放触发，停止HID/BLE/输出；睡眠期间配置和轮询不重开资源。
+- [x] resume重新枚举与校验，恢复ready不代表开始语音；重复事件、睡眠中晚到完成均安全。
+- [x] 模拟睡眠/唤醒、恢复中再次睡眠、退出后唤醒；提交。
 
 ### Task 4: 集成回归与交付证据
 
@@ -72,3 +72,5 @@ Files: explicit MacChecks hardware diagnostics, docs/testing.md, new validation 
 - Task1 verification: `make test`76core/75adapter; CLT Release bundle build and verify-app passed. Compact preview opened the filled20-action matrix, expanded a custom shortcut menu and showed its existing candidate; cancellation preserved it. Production app/settings untouched.
 
 - Task2: 1秒维护节奏采用1/2/4秒退避，不引入另一组重试Timer；`make test`76core/84adapter通过（新增串行健康3项、生产运行时恢复6项），无真实设备写入。
+
+- Task3: `make test`78core/87adapter通过；HID所有权、原生通知与实际睡眠仍需真机。唤醒先清睡前计数，等待新设备发现；首次报告仍按住时拒绝语音，报告松开后重新武装。

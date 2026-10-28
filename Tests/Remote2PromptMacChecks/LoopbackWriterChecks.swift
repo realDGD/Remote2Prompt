@@ -87,10 +87,10 @@ func loopbackWriterChecks() -> [(String, @MainActor () throws -> Void)] {
             try configure(writer)
             time.withValue { $0 = 100 }
             let idle: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
-            try idle.get()
+            _ = try idle.get()
             writer.begin(); _ = try append(160, to: writer)
             let starting: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
-            try starting.get()
+            _ = try starting.get()
             time.withValue { $0 = 101 }
             let failed: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
             guard case .failure(.playbackStopped) = failed else { throw Failure(message: "Stopped active playback was accepted") }
@@ -101,17 +101,17 @@ func loopbackWriterChecks() -> [(String, @MainActor () throws -> Void)] {
             fake.setHealth(health); let time = LockedValue(0.0)
             let writer = LoopbackWriter(playback: { fake }, clock: { time.withValue { $0 } })
             defer { writer.stop() }; try configure(writer); writer.begin(); _ = try append(160, to: writer)
-            let first: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; try first.get()
+            let first: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; _ = try first.get()
             time.withValue { $0 = 2 }; health.clockFrame = 160; fake.setHealth(health)
-            let moving: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; try moving.get()
+            let moving: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; _ = try moving.get()
             time.withValue { $0 = 4 }
-            let grace: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; try grace.get()
+            let grace: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; _ = try grace.get()
             time.withValue { $0 = 5 }
             let frozen: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
             guard case .failure(.playbackStalled) = frozen else { throw Failure(message: "Frozen playback was accepted") }
             try configure(writer); writer.begin(); _ = try append(160, to: writer); fake.takeConsumed().forEach { $0() }
             time.withValue { $0 = 100 }
-            let idle: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; try idle.get()
+            let idle: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; _ = try idle.get()
         }),
         ("health reports converter and device failures without restarting from stale notifications", {
             let fake = FakeLoopbackPlayback(); let writer = LoopbackWriter(playback: { fake }); defer { writer.stop() }

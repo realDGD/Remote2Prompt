@@ -134,6 +134,40 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
             oldFailure?("stale failure")
             try check(h.runtime.isReady && h.transport.opens == 1, "Old connection callback invalidated replacement")
         }),
+        ("suspend releases voice resources and ignores polling, retry and old callbacks", {
+            let h = AudioHarness(); defer { h.runtime.shutdown() }; h.enable()
+            try await eventually { h.runtime.isReady }; try check(h.runtime.press(), "Voice did not begin")
+            let oldReady = h.transport.onReady; let oldStarted = h.transport.onStarted
+            h.events.removeAll(); h.runtime.suspend(); h.runtime.suspend()
+            try check(!h.runtime.isReady && !h.runtime.sessionActive && h.ends == 1 && h.events.first == "end", "Suspend did not release voice before teardown")
+            h.advance(100); h.runtime.retry(); h.runtime.setRemoteCount(0)
+            oldReady?(try VoiceCapabilities(packet: Data([11, 1, 0, 2, 3, 0, 120]))); oldStarted?()
+            try check(h.transport.starts == 1 && h.transport.opens == 1 && !h.runtime.isReady, "Sleeping audio was revived")
+            h.runtime.resume(); h.runtime.resume();
+            try check(h.transport.starts == 1, "Wake trusted a stale HID count")
+            h.runtime.setRemoteCount(1); try await eventually { h.runtime.isReady }
+            try check(h.transport.starts == 2 && !h.runtime.sessionActive && h.begins == 1, "Wake reopened a voice or duplicated connection")
+            try check(h.runtime.press() && h.begins == 2, "Fresh press after wake failed")
+        }),
+        ("sleep during recovery or configuration cannot complete an old connection", {
+            let h = AudioHarness(); defer { h.runtime.shutdown() }; h.enable()
+            h.runtime.suspend(); h.advance(100)
+            try await Task.sleep(for: .milliseconds(20))
+            try check(!h.runtime.isReady && h.transport.starts == 0, "Late configuration connected during sleep")
+            h.runtime.resume(); h.runtime.setRemoteCount(1); try await eventually { h.runtime.isReady }
+            h.transport.onFailure?("fixture recovery"); h.runtime.suspend(); h.advance(100)
+            try check(h.transport.starts == 1, "Scheduled recovery ran while suspended")
+            h.runtime.resume(); h.runtime.setRemoteCount(1); try await eventually { h.runtime.isReady }
+            h.runtime.suspend(); h.runtime.shutdown(); h.runtime.resume(); h.advance(100)
+            try check(!h.runtime.isReady && h.transport.starts == 2, "Wake revived shutdown resources")
+        }),
+        ("configuration changes during sleep are kept without opening resources", {
+            let h = AudioHarness(); defer { h.runtime.shutdown() }; h.enable()
+            try await eventually { h.runtime.isReady }; h.runtime.suspend()
+            var disabled = AppConfiguration(); disabled.selectedVirtualInputUID = "fixture-loopback"
+            h.runtime.configure(disabled); h.advance(100); h.runtime.resume()
+            try check(!h.runtime.isReady && h.transport.starts == 1 && h.transport.opens == 0, "Sleeping opt-out opened resources")
+        }),
         ("disabled and shutdown runtimes ignore retries and late transport events", {
             let h = AudioHarness(); h.runtime.setRemoteCount(1); h.runtime.refreshDevices()
             try check(h.transport.starts == 0 && h.playback.configurations == 0, "Defaults opened audio")

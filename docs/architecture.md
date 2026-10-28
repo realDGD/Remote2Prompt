@@ -56,3 +56,5 @@ SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>
 工具链与分层理由见 [CLT 决策](../.agents/notes/implemented/architecture/2026-10-27-swift-clt-foundation.md)。
 
 输出健康检查在 `LoopbackWriter` 串行队列完成，空闲不要求队列running；有待播数据才观察运行和消费/时钟停滞。`RemoteAudioRuntime` 每秒维护设备、健康与收包间隔，统一拥有1/2/4秒、最多3次的恢复预算，连续健康10秒才复原预算；BLE不再内部无限重连，查找到能力读取总计8秒截止。故障先释放触发与恢复输入；重新ready不代表恢复旧语音。连接、路由和按键各自代次隔离旧回调。
+
+系统willSleep暂停音频和HID所有权，作废配置/健康/传输代次；didWake重新检查设备与权限，音频不使用旧遥控器计数开连。每个来源先报告松开语音键，再允许新语音。暂停期间不轮询设备或重新连接，退出后唤醒不会复活。锁屏与用户会话切换不在这次实现边界内；见[生命周期决策](../.agents/notes/implemented/feature/2026-10-28-system-sleep-audio-lifecycle.md)。

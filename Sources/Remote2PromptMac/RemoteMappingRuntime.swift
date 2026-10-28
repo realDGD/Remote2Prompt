@@ -45,10 +45,12 @@ public final class RemoteMappingRuntime: ObservableObject {
     private var gestures = ButtonGestures()
     private var voice = VoiceSession()
     private var held: [String: Set<UInt16>] = [:]
+    private var voicePressGate = FreshVoicePressGate()
     private var pollTimer: Timer?
     private var gestureTimer: Timer?
     private var observations: [NSObjectProtocol] = []
-    private var workspaceObservation: NSObjectProtocol?
+    private var workspaceObservations: [NSObjectProtocol] = []
+    private var systemSuspended = false
     private var retryAllowed = true
     private let hardwareEnabled: Bool
     private enum PermissionRequest { case input, accessibility }
@@ -69,7 +71,7 @@ public final class RemoteMappingRuntime: ObservableObject {
         }
         audio.canStart = { [weak self] in
             guard let self else { return false }
-            return !self.hasShutdown && self.isRunning && !self.setupActive && self.accessibility
+            return !self.hasShutdown && !self.systemSuspended && self.isRunning && !self.setupActive && self.accessibility
                 && self.configuration.voiceEnabled && self.detectedCount == 1
                 && self.held.values.contains { $0.contains(XiaomiRemote.voiceUsage) }
         }
@@ -118,11 +120,12 @@ public final class RemoteMappingRuntime: ObservableObject {
                 self?.performPendingPermissionRequest()
             }
         })
-        workspaceObservation = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.stop(); self?.retryAllowed = false; self?.status = "已因休眠停止接管，唤醒后请重试连接"
-            }
-        }
+        workspaceObservations.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.suspendForSleep() }
+        })
+        workspaceObservations.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.resumeAfterSleep() }
+        })
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
@@ -148,7 +151,7 @@ public final class RemoteMappingRuntime: ObservableObject {
     }
 
     public func refresh() {
-        guard hardwareEnabled && !hasShutdown else { return }
+        guard hardwareEnabled && !hasShutdown && !systemSuspended else { return }
         guard IOHIDPermission.runningCodeIsCurrent() else {
             stop()
             status = "应用已更新，请退出并重新打开"
@@ -159,7 +162,7 @@ public final class RemoteMappingRuntime: ObservableObject {
     }
 
     private func applyPermissionSnapshot(_ snapshot: PermissionSnapshot) {
-        guard !hasShutdown else { return }
+        guard !hasShutdown, !systemSuspended else { return }
         let oldCount = detectedCount
         let oldInput = inputMonitoring; let oldAX = accessibility
         let discovered = HIDRemoteMonitor.discoverCount()
@@ -300,11 +303,12 @@ public final class RemoteMappingRuntime: ObservableObject {
         pollTimer?.invalidate(); pollTimer = nil
         stop()
         observations.forEach(NotificationCenter.default.removeObserver); observations.removeAll()
-        if let observation = workspaceObservation { NSWorkspace.shared.notificationCenter.removeObserver(observation); workspaceObservation = nil }
+        workspaceObservations.forEach(NSWorkspace.shared.notificationCenter.removeObserver)
+        workspaceObservations.removeAll()
     }
 
     private func received(_ owner: String, _ usages: Set<UInt16>) {
-        guard isRunning else { return }
+        guard isRunning, !systemSuspended else { return }
         do {
             guard try lease?.verifyCoverage() == true else { fail("无法验证当前设备的原生按键抑制，已停止接管。"); return }
             let previous = held[owner] ?? []
@@ -316,6 +320,7 @@ public final class RemoteMappingRuntime: ObservableObject {
                 }
             }
             held[owner] = usages
+            let acceptsVoice = voicePressGate.accepts(owner: owner, isDown: usages.contains(XiaomiRemote.voiceUsage))
             if setupActive {
                 setupInput.receive(owner: owner, previous: previous, current: usages)
                 publishPressed()
@@ -328,7 +333,9 @@ public final class RemoteMappingRuntime: ObservableObject {
                 }
             }
             if usages.contains(XiaomiRemote.voiceUsage) && !previous.contains(XiaomiRemote.voiceUsage) {
-                if configuration.voiceEnabled {
+                if configuration.voiceEnabled && !acceptsVoice {
+                    status = "请先松开语音键，再重新按下"
+                } else if configuration.voiceEnabled {
                     gestures.cancelAll()
                     if configuration.remoteAudioEnabled { _ = audio.press() }
                     else { try deliver(voice.begin(owner: owner, trigger: configuration.voiceTrigger)) }
@@ -351,6 +358,8 @@ public final class RemoteMappingRuntime: ObservableObject {
         } catch { fail(error.localizedDescription) }
     }
     private func disconnected(_ owner: String) {
+        if held[owner]?.contains(XiaomiRemote.voiceUsage) == true { voicePressGate.requireRelease() }
+        voicePressGate.remove(owner: owner)
         audio.setRemoteCount(monitor.deviceCount)
         audio.cancel(message: configuration.remoteAudioEnabled ? "遥控器已断开，语音已结束。" : nil)
         setupInput.disconnected(owner: owner)
@@ -376,6 +385,7 @@ public final class RemoteMappingRuntime: ObservableObject {
         if voiceHeld != speaking { voiceHeld = speaking }
     }
     private func stop() {
+        if held.values.contains(where: { $0.contains(XiaomiRemote.voiceUsage) }) { voicePressGate.requireRelease() }
         // onEnd releases the synthetic trigger before it restores the pre-press input.
         // Dropping input readiness first would bypass that ordering.
         let hadActiveAudio = audio.sessionActive
@@ -398,11 +408,23 @@ public final class RemoteMappingRuntime: ObservableObject {
     }
 
     private func updateInputPriority() {
-        let ready = !hasShutdown && audioReady && isRunning && !setupActive && accessibility && detectedCount == 1
+        let ready = !hasShutdown && !systemSuspended && audioReady && isRunning && !setupActive && accessibility && detectedCount == 1
         // This also runs from the audio publisher's willSet callback. Cancel before setReady(false)
         // can restore the physical microphone while the target input method still holds the key.
         if !ready && audio.sessionActive { audio.cancel() }
         inputPriority.setReady(ready)
+    }
+
+    private func suspendForSleep() {
+        guard !hasShutdown, !systemSuspended else { return }
+        systemSuspended = true; voicePressGate.requireRelease()
+        audio.suspend(); stop(); retryAllowed = false
+        status = "休眠期间已暂停遥控器接管"
+    }
+    private func resumeAfterSleep() {
+        guard !hasShutdown, systemSuspended else { return }
+        systemSuspended = false; retryAllowed = true
+        audio.resume(); refresh()
     }
 
     private var leaseSources: Set<UInt64> {

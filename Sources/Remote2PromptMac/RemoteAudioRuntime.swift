@@ -48,6 +48,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     private var timer: Timer?
     private let hardwareEnabled: Bool
     private var stopped = false
+    private var suspended = false
 
     public init(hardwareEnabled: Bool = true, writer: LoopbackWriter? = nil,
                 transport: (any RemoteVoiceTransport)? = nil,
@@ -123,7 +124,7 @@ public final class RemoteAudioRuntime: ObservableObject {
         refreshDevices()
     }
     public func setRemoteCount(_ count: Int) {
-        guard hardwareEnabled, !stopped, deviceCount != count else { return }
+        guard hardwareEnabled, !stopped, !suspended, deviceCount != count else { return }
         deviceCount = count
         if count != 1 {
             cancel(message: wanted ? "语音音频需要恰好一只兼容遥控器" : nil)
@@ -135,13 +136,13 @@ public final class RemoteAudioRuntime: ObservableObject {
         }
     }
     public func retry() {
-        guard hardwareEnabled, !stopped else { return }
+        guard hardwareEnabled, !stopped, !suspended else { return }
         cancel(); routeGeneration &+= 1; configuring = false
         stopTransport(); writer.stop(); outputReady = false; isReady = false
         recovery.reset(); selectedAvailable = false; refreshDevices()
     }
     public func refreshDevices() {
-        guard hardwareEnabled, !stopped else { return }
+        guard hardwareEnabled, !stopped, !suspended else { return }
         let available = catalog()
         if devices != available { devices = available }
         guard wanted, let uid = configuration.selectedVirtualInputUID else { return }
@@ -164,7 +165,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     private var wanted: Bool { configuration.remoteAudioEnabled && configuration.voiceEnabled }
     public var canTestTone: Bool { outputReady && !sessionActive && !testingTone }
     private func prepareOutput() {
-        guard hardwareEnabled, !stopped, wanted else { return }
+        guard hardwareEnabled, !stopped, !suspended, wanted else { return }
         routeGeneration &+= 1; let token = routeGeneration
         outputReady = false; isReady = false
         guard let uid = configuration.selectedVirtualInputUID else {
@@ -191,21 +192,21 @@ public final class RemoteAudioRuntime: ObservableObject {
         }
     }
     private func connectIfPossible() {
-        guard wanted else { return }
+        guard wanted, !stopped, !suspended else { return }
         guard outputReady else { status = outputStatus; return }
         guard deviceCount == 1 else { status = "语音音频需要恰好一只兼容遥控器"; return }
         guard !connectionActive else { return }
         connectionActive = true; bindTransport(); bluetooth.start()
     }
     private func updateReady() {
-        let ready = wanted && outputReady && bluetoothReady && deviceCount == 1
+        let ready = !stopped && !suspended && wanted && outputReady && bluetoothReady && deviceCount == 1
         if isReady != ready { isReady = ready }
     }
 
     @discardableResult public func press() -> Bool {
         let interruptedTail = sessionActive && finishing
         if sessionActive && !finishing { return true }
-        guard !stopped, isReady, canStart?() == true else {
+        guard !stopped, !suspended, isReady, canStart?() == true else {
             if !sessionActive {
                 _ = bluetooth.close()
                 // A route/decoder/Bluetooth failure already explains why readiness is false.
@@ -313,7 +314,7 @@ public final class RemoteAudioRuntime: ObservableObject {
         }
     }
     private func invalidateOutput(_ message: String) {
-        guard !stopped else { return }
+        guard !stopped, !suspended else { return }
         routeGeneration &+= 1; configuring = false
         // Release the synthetic trigger and restore input before readiness observers run.
         cancel(message: message)
@@ -358,5 +359,18 @@ public final class RemoteAudioRuntime: ObservableObject {
         stopped = true; timer?.invalidate(); timer = nil
         cancel(); stopTransport(); writer.stop()
         outputReady = false; bluetoothReady = false; isReady = false
+    }
+    public func suspend() {
+        guard hardwareEnabled, !stopped, !suspended else { return }
+        suspended = true; routeGeneration &+= 1; configuring = false; deviceCount = 0
+        cancel(); stopTransport(); writer.stop()
+        outputReady = false; isReady = false; recovery.reset()
+        status = "休眠期间已暂停遥控器音频"
+    }
+    public func resume() {
+        guard hardwareEnabled, !stopped, suspended else { return }
+        suspended = false; recovery.reset(); selectedAvailable = false
+        status = wanted ? "正在恢复遥控器音频，请先松开语音键" : "遥控器音频已关闭"
+        refreshDevices()
     }
 }
