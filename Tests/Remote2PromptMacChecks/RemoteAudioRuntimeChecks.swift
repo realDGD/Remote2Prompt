@@ -21,7 +21,7 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
 @MainActor private final class RuntimeTransport: RemoteVoiceTransport {
     var onReady: ((VoiceCapabilities) -> Void)?
     var onStarted: (() -> Void)?
-    var onStopped: (() -> Void)?
+    var onStopped: ((RemoteVoiceStopReason) -> Void)?
     var onAudio: ((Data) -> Void)?
     var onSync: ((Data) -> Void)?
     var onStatus: ((String) -> Void)?

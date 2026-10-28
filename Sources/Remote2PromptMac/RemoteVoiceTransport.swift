@@ -5,7 +5,7 @@ import Remote2PromptCore
 @MainActor public protocol RemoteVoiceTransport: AnyObject {
     var onReady: ((VoiceCapabilities) -> Void)? { get set }
     var onStarted: (() -> Void)? { get set }
-    var onStopped: (() -> Void)? { get set }
+    var onStopped: ((RemoteVoiceStopReason) -> Void)? { get set }
     var onAudio: ((Data) -> Void)? { get set }
     var onSync: ((Data) -> Void)? { get set }
     var onStatus: ((String) -> Void)? { get set }

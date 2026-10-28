@@ -1,7 +1,15 @@
+import Foundation
 import Remote2PromptCore
 
 func voiceLimitIndicatorChecks() -> [(String, () throws -> Void)] {
     [
+        ("reported stop codes retain uncertainty and do not classify other control events", {
+            try expect(RemoteVoiceProtocol.stopReason(packet: Data([0, 0])) == .ordinaryReported, "Ordinary report lost")
+            try expect(RemoteVoiceProtocol.stopReason(packet: Data([0, 2])) == .ordinaryReported, "Alternate ordinary report lost")
+            try expect(RemoteVoiceProtocol.stopReason(packet: Data([0, 8])) == .timeLimitReported, "Reported limit reason lost")
+            try expect(RemoteVoiceProtocol.stopReason(packet: Data([0])) == .unspecified && RemoteVoiceProtocol.stopReason(packet: Data([0, 99])) == .unspecified, "Unknown reason guessed")
+            try expect(RemoteVoiceProtocol.stopReason(packet: Data()) == nil && RemoteVoiceProtocol.stopReason(packet: Data([4, 8])) == nil, "Another control event became STOP")
+        }),
         ("voice warning follows monotonic segment time and never invents a stop", {
             var indicator = VoiceLimitIndicator()
             indicator.begin(segment: 1, at: 100, hasRC003Limit: true)

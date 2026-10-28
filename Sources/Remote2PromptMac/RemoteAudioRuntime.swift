@@ -89,7 +89,7 @@ public final class RemoteAudioRuntime: ObservableObject {
             if !self.sessionActive || self.finishing { _ = self.bluetooth.close() }
             else { self.protocolStarted = true }
         }
-        bluetooth.onStopped = { [weak self] in
+        bluetooth.onStopped = { [weak self] _ in
             guard let self, self.connectionGeneration == token, !self.stopped, self.protocolStarted || self.finishing else { return }
             self.release()
         }

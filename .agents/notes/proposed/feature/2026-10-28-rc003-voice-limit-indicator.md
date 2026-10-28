@@ -6,7 +6,7 @@ Status: proposed
 
 本机已确认RC003持续按住时约一分钟自动结束，而同一输入法经键盘触发可持续两分钟。用户希望在结束前获得优雅、无声的提示，避免继续说话而未被接收。背景与实测见[生命周期回归](../../../../docs/validation/2026-10-28-audio-health-lifecycle.md)及[上游#679](https://github.com/HD838A/remote-mic-app/issues/679)。
 
-现有传输层把所有0x00停止事件折叠成无参数onStopped，上层无法区分普通松手、主机关闭响应和报告者提到的00 08时限原因；当前UI计数也不记录结束原因。不能仅凭墙钟达到60秒就宣称固件已断开。
+原有传输层把所有0x00停止事件折叠成无参数onStopped。当前框架已保留带分类的停止回调：ordinaryReported、timeLimitReported及unspecified；生产音频运行时暂时忽略分类，保持原释放行为。当前UI计数仍不记录结束原因。不能仅凭墙钟达到60秒就宣称固件已断开。
 
 ## Proposal
 

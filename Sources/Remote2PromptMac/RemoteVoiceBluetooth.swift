@@ -8,7 +8,7 @@ final class RemoteVoiceBluetooth: NSObject, RemoteVoiceTransport, @preconcurrenc
     var onReady: ((VoiceCapabilities) -> Void)?
     var onOpen: (() -> Void)?
     var onStarted: (() -> Void)?
-    var onStopped: (() -> Void)?
+    var onStopped: ((RemoteVoiceStopReason) -> Void)?
     var onAudio: ((Data) -> Void)?
     var onSync: ((Data) -> Void)?
     var onStatus: ((String) -> Void)?
@@ -170,7 +170,7 @@ final class RemoteVoiceBluetooth: NSObject, RemoteVoiceTransport, @preconcurrenc
             case 4:
                 guard ready, bytes.count >= 4, bytes[2] == 2 else { throw VoiceProtocolFailure.unsupportedCodec }
                 session = bytes[3]; onStarted?()
-            case 0: if ready { onStopped?() }
+            case 0: if ready { onStopped?(RemoteVoiceProtocol.stopReason(packet: data) ?? .unspecified) }
             case 10: if ready { onSync?(data) }
             default: break
             }
