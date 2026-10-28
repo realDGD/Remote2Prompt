@@ -4,7 +4,7 @@ import Remote2PromptCore
 
 /// One selected ATVV connection; CoreBluetooth delegates are delivered on the main queue.
 @MainActor
-final class RemoteVoiceBluetooth: NSObject, @preconcurrency CBCentralManagerDelegate, @preconcurrency CBPeripheralDelegate {
+final class RemoteVoiceBluetooth: NSObject, RemoteVoiceTransport, @preconcurrency CBCentralManagerDelegate, @preconcurrency CBPeripheralDelegate {
     var onReady: ((VoiceCapabilities) -> Void)?
     var onOpen: (() -> Void)?
     var onStarted: (() -> Void)?
@@ -24,17 +24,23 @@ final class RemoteVoiceBluetooth: NSObject, @preconcurrency CBCentralManagerDele
     private var session: UInt8 = 0
     private var generation: UInt64 = 0
     private var timeout: Task<Void, Never>?
-    private var reconnect: Task<Void, Never>?
     private let serviceID = CBUUID(string: RemoteVoiceProtocol.service)
 
     func start() {
         guard !enabled else { return }
         enabled = true; generation &+= 1
+        let token = generation
+        timeout?.cancel()
+        timeout = Task { @MainActor [weak self] in
+            do { try await Task.sleep(for: .seconds(8)) } catch { return }
+            guard let self, self.enabled, self.generation == token, !self.ready else { return }
+            self.fail("遥控器音频查找或初始化超时，请唤醒后重试。")
+        }
         onStatus?("等待蓝牙就绪")
         central = CBCentralManager(delegate: self, queue: .main, options: [CBCentralManagerOptionShowPowerAlertKey: false])
     }
     func stop() {
-        enabled = false; generation &+= 1; timeout?.cancel(); reconnect?.cancel()
+        enabled = false; generation &+= 1; timeout?.cancel()
         if ready { _ = close() }
         central?.stopScan()
         if let peripheral { peripheral.delegate = nil; central?.cancelPeripheralConnection(peripheral) }
@@ -66,13 +72,6 @@ final class RemoteVoiceBluetooth: NSObject, @preconcurrency CBCentralManagerDele
         central?.stopScan(); peripheral = value; value.delegate = self
         onStatus?("正在连接遥控器音频")
         central?.connect(value, options: nil)
-        let token = generation
-        timeout?.cancel()
-        timeout = Task { @MainActor [weak self] in
-            do { try await Task.sleep(for: .seconds(8)) } catch { return }
-            guard let self, self.enabled, self.generation == token, !self.ready else { return }
-            self.fail("遥控器音频初始化超时，请唤醒后重试。")
-        }
     }
     private func fail(_ message: String) {
         guard enabled else { return }
@@ -80,14 +79,7 @@ final class RemoteVoiceBluetooth: NSObject, @preconcurrency CBCentralManagerDele
         let previousCentral = central
         central = nil; previousCentral?.delegate = nil; previousCentral?.stopScan()
         if let peripheral { peripheral.delegate = nil; previousCentral?.cancelPeripheralConnection(peripheral) }
-        clearConnection(); onFailure?(message)
-        reconnect?.cancel()
-        let token = generation
-        reconnect = Task { @MainActor [weak self] in
-            do { try await Task.sleep(for: .seconds(3)) } catch { return }
-            guard let self, self.enabled, self.generation == token else { return }
-            self.central = CBCentralManager(delegate: self, queue: .main, options: [CBCentralManagerOptionShowPowerAlertKey: false])
-        }
+        clearConnection(); enabled = false; onFailure?(message)
     }
     private func write(_ data: Data) -> Bool {
         guard let peripheral, peripheral.state == .connected, let tx else { return false }
@@ -108,9 +100,9 @@ final class RemoteVoiceBluetooth: NSObject, @preconcurrency CBCentralManagerDele
         guard self.central === central, enabled else { return }
         switch central.state {
         case .poweredOn: discover()
-        case .unauthorized: onStatus?("请在系统隐私设置中允许蓝牙访问"); onFailure?("蓝牙访问未允许。")
-        case .poweredOff: onStatus?("系统蓝牙已关闭"); onFailure?("系统蓝牙已关闭。")
-        case .unsupported: onFailure?("此 Mac 不支持所需蓝牙功能。")
+        case .unauthorized: fail("蓝牙访问未允许。")
+        case .poweredOff: fail("系统蓝牙已关闭。")
+        case .unsupported: fail("此 Mac 不支持所需蓝牙功能。")
         default: break
         }
     }

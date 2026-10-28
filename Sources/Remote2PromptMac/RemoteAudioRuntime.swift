@@ -20,14 +20,20 @@ public final class RemoteAudioRuntime: ObservableObject {
     public var prepareInput: ((@escaping (Bool) -> Void) -> Void)?
     public var onBegin: (() -> Bool)?
     public var onEnd: (() -> Void)?
-    private let writer = LoopbackWriter()
-    private let bluetooth = RemoteVoiceBluetooth()
+    private let writer: LoopbackWriter
+    private let bluetooth: any RemoteVoiceTransport
+    private let catalog: @MainActor () -> [LoopbackDevice]
+    private let clock: @MainActor () -> TimeInterval
+    private var recovery = AudioRecoveryBudget()
+    private var connectionGeneration: UInt64 = 0
+    private var connectionActive = false
+    private var checkingHealth = false
+    private var selectedAvailable = false
     private var configuration = AppConfiguration()
     private var decoder = try! RemoteVoiceDecoder(frameBytes: 120)
     private var outputReady = false
     private var bluetoothReady = false
     private var configuring = false
-    private var routeFailures = 0
     private var deviceCount = 0
     private var generation: UInt64 = 0
     private var routeGeneration: UInt64 = 0
@@ -43,81 +49,122 @@ public final class RemoteAudioRuntime: ObservableObject {
     private let hardwareEnabled: Bool
     private var stopped = false
 
-    public init(hardwareEnabled: Bool = true) {
+    public init(hardwareEnabled: Bool = true, writer: LoopbackWriter? = nil,
+                transport: (any RemoteVoiceTransport)? = nil,
+                catalog: @escaping @MainActor () -> [LoopbackDevice] = { LoopbackDevices.available() },
+                clock: @escaping @MainActor () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+                automaticMonitoring: Bool = true) {
         self.hardwareEnabled = hardwareEnabled
+        self.writer = writer ?? LoopbackWriter()
+        bluetooth = transport ?? RemoteVoiceBluetooth()
+        self.catalog = catalog; self.clock = clock
         guard hardwareEnabled else { return }
-        bluetooth.onStatus = { [weak self] value in self?.status = value }
+        refreshDevices()
+        if automaticMonitoring {
+            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refreshDevices() }
+            }
+        }
+    }
+    private func bindTransport() {
+        connectionGeneration &+= 1; let token = connectionGeneration
+        bluetooth.onStatus = { [weak self] value in
+            guard let self, self.connectionGeneration == token, !self.stopped else { return }
+            self.status = value
+        }
         bluetooth.onFailure = { [weak self] value in
-            guard let self else { return }
-            self.bluetoothReady = false; self.isReady = false; self.cancel(message: value)
+            guard let self, self.connectionGeneration == token, !self.stopped else { return }
+            self.invalidateOutput(value)
         }
         bluetooth.onReady = { [weak self] capabilities in
-            guard let self else { return }
+            guard let self, self.connectionGeneration == token, !self.stopped else { return }
             do { self.decoder = try RemoteVoiceDecoder(frameBytes: capabilities.frameBytes) }
-            catch { self.cancel(message: "遥控器音频帧格式不受支持。"); return }
+            catch { self.invalidateOutput("遥控器音频帧格式不受支持。"); return }
             self.bluetoothReady = true; self.updateReady()
         }
         // HID is the only start signal. A delayed ATVV open cannot start or retry a released session.
         bluetooth.onStarted = { [weak self] in
-            guard let self else { return }
+            guard let self, self.connectionGeneration == token, !self.stopped else { return }
             if !self.sessionActive || self.finishing { _ = self.bluetooth.close() }
             else { self.protocolStarted = true }
         }
         bluetooth.onStopped = { [weak self] in
-            guard let self, self.protocolStarted || self.finishing else { return }
+            guard let self, self.connectionGeneration == token, !self.stopped, self.protocolStarted || self.finishing else { return }
             self.release()
         }
         bluetooth.onSync = { [weak self] data in
-            guard let self, self.sessionActive, !self.draining, self.protocolStarted || self.allowEarlyAudio else { return }
+            guard let self, self.connectionGeneration == token, !self.stopped, self.sessionActive, !self.draining, self.protocolStarted || self.allowEarlyAudio else { return }
             do { try self.decoder.synchronize(packet: data) }
             catch { self.invalidateOutput("遥控器音频同步数据无效，请重新连接音频。") }
         }
-        bluetooth.onAudio = { [weak self] data in self?.receive(data) }
-        refreshDevices()
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refreshDevices() }
+        bluetooth.onAudio = { [weak self] data in
+            guard let self, self.connectionGeneration == token, !self.stopped else { return }
+            self.receive(data)
         }
+    }
+    private func stopTransport() {
+        connectionGeneration &+= 1; connectionActive = false
+        bluetooth.stop(); bluetoothReady = false
     }
     public func configure(_ value: AppConfiguration) {
         guard hardwareEnabled, !stopped else { return }
         let routeChanged = configuration.selectedVirtualInputUID != value.selectedVirtualInputUID
         let changed = routeChanged || configuration.remoteAudioEnabled != value.remoteAudioEnabled || configuration.voiceEnabled != value.voiceEnabled
-        if changed { cancel() }
+        if changed {
+            cancel(); routeGeneration &+= 1; configuring = false
+            stopTransport(); writer.stop(); outputReady = false; isReady = false
+            recovery.reset(); selectedAvailable = false
+        }
         configuration = value
-        if routeChanged { bluetooth.stop(); bluetoothReady = false; routeFailures = 0; prepareOutput() }
-        if !wanted {
-            bluetooth.stop(); bluetoothReady = false; isReady = false
-            status = "遥控器音频已关闭"
-        } else { connectIfPossible() }
+        guard wanted else { status = "遥控器音频已关闭"; return }
+        guard value.selectedVirtualInputUID != nil else {
+            outputStatus = "未选择回环设备"; status = outputStatus; return
+        }
+        refreshDevices()
     }
     public func setRemoteCount(_ count: Int) {
-        guard deviceCount != count else { return }
+        guard hardwareEnabled, !stopped, deviceCount != count else { return }
         deviceCount = count
-        if count != 1, sessionActive { cancel(message: "遥控器数量变化，已结束语音。") }
-        if count != 1, wanted { bluetooth.stop(); bluetoothReady = false; status = "语音音频需要恰好一只兼容遥控器" }
-        updateReady(); connectIfPossible()
+        if count != 1 {
+            cancel(message: wanted ? "语音音频需要恰好一只兼容遥控器" : nil)
+            stopTransport(); updateReady()
+        } else {
+            recovery.reset()
+            if !outputReady && !configuring { prepareOutput() }
+            connectIfPossible()
+        }
     }
     public func retry() {
         guard hardwareEnabled, !stopped else { return }
-        cancel(); bluetooth.stop(); bluetoothReady = false; isReady = false
-        routeFailures = 0; refreshDevices(); if !configuring { prepareOutput() }
+        cancel(); routeGeneration &+= 1; configuring = false
+        stopTransport(); writer.stop(); outputReady = false; isReady = false
+        recovery.reset(); selectedAvailable = false; refreshDevices()
     }
     public func refreshDevices() {
         guard hardwareEnabled, !stopped else { return }
-        updateProgress()
-        let available = LoopbackDevices.available()
+        let available = catalog()
         if devices != available { devices = available }
-        if let uid = configuration.selectedVirtualInputUID {
-            if !devices.contains(where: { $0.uid == uid }) {
-                if outputReady || configuring { routeGeneration &+= 1; configuring = false; writer.stop(); cancel(message: "所选回环设备已断开。"); bluetooth.stop(); bluetoothReady = false }
-                outputReady = false; isReady = false; outputStatus = "所选设备当前不可用"
-            } else if !outputReady && !configuring && routeFailures < 3 { prepareOutput() }
+        guard wanted, let uid = configuration.selectedVirtualInputUID else { return }
+        let availableNow = devices.contains { $0.uid == uid }
+        let returned = availableNow && !selectedAvailable
+        selectedAvailable = availableNow
+        guard availableNow else {
+            if outputReady || configuring { invalidateOutput("所选回环设备已断开。") }
+            outputStatus = "所选设备当前不可用"
+            return
+        }
+        if returned { recovery.reset() }
+        if recovery.takeRetry(at: clock()) || (returned && !configuring) { prepareOutput() }
+        if outputReady { checkOutputHealth() }
+        if sessionActive && !preparingInput && !finishing,
+           let lastPacketAt, clock() - lastPacketAt >= 3 {
+            invalidateOutput("遥控器音频数据已中断，已结束本次语音。")
         }
     }
     private var wanted: Bool { configuration.remoteAudioEnabled && configuration.voiceEnabled }
     public var canTestTone: Bool { outputReady && !sessionActive && !testingTone }
     private func prepareOutput() {
-        guard hardwareEnabled, !stopped else { return }
+        guard hardwareEnabled, !stopped, wanted else { return }
         routeGeneration &+= 1; let token = routeGeneration
         outputReady = false; isReady = false
         guard let uid = configuration.selectedVirtualInputUID else {
@@ -135,12 +182,10 @@ public final class RemoteAudioRuntime: ObservableObject {
                 self.configuring = false
                 switch result {
                 case .success:
-                    self.outputReady = true; self.outputStatus = "所选回环设备已就绪"; self.routeFailures = 0
+                    self.outputReady = true; self.outputStatus = "所选回环设备已就绪"
                     self.updateReady(); self.connectIfPossible()
                 case .failure(let error):
-                    self.routeFailures += 1
-                    self.outputReady = false; self.isReady = false; self.outputStatus = error.localizedDescription
-                    self.writer.stop(); self.cancel(message: error.localizedDescription)
+                    self.invalidateOutput(error.localizedDescription)
                 }
             }
         }
@@ -149,7 +194,8 @@ public final class RemoteAudioRuntime: ObservableObject {
         guard wanted else { return }
         guard outputReady else { status = outputStatus; return }
         guard deviceCount == 1 else { status = "语音音频需要恰好一只兼容遥控器"; return }
-        bluetooth.start()
+        guard !connectionActive else { return }
+        connectionActive = true; bindTransport(); bluetooth.start()
     }
     private func updateReady() {
         let ready = wanted && outputReady && bluetoothReady && deviceCount == 1
@@ -188,13 +234,13 @@ public final class RemoteAudioRuntime: ObservableObject {
         preparingInput = false
         guard onBegin?() == true else { cancel(message: "无法发送语音触发键。"); return }
         write(preroll.take(), token: token)
-        guard bluetooth.open() else { cancel(message: "无法打开遥控器麦克风。"); return }
+        guard bluetooth.open() else { invalidateOutput("无法打开遥控器麦克风。"); return }
         status = "正在接收遥控器语音"
         startTimeout?.cancel()
         startTimeout = Task { @MainActor [weak self] in
             do { try await Task.sleep(for: .seconds(2)) } catch { return }
             guard let self, self.generation == token, self.sessionActive, self.receivedSamples == 0 else { return }
-            self.cancel(message: "遥控器尚未传来音频，请松开语音键后重试。")
+            self.invalidateOutput("遥控器尚未传来音频，已结束本次语音。")
         }
     }
     public func release() {
@@ -219,7 +265,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     }
     private func receive(_ packet: Data) {
         guard sessionActive, !draining, protocolStarted || allowEarlyAudio else { return }
-        receivedPackets += 1; lastPacketAt = ProcessInfo.processInfo.systemUptime
+        receivedPackets += 1; lastPacketAt = clock()
         do {
             let samples = try decoder.append(packet)
             guard !samples.isEmpty else { return }
@@ -233,16 +279,26 @@ public final class RemoteAudioRuntime: ObservableObject {
             cancel(message: "等待输入切换过久，语音缓存已满，请松开后重试。")
         } catch { invalidateOutput("遥控器音频帧无效，请重新连接音频。") }
     }
-    private func updateProgress() {
-        let token = generation
-        writer.snapshot { [weak self] output in
+    private func checkOutputHealth() {
+        guard !checkingHealth else { return }
+        checkingHealth = true
+        let route = routeGeneration; let session = generation
+        writer.checkHealth { [weak self] result in
             Task { @MainActor in
-                guard let self, !self.stopped, self.generation == token else { return }
-                var value = VoiceStreamProgress()
-                value.packets = self.receivedPackets; value.decodedSamples = self.receivedSamples
-                value.secondsSincePacket = self.lastPacketAt.map { max(0, Int(ProcessInfo.processInfo.systemUptime - $0)) }
-                value.signalChanging = self.signalChanging; value.output = output
-                if value != self.progress { self.progress = value }
+                guard let self else { return }
+                self.checkingHealth = false
+                guard !self.stopped, self.routeGeneration == route else { return }
+                switch result {
+                case .failure(let error): self.invalidateOutput(error.localizedDescription)
+                case .success(let output):
+                    if self.isReady { self.recovery.observeHealthy(at: self.clock()) }
+                    guard self.generation == session else { return }
+                    var value = VoiceStreamProgress()
+                    value.packets = self.receivedPackets; value.decodedSamples = self.receivedSamples
+                    value.secondsSincePacket = self.lastPacketAt.map { max(0, Int(self.clock() - $0)) }
+                    value.signalChanging = self.signalChanging; value.output = output
+                    if value != self.progress { self.progress = value }
+                }
             }
         }
     }
@@ -257,10 +313,16 @@ public final class RemoteAudioRuntime: ObservableObject {
         }
     }
     private func invalidateOutput(_ message: String) {
+        guard !stopped else { return }
         routeGeneration &+= 1; configuring = false
-        outputReady = false; bluetoothReady = false; isReady = false
-        routeFailures = 3; outputStatus = message
-        cancel(message: message); bluetooth.stop(); writer.stop()
+        // Release the synthetic trigger and restore input before readiness observers run.
+        cancel(message: message)
+        outputReady = false; isReady = false
+        stopTransport(); writer.stop()
+        recovery.failed(at: clock())
+        let suffix = recovery.exhausted ? "自动恢复已达3次，请唤醒遥控器后重新连接。" : "正在等待自动恢复，请松开语音键。"
+        outputStatus = message
+        status = message + " " + suffix
     }
     public func cancel(message: String? = nil) {
         generation &+= 1; tail?.cancel(); startTimeout?.cancel()
@@ -294,7 +356,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     }
     public func shutdown() {
         stopped = true; timer?.invalidate(); timer = nil
-        cancel(); bluetooth.stop(); writer.stop()
+        cancel(); stopTransport(); writer.stop()
         outputReady = false; bluetoothReady = false; isReady = false
     }
 }

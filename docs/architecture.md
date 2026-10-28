@@ -13,7 +13,7 @@
 
 `ConfigurationStore` 在 MainActor 上保存整个配置，存储键保持 `configuration.v1`，应用标识为 `dev.remote2prompt.app`。数据 schema 为 3：新增独立 `voiceEnabled` 和默认关闭的 `remoteAudioEnabled`。读取 schema 1/2 保留原设置；原映射已开则迁移语音触发为开，不自动启用遥控器音频。未知版本、重复绑定及无效快捷键拒绝加载，保留原始数据并暂停编辑。
 
-原生四页设置使用 `NavigationSplitView`。映射页左侧常驻遥控器，右侧语音卡置顶，普通键按三组显示三列；点击示意图定位对应行，快捷键录入与清除为直接入口。录入器只处理当前窗口，候选确认前不改配置。遥控器图由 SwiftUI 几何绘制，不包含品牌图片。`SetupWizard` 使用临时检测模式，复用 HID 链路而不执行普通映射或语音触发；仅完成时合并选择，取消恢复原状态。`SetupInputCheck` 限定本次阶段与同一来源的成对事件，断连或停止清除结果，不证明音频或输入法可用。
+原生四页设置使用 `NavigationSplitView`。映射页左侧常驻遥控器，右侧语音卡置顶，普通键按三组显示三列；点击示意图定位对应行，快捷键图标直接录入，动作菜单内可清除。录入器只处理当前窗口，候选确认前不改配置。遥控器图由 SwiftUI 几何绘制，不包含品牌图片。`SetupWizard` 使用临时检测模式，复用 HID 链路而不执行普通映射或语音触发；仅完成时合并选择，取消恢复原状态。`SetupInputCheck` 限定本次阶段与同一来源的成对事件，断连或停止清除结果，不证明音频或输入法可用。
 
 SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>` 显式引用公开 `SwiftUI.State<Value>` 包装器。不能未经独立 CLT 验证改回裸宏。
 
@@ -54,3 +54,5 @@ SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>
 所有 UID、返回快照和所有权只在进程内，不写录音、输入文字或原始设备标识日志。CoreAudio 没有原子 compare-and-set，已接受请求不能撤回，确认窗口外的驱动延迟、强制结束和系统崩溃仍不保证恢复。当前生产音频限制一个所有者，真实遥控器与目标输入法验证独立记录。当前理由见 [语音输入事务决策](../.agents/notes/implemented/feature/2026-10-27-voice-input-transaction.md)，旧在线优先方案保存在归档 Note。
 
 工具链与分层理由见 [CLT 决策](../.agents/notes/implemented/architecture/2026-10-27-swift-clt-foundation.md)。
+
+输出健康检查在 `LoopbackWriter` 串行队列完成，空闲不要求队列running；有待播数据才观察运行和消费/时钟停滞。`RemoteAudioRuntime` 每秒维护设备、健康与收包间隔，统一拥有1/2/4秒、最多3次的恢复预算，连续健康10秒才复原预算；BLE不再内部无限重连，查找到能力读取总计8秒截止。故障先释放触发与恢复输入；重新ready不代表恢复旧语音。连接、路由和按键各自代次隔离旧回调。

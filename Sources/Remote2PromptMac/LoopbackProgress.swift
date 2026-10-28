@@ -1,6 +1,7 @@
 public struct LoopbackPlaybackHealth: Equatable, Sendable {
     public var running: Bool? = nil
     public var clockFrame: Double? = nil
+    public var converterError: Int32? = nil
     public var timingRecoveries = 0
     public var lateSchedules = 0
     public init() {}

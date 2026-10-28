@@ -153,6 +153,11 @@ final class AudioQueueLoopbackPlayback: LoopbackPlayback, @unchecked Sendable {
         var result = LoopbackPlaybackHealth(); result.timingRecoveries = timingRecoveries; result.lateSchedules = lateSchedules
         if let output {
             result.running = Self.running(output)
+            var converterError: Int32 = 0
+            var size = UInt32(MemoryLayout<Int32>.size)
+            if AudioQueueGetProperty(output, kAudioQueueProperty_ConverterError, &converterError, &size) == noErr {
+                result.converterError = converterError
+            }
             var time = AudioTimeStamp()
             if AudioQueueGetCurrentTime(output, nil, &time, nil) == noErr,
                time.mFlags.contains(.sampleTimeValid), time.mSampleTime.isFinite {

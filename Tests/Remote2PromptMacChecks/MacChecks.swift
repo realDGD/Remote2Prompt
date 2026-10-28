@@ -261,7 +261,13 @@ enum MacChecks {
             do { try run(); print("PASS \(name)") }
             catch { failures += 1; print("FAIL \(name): \(error)") }
         }
-        print("\(cases.count - failures)/\(cases.count) macOS adapter checks passed (no real input posted)")
+        let asyncCases = remoteAudioRuntimeChecks()
+        for (name, run) in asyncCases {
+            do { try await run(); print("PASS \(name)") }
+            catch { failures += 1; print("FAIL \(name): \(error)") }
+        }
+        let total = cases.count + asyncCases.count
+        print("\(total - failures)/\(total) macOS adapter checks passed (no real input posted)")
         if failures > 0 { exit(1) }
     }
 }

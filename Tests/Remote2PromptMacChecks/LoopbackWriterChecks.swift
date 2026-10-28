@@ -20,6 +20,7 @@ private final class FakeLoopbackPlayback: LoopbackPlayback, @unchecked Sendable 
         var stops = 0
         var configureError: LoopbackFailure?
         var validationError: LoopbackFailure?
+        var health = LoopbackPlaybackHealth()
     }
     private let state = LockedValue(State())
     let validated = DispatchSemaphore(value: 0)
@@ -27,6 +28,8 @@ private final class FakeLoopbackPlayback: LoopbackPlayback, @unchecked Sendable 
     var begins: Int { state.withValue { $0.begins } }
     var validations: Int { state.withValue { $0.validations } }
     var stops: Int { state.withValue { $0.stops } }
+    var health: LoopbackPlaybackHealth { state.withValue { $0.health } }
+    func setHealth(_ value: LoopbackPlaybackHealth) { state.withValue { $0.health = value } }
     var notification: @Sendable () -> Void { state.withValue { $0.changed ?? {} } }
     func failConfigure(_ error: LoopbackFailure) { state.withValue { $0.configureError = error } }
     func failValidation(_ error: LoopbackFailure) { state.withValue { $0.validationError = error } }
@@ -75,6 +78,54 @@ private func validate(_ fake: FakeLoopbackPlayback) throws {
 
 func loopbackWriterChecks() -> [(String, @MainActor () throws -> Void)] {
     [
+        ("health accepts a stopped idle queue and rejects a stopped active queue after grace", {
+            let fake = FakeLoopbackPlayback(); var health = LoopbackPlaybackHealth(); health.running = false
+            fake.setHealth(health)
+            let time = LockedValue(0.0)
+            let writer = LoopbackWriter(playback: { fake }, clock: { time.withValue { $0 } })
+            defer { writer.stop() }
+            try configure(writer)
+            time.withValue { $0 = 100 }
+            let idle: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
+            try idle.get()
+            writer.begin(); _ = try append(160, to: writer)
+            let starting: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
+            try starting.get()
+            time.withValue { $0 = 101 }
+            let failed: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
+            guard case .failure(.playbackStopped) = failed else { throw Failure(message: "Stopped active playback was accepted") }
+            try check(fake.stops == 1, "Health failure did not dispose its playback")
+        }),
+        ("health detects frozen playback but accepts clock progress and consumed buffers", {
+            let fake = FakeLoopbackPlayback(); var health = LoopbackPlaybackHealth(); health.running = true; health.clockFrame = 0
+            fake.setHealth(health); let time = LockedValue(0.0)
+            let writer = LoopbackWriter(playback: { fake }, clock: { time.withValue { $0 } })
+            defer { writer.stop() }; try configure(writer); writer.begin(); _ = try append(160, to: writer)
+            let first: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; try first.get()
+            time.withValue { $0 = 2 }; health.clockFrame = 160; fake.setHealth(health)
+            let moving: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; try moving.get()
+            time.withValue { $0 = 4 }
+            let grace: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; try grace.get()
+            time.withValue { $0 = 5 }
+            let frozen: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
+            guard case .failure(.playbackStalled) = frozen else { throw Failure(message: "Frozen playback was accepted") }
+            try configure(writer); writer.begin(); _ = try append(160, to: writer); fake.takeConsumed().forEach { $0() }
+            time.withValue { $0 = 100 }
+            let idle: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }; try idle.get()
+        }),
+        ("health reports converter and device failures without restarting from stale notifications", {
+            let fake = FakeLoopbackPlayback(); let writer = LoopbackWriter(playback: { fake }); defer { writer.stop() }
+            try configure(writer); let stale = fake.notification
+            var health = LoopbackPlaybackHealth(); health.converterError = -50; fake.setHealth(health)
+            let result: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
+            guard case .failure(.configure(-50)) = result else { throw Failure(message: "Converter error was ignored") }
+            stale()
+            let snapshot: LoopbackProgress = try waited { writer.snapshot(completion: $0) }
+            try check(snapshot.pendingSamples == 0 && fake.configurations == 1 && fake.stops == 1, "Old route restarted disposed output")
+            fake.setHealth(LoopbackPlaybackHealth()); try configure(writer); fake.failValidation(.unavailable)
+            let lost: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
+            guard case .failure(.unavailable) = lost else { throw Failure(message: "Lost explicit device was accepted") }
+        }),
         ("progress counters reject old callbacks after a new session starts", {
             let fake = FakeLoopbackPlayback(); let writer = LoopbackWriter(playback: { fake })
             defer { writer.stop() }

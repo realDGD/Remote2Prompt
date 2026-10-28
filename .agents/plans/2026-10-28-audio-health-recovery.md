@@ -34,17 +34,17 @@ Interfaces: `fillBasicNavigationBindings()` 保持名称；补齐12click/1double
 - [x] 为全部20项的键码/修饰键、幂等与已有动作保留增加检查。
 - [x] 按用户明细实现；更新向导、提示和符号显示。
 - [x] 菜单覆盖等宽动作字段，文字左对齐、箭头右置；移除分离的文本按钮和独立清除图标，键盘入口保留。用户否定按文字收缩的原生小按钮，已在隔离预览改为统一紧凑字段。
-- [ ] CLT检查、隔离预览点击菜单/录入/清除，提交。
+- [x] CLT检查和隔离预览菜单/录入/取消，b78e627提交；清除入口在菜单内，最终集成预览补验。
 
 ### Task 2: 输出健康与有限恢复
 
 Files: LoopbackWriter.swift, AudioQueueLoopbackPlayback.swift, LoopbackProgress.swift, new output health/recovery policy, RemoteAudioRuntime.swift, RemoteVoiceBluetooth.swift, adapter checks.
 Interfaces: `LoopbackWriter.checkHealth(completion:)`，`RemoteVoiceTransport` 注入协议；运行时允许注入 writer、transport、catalog、clock，普通检查关闭自动timer。
 
-- [ ] 健康快照覆盖选中UID、设备存活、转换错误、应运行状态、消费/播放时钟停滞；空闲不误报。
-- [ ] 故障先取消会话/释放触发与恢复输入，再重建链路；最多3次、退避0.5/1/2秒，健康10秒才重置预算，手动retry显式重置。
-- [ ] 统一传输初始化8秒截止与恢复所有权，消除无限扫描和两层重连计时器。
-- [ ] 生产运行时+模拟传输/后端覆盖断流、重建失败、反复抖动、晚到回调和取消；提交。
+- [x] 健康快照覆盖选中UID、设备存活、转换错误、应运行状态、消费/播放时钟停滞；空闲不误报。
+- [x] 故障先取消会话/释放触发与恢复输入，再重建链路；最多3次、退避1/2/4秒，健康10秒才重置预算，手动retry显式重置。
+- [x] 统一传输初始化8秒截止与恢复所有权，消除无限扫描和两层重连计时器。
+- [x] 生产运行时+模拟传输/后端覆盖断流、重建失败、反复抖动、晚到回调和取消；提交。
 
 ### Task 3: 休眠与唤醒
 
@@ -70,3 +70,5 @@ Files: explicit MacChecks hardware diagnostics, docs/testing.md, new validation 
 - Ruling: user's listed bindings total20 (12/1/7); use detailed list including power-long Escape rather than dropping a specified binding to match the stated19.
 
 - Task1 verification: `make test`76core/75adapter; CLT Release bundle build and verify-app passed. Compact preview opened the filled20-action matrix, expanded a custom shortcut menu and showed its existing candidate; cancellation preserved it. Production app/settings untouched.
+
+- Task2: 1秒维护节奏采用1/2/4秒退避，不引入另一组重试Timer；`make test`76core/84adapter通过（新增串行健康3项、生产运行时恢复6项），无真实设备写入。
