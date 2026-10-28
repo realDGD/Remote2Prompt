@@ -131,7 +131,10 @@ public final class RemoteMappingRuntime: ObservableObject {
 
     public func configure(_ value: AppConfiguration) {
         let wasEnabled = configuration.mappingsEnabled || configuration.voiceEnabled
-        if configuration.mappingsEnabled != value.mappingsEnabled || configuration.voiceEnabled != value.voiceEnabled || configuration.remoteAudioEnabled != value.remoteAudioEnabled || configuration.selectedVirtualInputUID != value.selectedVirtualInputUID { stop() }
+        let voiceRouteChanged = configuration.remoteAudioEnabled != value.remoteAudioEnabled
+            || configuration.selectedVirtualInputUID != value.selectedVirtualInputUID
+            || configuration.preferVirtualInput != value.preferVirtualInput
+        if configuration.mappingsEnabled != value.mappingsEnabled || configuration.voiceEnabled != value.voiceEnabled || voiceRouteChanged { stop() }
         if configuration.bindings != value.bindings { gestures.cancelAll() }
         configuration = value
         inputPriority.configure(value)
@@ -291,8 +294,8 @@ public final class RemoteMappingRuntime: ObservableObject {
     private func stopResources() {
         guard !hasShutdown else { return }
         hasShutdown = true
-        inputPriority.setReady(false)
         audio.shutdown()
+        inputPriority.setReady(false)
         audioReadiness = nil
         pollTimer?.invalidate(); pollTimer = nil
         stop()
@@ -373,9 +376,12 @@ public final class RemoteMappingRuntime: ObservableObject {
         if voiceHeld != speaking { voiceHeld = speaking }
     }
     private func stop() {
+        // onEnd releases the synthetic trigger before it restores the pre-press input.
+        // Dropping input readiness first would bypass that ordering.
+        let hadActiveAudio = audio.sessionActive
+        if hadActiveAudio { audio.cancel() }
         inputPriority.setReady(false)
-        guard isRunning || !held.isEmpty || voice.heldTrigger != nil || lease?.hasPendingRecovery == true || setupInput.stage != .idle || audio.sessionActive else { return }
-        if audio.sessionActive { audio.cancel() }
+        guard isRunning || !held.isEmpty || voice.heldTrigger != nil || lease?.hasPendingRecovery == true || setupInput.stage != .idle || hadActiveAudio else { return }
         isRunning = false
         gestureTimer?.invalidate(); gestureTimer = nil
         monitor.stop(); gestures.cancelAll(); held.removeAll()
@@ -392,7 +398,11 @@ public final class RemoteMappingRuntime: ObservableObject {
     }
 
     private func updateInputPriority() {
-        inputPriority.setReady(!hasShutdown && audioReady && isRunning && !setupActive && accessibility && detectedCount == 1)
+        let ready = !hasShutdown && audioReady && isRunning && !setupActive && accessibility && detectedCount == 1
+        // This also runs from the audio publisher's willSet callback. Cancel before setReady(false)
+        // can restore the physical microphone while the target input method still holds the key.
+        if !ready && audio.sessionActive { audio.cancel() }
+        inputPriority.setReady(ready)
     }
 
     private var leaseSources: Set<UInt64> {

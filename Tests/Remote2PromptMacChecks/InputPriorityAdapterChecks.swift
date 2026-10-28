@@ -64,6 +64,7 @@ func inputPriorityAdapterChecks() -> [(String, @MainActor () throws -> Void)] {
     cases.append(contentsOf: inputFailureChecks())
     cases.append(contentsOf: inputLifecycleChecks())
     cases.append(contentsOf: voiceInputRuntimeChecks())
+    cases.append(contentsOf: voiceInputRaceChecks())
     cases.append(contentsOf: voicePrerollChecks())
     cases.append(contentsOf: menuInputChecks())
     return cases
@@ -514,6 +515,70 @@ private func voicePrerollChecks() -> [(String, @MainActor () throws -> Void)] {
             do { try buffer.append([8]); throw Failure(message: "Unbounded preroll accepted") }
             catch LoopbackFailure.overflow {}
             try check(buffer.take().count == 32000, "Overflow silently truncated the existing preroll")
+        })
+    ]
+}
+
+@MainActor
+private func voiceInputRaceChecks() -> [(String, @MainActor () throws -> Void)] {
+    func makeRuntime(_ mode: FakeAudioInputs.Mode) -> (FakeAudioInputs, AudioInputPriorityRuntime, AppConfiguration) {
+        let system = FakeAudioInputs(); system.mode = mode
+        let runtime = AudioInputPriorityRuntime(system: system)
+        var configuration = AppConfiguration()
+        configuration.preferVirtualInput = true; configuration.voiceEnabled = true
+        configuration.remoteAudioEnabled = true; configuration.selectedVirtualInputUID = "virtual"
+        runtime.configure(configuration); runtime.setReady(true)
+        return (system, runtime, configuration)
+    }
+    return [
+        ("rapid re-press waits for the previous takeover without replacing the original input", {
+            let (system, runtime, _) = makeRuntime(.delayed)
+            defer { runtime.shutdownImmediately() }
+            var first: [Bool] = []; var second: [Bool] = []
+            runtime.beginVoiceSession { first.append($0) }; runtime.endVoiceSession()
+            runtime.beginVoiceSession { second.append($0) }
+            try check(first == [false] && second.isEmpty && system.writes.count == 1, "Re-press bypassed pending confirmation")
+            system.mode = .immediate; system.applyPending()
+            try check(second == [true] && runtime.state.readyForVoice && system.current == "virtual", "Re-press was not confirmed")
+            runtime.endVoiceSession()
+            try check(system.current == "built-in" && system.writes.count == 2 && first == [false] && second == [true], "Temporary input became the new restoration baseline")
+        }),
+        ("re-press during delayed restoration reacquires virtual input and keeps the same return target", {
+            let (system, runtime, _) = makeRuntime(.immediate)
+            defer { runtime.shutdownImmediately() }
+            runtime.beginVoiceSession { _ in }
+            system.mode = .delayed; runtime.endVoiceSession()
+            var second: [Bool] = []
+            runtime.beginVoiceSession { second.append($0) }
+            try check(second.isEmpty && runtime.state.pending, "Re-press ignored the accepted restore")
+            system.mode = .immediate; system.applyPending()
+            try check(second == [true] && system.current == "virtual", "Late restoration permanently interrupted a new press")
+            runtime.endVoiceSession()
+            try check(system.current == "built-in" && system.writes.count == 4, "Re-press returned to the wrong input")
+        }),
+        ("audio readiness recovery cannot reacquire input until another physical press", {
+            let (system, runtime, _) = makeRuntime(.immediate)
+            defer { runtime.shutdownImmediately() }
+            var first: [Bool] = []
+            runtime.beginVoiceSession { first.append($0) }
+            runtime.endVoiceSession(); runtime.setReady(false)
+            system.current = "airpods"; system.callback?()
+            runtime.setReady(true)
+            try check(system.current == "airpods" && system.writes.count == 2 && first == [true], "Recovered readiness silently started another voice")
+            runtime.beginVoiceSession { _ in }; runtime.endVoiceSession()
+            try check(system.current == "airpods" && system.writes.count == 4, "Next press reused the failed session's return target")
+        }),
+        ("priority opt-out during pending confirmation restores the late switch exactly once", {
+            let (system, runtime, initial) = makeRuntime(.delayed)
+            defer { runtime.shutdownImmediately() }
+            var results: [Bool] = []
+            runtime.beginVoiceSession { results.append($0) }
+            var configuration = initial; configuration.preferVirtualInput = false
+            runtime.configure(configuration)
+            try check(results == [false], "Opt-out did not cancel the trigger gate")
+            system.mode = .immediate; system.applyPending()
+            configuration.preferVirtualInput = true; runtime.configure(configuration)
+            try check(results == [false] && system.current == "built-in" && system.writes.count == 2, "Late switch or re-enable restarted the cancelled press")
         })
     ]
 }

@@ -30,6 +30,11 @@ final class FakeService {
 enum MacChecks {
     @MainActor
     static func main() async throws {
+        if CommandLine.arguments.contains("--voice-input-session-smoke") {
+            do { try await voiceInputSessionSmoke() }
+            catch { print("FAIL voice input transaction: \(error)"); exit(1) }
+            return
+        }
         if CommandLine.arguments.contains("--loopback-stream-smoke") {
             do { try await loopbackStreamSmoke(switchInput: CommandLine.arguments.contains("--switch-input")) }
             catch { print("FAIL continuous loopback: \(error)"); exit(1) }
