@@ -42,6 +42,8 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
     var current: String? = "fixture-physical"
     var change: (@MainActor () -> Void)?
     var event: ((String) -> Void)?
+    var delayRestoration = false
+    private(set) var acceptedRestore: InputPriorityRequest?
     func start(onChange: @escaping @MainActor () -> Void) throws { change = onChange }
     func snapshot() throws -> SystemInputSnapshot {
         SystemInputSnapshot(inputs: [
@@ -51,6 +53,14 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
     }
     func setDefaultInput(_ request: InputPriorityRequest) throws {
         guard current == request.sourceUID else { throw InputSystemFailure.defaultChanged }
+        if delayRestoration && request.purpose == .restore { acceptedRestore = request; return }
+        apply(request)
+    }
+    func applyAcceptedRestore() {
+        guard let request = acceptedRestore else { return }
+        acceptedRestore = nil; apply(request)
+    }
+    private func apply(_ request: InputPriorityRequest) {
         current = request.targetUID
         event?(current == "fixture-physical" ? "input.restore" : "input.virtual")
         change?()
@@ -84,6 +94,39 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
     func advance(_ seconds: Double) { now += seconds; runtime.refreshDevices() }
 }
 
+@MainActor private final class VoiceInputHarness {
+    let audio = AudioHarness()
+    let system = VoiceSessionInputs()
+    let input: AudioInputPriorityRuntime
+    private var voice = VoiceSession()
+    var downs = 0, ups = 0
+    var heldTrigger: VoiceTrigger? { voice.heldTrigger }
+    init() {
+        input = AudioInputPriorityRuntime(system: system)
+        var c = AppConfiguration(); c.voiceEnabled = true; c.remoteAudioEnabled = true
+        c.preferVirtualInput = true; c.selectedVirtualInputUID = "fixture-loopback"
+        input.configure(c)
+        system.event = { [weak self] in self?.audio.events.append($0) }
+        audio.runtime.prepareInput = { [weak self] completion in self?.input.beginVoiceSession(completion: completion) }
+        audio.runtime.onBegin = { [weak self] in
+            guard let self else { return false }
+            let events = voice.begin(owner: "fixture-audio", trigger: .rightControl)
+            downs += events.filter(\.isDown).count
+            audio.events.append("key.down")
+            return events.count == 1
+        }
+        audio.runtime.onEnd = { [weak self] in
+            guard let self else { return }
+            let events = voice.end(owner: "fixture-audio")
+            ups += events.filter { !$0.isDown }.count
+            if !events.isEmpty { audio.events.append("key.up") }
+            input.endVoiceSession()
+        }
+        audio.enable(); input.setReady(true)
+    }
+    func shutdown() { audio.runtime.shutdown(); input.shutdownImmediately() }
+}
+
 @MainActor private func eventually(_ predicate: () -> Bool) async throws {
     let deadline = ProcessInfo.processInfo.systemUptime + 2
     while !predicate() && ProcessInfo.processInfo.systemUptime < deadline { try await Task.sleep(for: .milliseconds(2)) }
@@ -92,6 +135,32 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
 
 @MainActor func remoteAudioRuntimeChecks() -> [(String, @MainActor () async throws -> Void)] {
     [
+        ("audio repress waits through an accepted restore before the next key down", {
+            let h = VoiceInputHarness(); defer { h.shutdown() }
+            try await eventually { h.audio.runtime.isReady }
+            try check(h.audio.runtime.press() && h.downs == 1, "Initial press failed")
+            h.audio.runtime.release(); h.system.delayRestoration = true; h.audio.events.removeAll()
+            try check(h.audio.runtime.press(), "Repress was rejected")
+            try check(h.ups == 1 && h.downs == 1 && h.audio.transport.opens == 1 && h.system.acceptedRestore != nil, "New key preceded old restore confirmation")
+            h.audio.transport.onStopped?(.ordinaryReported)
+            try check(h.audio.runtime.sessionActive && h.downs == 1, "Host close ACK cancelled the preparing replacement")
+            h.system.delayRestoration = false; h.system.applyAcceptedRestore()
+            try await eventually { h.downs == 2 }
+            try check(Array(h.audio.events.prefix(4)) == ["key.up", "input.restore", "input.virtual", "key.down"], "Repress key/input order changed")
+            try check(h.audio.transport.opens == 2 && h.heldTrigger == .rightControl, "Replacement did not start exactly once")
+            h.audio.runtime.release(); try await eventually { !h.audio.runtime.sessionActive }
+            try check(h.downs == 2 && h.ups == 2 && h.heldTrigger == nil && h.system.current == "fixture-physical", "Final release stuck a key or lost the original input")
+        }),
+        ("sleep while repress waits cannot send a late replacement key", {
+            let h = VoiceInputHarness(); defer { h.shutdown() }
+            try await eventually { h.audio.runtime.isReady }; try check(h.audio.runtime.press(), "Initial press failed")
+            h.audio.runtime.release(); h.system.delayRestoration = true
+            try check(h.audio.runtime.press() && h.system.acceptedRestore != nil, "No delayed restore to test")
+            h.audio.runtime.suspend(); h.system.delayRestoration = false; h.system.applyAcceptedRestore()
+            h.input.refreshInputs(); try await Task.sleep(for: .milliseconds(20))
+            try check(h.downs == 1 && h.ups == 1 && h.heldTrigger == nil && h.audio.transport.opens == 1, "Late preparation sent a key after sleep")
+            try check(h.system.current == "fixture-physical" && !h.audio.runtime.sessionActive, "Cancelled repress lost restoration")
+        }),
         ("voice limit origin requires actual START and reported stop stays neutral", {
             let h = AudioHarness(); defer { h.runtime.shutdown() }; h.enable()
             try await eventually { h.runtime.isReady }; h.transport.sendsStartedOnOpen = false

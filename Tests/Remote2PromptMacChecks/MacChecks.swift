@@ -30,6 +30,10 @@ final class FakeService {
 enum MacChecks {
     @MainActor
     static func main() async throws {
+        if CommandLine.arguments.contains("--voice-reminder-resource-probe") {
+            try await voiceReminderResourceProbe()
+            return
+        }
         if CommandLine.arguments.contains("--voice-input-session-smoke") {
             do { try await voiceInputSessionSmoke() }
             catch { print("FAIL voice input transaction: \(error)"); exit(1) }
@@ -262,7 +266,7 @@ enum MacChecks {
             do { try run(); print("PASS \(name)") }
             catch { failures += 1; print("FAIL \(name): \(error)") }
         }
-        let asyncCases = remoteAudioRuntimeChecks()
+        let asyncCases = remoteAudioRuntimeChecks() + reminderResourceChecks()
         for (name, run) in asyncCases {
             do { try await run(); print("PASS \(name)") }
             catch { failures += 1; print("FAIL \(name): \(error)") }

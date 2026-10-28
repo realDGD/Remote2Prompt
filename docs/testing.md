@@ -65,3 +65,8 @@ M0 结果保存在 [初始化记录](validation/2026-10-27-bootstrap.md)。M1 �
 语音时限普通检查覆盖schema4旧配置默认关闭、便携导入关闭、真实运行时START与重复开始、早到音频不建立起点、中性reported结束与主机关闭确认、旧连接、50/55/60秒、预览5秒、旧deadline、重按、睡眠和退出。使用注入的时钟、传输、播放及deadline，不发实际输入。
 
 解锁后可运行`dist/Remote2Prompt.app/Contents/MacOS/Remote2Prompt --smoke-test-reminder --preview-directory .local/voice-limit-ui`，隔离配置且关闭硬件，单独检查提醒橙/红/5秒隐藏、本应用key/main与激活状态不变及鼠标穿透属性并保存自身视图。它不要求设置窗口自动出现；设置窗口通过Computer Use单独检查。实际点击穿透、前台输入焦点不变、设置关闭后继续显示、全屏/多屏/Stage Manager及真实RC003仍须原生验收；锁屏时跳过该入口。`--smoke-test-background`在delegate初始化、任何设置窗口创建之前，确认配置更新已到达提醒运行时；不启用硬件。结果见[提醒检查](validation/2026-10-29-voice-limit-indicator.md)。
+
+
+资源检查的普通用例使用真实Task调度器，确认提醒对象在显式shutdown或直接释放后不被deadline留住。可选`DEVELOPER_DIR=/Library/Developer/CommandLineTools /usr/bin/xcrun swift run Remote2PromptMacChecks --voice-reminder-resource-probe`执行200轮预热+3批1000轮，并报告自身RSS与weak释放结果；不创建面板、打开设备或写系统输入，不设RSS通过阈值，也不替代整个应用的内存分析。
+
+跨组件重按检查把真实音频、输入事务和VoiceSession接在一起，注入延迟恢复；同时覆盖等待恢复时休眠，要求按键请求成对且旧完成不能复活新会话。与单个策略或单独输入运行时检查分开记录。

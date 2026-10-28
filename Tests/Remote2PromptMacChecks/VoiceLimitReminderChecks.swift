@@ -25,6 +25,15 @@ import Remote2PromptMac
 }
 @MainActor func voiceLimitReminderChecks() -> [(String, @MainActor () throws -> Void)] {
     [
+        ("all reminder capability combinations gate real presentation independently", {
+            for voice in [false, true] { for audio in [false, true] { for enabled in [false, true] {
+                let h = ReminderHarness(); defer { h.runtime.shutdown() }; h.now = 55
+                var c = AppConfiguration(); c.voiceEnabled = voice; c.remoteAudioEnabled = audio; c.voiceLimitReminderEnabled = enabled
+                h.runtime.configure(c); h.runtime.update(h.segment(1, at: 0))
+                let active = voice && audio && enabled
+                try check((h.runtime.state.presentation != .hidden) == active && (!h.jobs.isEmpty) == active, "A disabled capability scheduled or showed a warning")
+            } } }
+        }),
         ("reminder defaults allocate no deadlines and enabled countdown wakes only near limit", {
             let h = ReminderHarness(); defer { h.runtime.shutdown() }
             h.runtime.update(h.segment(1, at: 0))
