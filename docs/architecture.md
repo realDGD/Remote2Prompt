@@ -11,7 +11,7 @@
 
 ## 配置与界面
 
-`ConfigurationStore` 在 MainActor 上保存整个配置，存储键保持 `configuration.v1`，应用标识为 `dev.remote2prompt.app`。数据 schema 为 3：新增独立 `voiceEnabled` 和默认关闭的 `remoteAudioEnabled`。读取 schema 1/2 保留原设置；原映射已开则迁移语音触发为开，不自动启用遥控器音频。未知版本、重复绑定及无效快捷键拒绝加载，保留原始数据并暂停编辑。
+`ConfigurationStore` 在 MainActor 上保存整个配置，存储键保持 `configuration.v1`，应用标识为 `dev.remote2prompt.app`。数据 schema 为 4：保留独立 `voiceEnabled` 和默认关闭的 `remoteAudioEnabled`，新增默认关闭的 `voiceLimitReminderEnabled` 与位置。schema3迁移不改变原有开关。读取 schema 1/2 保留原设置；原映射已开则迁移语音触发为开，不自动启用遥控器音频。未知版本、重复绑定及无效快捷键拒绝加载，保留原始数据并暂停编辑。
 
 原生四页设置使用 `NavigationSplitView`。映射页左侧常驻遥控器，右侧语音卡置顶，普通键按三组显示三列；点击示意图定位对应行，快捷键图标直接录入，动作菜单内可清除。录入器只处理当前窗口，候选确认前不改配置。遥控器图由 SwiftUI 几何绘制，不包含品牌图片。`SetupWizard` 使用临时检测模式，复用 HID 链路而不执行普通映射或语音触发；仅完成时合并选择，取消恢复原状态。`SetupInputCheck` 限定本次阶段与同一来源的成对事件，断连或停止清除结果，不证明音频或输入法可用。
 
@@ -58,3 +58,10 @@ SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>
 输出健康检查在 `LoopbackWriter` 串行队列完成，空闲不要求队列running；有待播数据才观察运行和消费/时钟停滞。`RemoteAudioRuntime` 每秒维护设备、健康与收包间隔，统一拥有1/2/4秒、最多3次的恢复预算，连续健康10秒才复原预算；BLE不再内部无限重连，查找到能力读取总计8秒截止。故障先释放触发与恢复输入；重新ready不代表恢复旧语音。连接、路由和按键各自代次隔离旧回调。
 
 系统willSleep暂停音频和HID所有权，作废配置/健康/传输代次；didWake重新检查设备与权限，音频不使用旧遥控器计数开连。每个来源先报告松开语音键，再允许新语音。暂停期间不轮询设备或重新连接，退出后唤醒不会复活。锁屏与用户会话切换不在这次实现边界内；见[生命周期决策](../.agents/notes/implemented/feature/2026-10-28-system-sleep-audio-lifecycle.md)。
+
+
+## RC003临近时限提醒
+
+`RemoteAudioRuntime`发布`VoiceLimitIndicator`快照，只由真实ATVV START建立单调起点；重复START不重置，报告的上限STOP使用中性结束态，主机关闭确认不产生到时提示。Core策略不创建计时器或系统副作用。`VoiceLimitReminderRuntime`只在下一次展示变化时安排一个deadline，代次作废旧唤醒/隐藏任务；前50秒不轮询，最后10秒最多每秒更新。
+
+`ApplicationDelegate`拥有配置和音频策略订阅以及`VoiceLimitHUDController`，关闭设置窗口不移除订阅。控制器延迟创建一个NSPanel与复用的SwiftUI内容，非激活、穿透、无声；真实段开始固定目标屏幕，屏幕消失时回退。睡眠取消，唤醒不恢复旧段；退出清理任务、订阅、观察者和窗口。开关同时要求语音及虚拟麦克风启用，预览独立于设备。RC003档案由用户明确开启，不能用共享HID身份自动确认型号。实际原因与未覆盖场景见[决策](../.agents/notes/implemented/feature/2026-10-28-rc003-voice-limit-indicator.md)。

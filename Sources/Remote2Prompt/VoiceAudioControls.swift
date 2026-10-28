@@ -4,6 +4,7 @@ import SwiftUI
 
 struct VoiceAudioControls: View {
     @EnvironmentObject private var store: ConfigurationStore
+    @EnvironmentObject private var reminder: VoiceLimitHUDController
     @ObservedObject var audio: RemoteAudioRuntime
 
     var body: some View {
@@ -44,6 +45,25 @@ struct VoiceAudioControls: View {
             }
             Text("按住遥控器语音键说话，并在输入法中选择同一个虚拟麦克风。应用不负责安装虚拟设备。")
                 .font(.caption).foregroundStyle(.secondary)
+            HStack {
+                Toggle("RC003 临近语音时限时提醒", isOn: Binding(
+                    get: { store.configuration.voiceLimitReminderEnabled },
+                    set: { value in store.update { $0.voiceLimitReminderEnabled = value } }
+                ))
+                Spacer()
+                Button("预览") { reminder.preview() }.buttonStyle(.borderless)
+            }
+            if store.configuration.voiceLimitReminderEnabled {
+                Picker("提醒位置", selection: Binding(
+                    get: { store.configuration.voiceLimitReminderPosition },
+                    set: { value in store.update { $0.voiceLimitReminderPosition = value } }
+                )) {
+                    Text("屏幕底部居中").tag(VoiceLimitReminderPosition.bottomCenter)
+                    Text("屏幕右下角").tag(VoiceLimitReminderPosition.bottomTrailing)
+                }
+                Text("适用于 RC003：按约 60 秒单段时限估算，最后 10 秒显示无声提示。不会延长录音，也不影响键盘直接触发的语音。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             LabeledContent("音频连接", value: audio.status)
             Button("重新连接音频") { audio.retry() }.disabled(InterfaceInspection.enabled)
             DisclosureGroup("测试与设备状态") {
@@ -55,7 +75,7 @@ struct VoiceAudioControls: View {
                 LabeledContent("输入信号", value: audio.progress.signalChanging ? "有变化" : "当前变化较小")
                 LabeledContent("播放进度", value: audio.progress.output.playback.clockFrame.map { String(format: "%.1f 秒", $0 / 16000) } ?? "未播放")
                 LabeledContent("时序恢复 / 迟到缓冲", value: "\(audio.progress.output.playback.timingRecoveries) / \(audio.progress.output.playback.lateSchedules) 次")
-                Text("计数仅保留在内存，每两秒刷新；设备消费不等于输入法已收到声音。").font(.caption).foregroundStyle(.secondary)
+                Text("计数仅保留在内存，每秒刷新；设备消费不等于输入法已收到声音。").font(.caption).foregroundStyle(.secondary)
                 Button(audio.testingTone ? "正在发送测试音…" : "发送测试音到虚拟麦克风") { audio.playTestTone() }
                     .disabled(!audio.canTestTone)
                 Text("测试音只发往所选设备，开始语音时会自动停止。应用不安装音频驱动，也不重启系统音频服务。")

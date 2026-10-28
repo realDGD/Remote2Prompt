@@ -22,11 +22,14 @@ func voiceLimitIndicatorChecks() -> [(String, () throws -> Void)] {
             try expect(indicator.presentation(at: 160) == .approachingLimit && indicator.presentation(at: 170) == .approachingLimit, "A timer expiry invented device termination")
             try expect(indicator.nextUpdate(at: 151.2) == 152 && indicator.nextUpdate(at: 160) == nil, "Update deadlines drift or poll forever")
         }),
-        ("only a confirmed device limit retains a three second end indication", {
+        ("confirmed and unverified limit reports retain distinct three second end indications", {
             var indicator = VoiceLimitIndicator(); indicator.begin(segment: 1, at: 0, hasRC003Limit: true)
             indicator.end(segment: 1, reason: .deviceLimit, at: 60)
             try expect(indicator.presentation(at: 60) == .ended && indicator.presentation(at: 62.99) == .ended, "Confirmed limit was hidden too soon")
             try expect(indicator.presentation(at: 63) == .hidden && indicator.nextUpdate(at: 63) == nil, "End indication remained indefinitely")
+            var reported = VoiceLimitIndicator(); reported.begin(segment: 1, at: 0, hasRC003Limit: true)
+            reported.end(segment: 1, reason: .reportedDeviceLimit, at: 60)
+            try expect(reported.presentation(at: 60) == .endedUnconfirmed && reported.presentation(at: 63) == .hidden, "Unverified report asserted timeout or stayed visible")
             for reason in [VoiceLimitEndReason.released, .interrupted, .unknown] {
                 var other = VoiceLimitIndicator(); other.begin(segment: 1, at: 0, hasRC003Limit: true)
                 other.end(segment: 1, reason: reason, at: 60)

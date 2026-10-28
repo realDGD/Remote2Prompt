@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Remote2PromptCore
 import Remote2PromptMac
 import SwiftUI
@@ -9,7 +10,7 @@ enum InterfaceInspection {
     static let bundleID = "dev.remote2prompt.ui-preview"
     static let preferencesDomain = "dev.remote2prompt.ui-preview.settings"
     static let interactive = Bundle.main.bundleIdentifier == bundleID || CommandLine.arguments.contains("--ui-preview")
-    static let enabled = interactive || CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide")
+    static let enabled = interactive || CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide") || CommandLine.arguments.contains("--smoke-test-reminder")
     static let defaults: UserDefaults = {
         guard enabled else { return .standard }
         let defaults = UserDefaults(suiteName: preferencesDomain)!
@@ -75,8 +76,8 @@ struct Remote2PromptApp: App {
             SettingsView()
                 .environmentObject(store)
                 .environmentObject(runtime)
-                .onAppear { delegate.attach(runtime) }
-                .onReceive(store.$configuration) { runtime.configure($0) }
+                .environmentObject(delegate.reminder)
+                .onAppear { delegate.attach(runtime, store: store) }
         }
         .defaultSize(width: 1200, height: 850)
         .windowResizability(.contentMinSize)
@@ -118,8 +119,21 @@ private struct MenuContents: View {
 @MainActor
 final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     private weak var runtime: RemoteMappingRuntime?
-    func attach(_ value: RemoteMappingRuntime) { runtime = value }
+    private weak var store: ConfigurationStore?
+    let reminder = VoiceLimitHUDController()
+    private var subscriptions = Set<AnyCancellable>()
+    func attach(_ value: RemoteMappingRuntime, store: ConfigurationStore) {
+        guard runtime !== value || self.store !== store else { return }
+        subscriptions.removeAll(); runtime = value; self.store = store
+        store.$configuration.sink { [weak self, weak value] configuration in
+            value?.configure(configuration)
+            self?.reminder.configure(configuration)
+        }.store(in: &subscriptions)
+        value.audio.$voiceLimit.sink { [weak self] policy in self?.reminder.update(policy) }.store(in: &subscriptions)
+        if CommandLine.arguments.contains("--smoke-test-reminder") { reminder.preview() }
+    }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        reminder.shutdown()
         guard let runtime else { return .terminateNow }
         var completed = false
         var waiting = false
@@ -137,7 +151,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        if CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide") {
+        if CommandLine.arguments.contains("--smoke-test") || CommandLine.arguments.contains("--smoke-test-guide") || CommandLine.arguments.contains("--smoke-test-reminder") {
             if CommandLine.arguments.contains("--smoke-test-guide") { PermissionDragGuide.shared.show() }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 guard NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }) else {
@@ -147,6 +161,10 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
                 if CommandLine.arguments.contains("--smoke-test-guide"),
                    !NSApp.windows.contains(where: { $0.isVisible && $0.title.contains("拖入授权引导") }) {
                     fputs("UI smoke failed: permission guide is not visible\n", stderr)
+                    exit(1)
+                }
+                if CommandLine.arguments.contains("--smoke-test-reminder"), !self.reminder.previewIsNonactivating {
+                    fputs("UI smoke failed: voice reminder is missing, interactive or key/main\n", stderr)
                     exit(1)
                 }
                 if let flag = CommandLine.arguments.firstIndex(of: "--preview-directory"), CommandLine.arguments.indices.contains(flag + 1) {
@@ -161,6 +179,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func applicationWillTerminate(_ notification: Notification) {
+        reminder.shutdown(); subscriptions.removeAll()
         if InterfaceInspection.enabled {
             InterfaceInspection.defaults.removePersistentDomain(forName: InterfaceInspection.preferencesDomain)
         }
@@ -169,7 +188,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     private func savePreviews(to directory: URL) {
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            for (index, window) in NSApp.windows.filter({ $0.isVisible && ($0.canBecomeMain || $0.title.contains("拖入授权引导")) }).enumerated() {
+            for (index, window) in NSApp.windows.filter({ $0.isVisible && ($0.canBecomeMain || $0.title.contains("拖入授权引导") || $0.title == "语音时限提醒") }).enumerated() {
                 guard let view = window.contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
                 view.cacheDisplay(in: view.bounds, to: bitmap)
                 if let data = bitmap.representation(using: .png, properties: [:]) {

@@ -60,3 +60,8 @@ M0 结果保存在 [初始化记录](validation/2026-10-27-bootstrap.md)。M1 �
 健康与恢复的普通检查注入时钟、设备目录、BLE传输和播放后端，运行真实 `RemoteAudioRuntime` 与 `LoopbackWriter`。覆盖空闲停止、活跃停止、播放停滞、转换错误、数据中断与静音区别、有界退避、成功后反复抖动、健康预算恢复、设备消失返回、旧连接事件和退出；普通检查不打开设备或发送按键，不能代替安装版真实收音。
 
 显式持续播放入口可增加 `--extended`：首轮120秒、后两轮各8秒，再执行30次快速开始/排空/取消；每秒调用生产队列健康检查。结合 `--jitter --switch-input` 验证欠载、默认输入往返和最终默认输入/输出快照。它只输出静音，不访问遥控器，不等于两分钟真实遥控器声音验收。
+
+
+语音时限普通检查覆盖schema4旧配置默认关闭、便携导入关闭、真实运行时START与重复开始、早到音频不建立起点、中性reported结束与主机关闭确认、旧连接、50/55/60秒、预览5秒、旧deadline、重按、睡眠和退出。使用注入的时钟、传输、播放及deadline，不发实际输入。
+
+解锁后可运行`dist/Remote2Prompt.app/Contents/MacOS/Remote2Prompt --smoke-test-reminder --preview-directory .local/voice-limit-ui`，隔离配置且关闭硬件，检查提醒可见、非key/main及鼠标穿透属性并保存自身视图。实际点击穿透、前台输入焦点不变、设置关闭后继续显示、全屏/多屏/Stage Manager及真实RC003仍须原生验收；锁屏时跳过该入口。结果见[提醒检查](validation/2026-10-29-voice-limit-indicator.md)。
