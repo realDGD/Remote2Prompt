@@ -29,13 +29,13 @@ Interfaces: build-cask 接受 `VERSION COMMIT SHA256`，输出 `dist/Remote2Prom
 
 - [x] 实现参数校验、核心/适配器检查、CLT 构建、来源签名与 bundle 验证；CLI 经 staged app 链接定位实际 app。
 - [x] 单 Cask 模板无 Formula 依赖，处理 GitHub 归档根路径；postflight 只清理自身 `.build`/`.swiftpm`。
-- [ ] 静态生成、Ruby/Bash 语法和无效参数检查；CLT make check；提交推送源码。
+- [x] 静态生成、Ruby/Bash 语法和无效参数检查；CLT make check（69/69、59/59）；源码 `ee59f4e` 已提交推送。
 
 ### 2. 远端配方与 CI
 
 Files: `Casks/remote2prompt.rb`、移除旧 Formula/Cask、`.github/workflows/ci.yml`、README、development、testing、检查技能。
 
-- [ ] 生成固定已发布源码的 Cask，移除旧配方；更新单项安装/卸载与旧版迁移命令。
+- [x] 生成固定已发布源码的 Cask，移除旧配方；更新单项安装/卸载与旧版迁移命令。
 - [ ] CI 从 HTTPS 远端 tap 安装，两架构验证来源、单 app、CLI、自检、卸载与 zap；不以 checkout/file URL 安装。
 - [ ] 推送配方后，本机移除旧双项、untap，按新用户命令从远端重新 tap/install。
 

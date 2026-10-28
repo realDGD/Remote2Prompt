@@ -10,7 +10,7 @@ Read [testing](../../../docs/testing.md) for the hardware matrix and [developmen
 - Core behavior: `make test`, adding cases only for changed behavior or concrete failure modes.
 - Application code or bundling: `make build` then `./scripts/verify-app.sh`; window lifecycle changes also need a real UI smoke.
 - Note/docs-only changes: `make docs-check`.
-- Homebrew changes: `make homebrew`, inspect the generated source URL/hash, then use the local tap for source installation and `brew test` when environment changes are authorized. Do not claim installation from template syntax checks.
+- Homebrew changes: `make homebrew` is static generation only. Publish source, pin the actual HTTPS archive/hash, then install through a fresh public HTTPS tap when authorized. Never install from a local checkout or file URL. Run `scripts/verify-homebrew-install.sh` and actual Cask uninstall/zap checks; `brew test` only supports formulae. Do not claim installation from template syntax checks.
 
 Use `make check` for changes spanning these surfaces. Default to standalone CLT; do not change global `xcode-select` or fall back silently to full Xcode. Re-run a passing check only after a relevant change or unresolved failure.
 

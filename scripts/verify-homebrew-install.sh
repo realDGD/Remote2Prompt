@@ -1,6 +1,16 @@
 #!/bin/bash
 # Read-only installed-Cask checks; no UI or device adapters.
 set -euo pipefail
+if [[ $# -eq 0 ]]; then
+    values="$(brew info --json=v2 --cask realdgd/remote2prompt/remote2prompt | /usr/bin/ruby -rjson -e '
+      c = JSON.parse(STDIN.read).fetch("casks").first
+      commit = c.fetch("url").match(%r{\Ahttps://github.com/realDGD/Remote2Prompt/archive/([0-9a-f]{40})\.tar\.gz\z})
+      abort "Cask does not use a fixed public source archive" unless commit
+      puts [c.fetch("version"), commit[1], c.fetch("sha256")].join(" ")
+    ')"
+    read -r release_version source_commit archive_sha <<< "$values"
+    set -- "$release_version" "$source_commit" "$archive_sha"
+fi
 if [[ $# -lt 3 || $# -gt 4 || ! "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ! "$2" =~ ^[0-9a-f]{40}$ || ! "$3" =~ ^[0-9a-f]{64}$ ]]; then
     echo "Usage: verify-homebrew-install.sh VERSION COMMIT SHA256 [APPDIR]" >&2
     exit 2

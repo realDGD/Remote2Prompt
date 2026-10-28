@@ -80,36 +80,28 @@ jobs:
           /usr/bin/xcrun --sdk macosx --show-sdk-path
       - name: Core checks, adapter checks, Release bundle and repository checks
         run: /usr/bin/make check
-      - name: Generate local Homebrew source archive and formula
-        run: /usr/bin/ruby scripts/prepare-homebrew.rb --tap remote2prompt/ci
-      - name: Install pinned remote source and test Applications lifecycle
+      - name: Install single source Cask through the public HTTPS tap
         run: |
           brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
+          test "$(git -C "$(brew --repo realdgd/remote2prompt)" remote get-url origin)" = "https://github.com/realDGD/Remote2Prompt.git"
           if brew command trust >/dev/null 2>&1; then
-            brew trust --formula realdgd/remote2prompt/remote2prompt
-            brew trust --cask realdgd/remote2prompt/remote2prompt-app
+            brew trust --cask realdgd/remote2prompt/remote2prompt
           fi
-          brew install --build-from-source realdgd/remote2prompt/remote2prompt
-          brew install --cask realdgd/remote2prompt/remote2prompt-app
-          test -d /Applications/Remote2Prompt.app
-          test ! -L /Applications/Remote2Prompt.app
-          brew test realdgd/remote2prompt/remote2prompt
-          remote2prompt --version
-          remote2prompt --self-check
-      - name: Verify Applications uninstall and settings cleanup
+          brew install --cask realdgd/remote2prompt/remote2prompt
+          ./scripts/verify-homebrew-install.sh
+      - name: Verify single-item uninstall and settings cleanup
         run: |
           defaults write dev.remote2prompt.app homebrewCICheck -bool true
-          brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt-app
+          brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt
           test ! -e /Applications/Remote2Prompt.app
+          test ! -e "$(brew --prefix)/bin/remote2prompt"
           test ! -e "$HOME/Library/Preferences/dev.remote2prompt.app.plist"
+          test ! -e "$(brew --caskroom)/remote2prompt"
       - name: Remove CI-only Homebrew installation
         if: always()
         run: |
-          if brew list --cask remote2prompt-app >/dev/null 2>&1; then
-            brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt-app
-          fi
-          if brew list --formula remote2prompt >/dev/null 2>&1; then
-            brew uninstall --formula remote2prompt
+          if brew list --cask remote2prompt >/dev/null 2>&1; then
+            brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt
           fi
           test ! -e "$(brew --prefix)/bin/remote2prompt"
           if brew tap | /usr/bin/grep -qx 'realdgd/remote2prompt'; then

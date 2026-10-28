@@ -44,28 +44,38 @@ make check
 
 ## Homebrew 源码安装
 
-源码仓库为 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)，同一仓库根目录的 `Formula/`、`Casks/` 提供源码 tap。首次安装：
+只需一个源码型 Cask，源码与 tap 都在 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)：
 
 ```sh
 brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
-brew install --build-from-source realdgd/remote2prompt/remote2prompt
-brew install --cask realdgd/remote2prompt/remote2prompt-app
-brew test realdgd/remote2prompt/remote2prompt
+brew install --cask realdgd/remote2prompt/remote2prompt
+remote2prompt --self-check
 open /Applications/Remote2Prompt.app
 ```
 
-Homebrew 7 若提示来源未信任，按提示分别执行 `brew trust --formula realdgd/remote2prompt/remote2prompt` 和 `brew trust --cask realdgd/remote2prompt/remote2prompt-app` 后重试。
+安装会下载固定 commit、SHA-256 的源码归档，用 Swift 6 独立 CLT 运行核心/适配器检查并编译，不下载预编译 app，也不安装配套 Formula 或音频驱动。Cask 将 app 本体移入应用程序，清理构建缓存；Caskroom 只保留指向该 app 的受管理链接，没有第二份 app。`remote2prompt` 命令打开实际安装路径，也支持 `--version` 和 `--self-check`。
 
-Formula 从固定 commit、SHA-256 的源码归档使用独立 CLT 编译；配套 Cask 将本机编译的应用本体安装到 `/Applications/Remote2Prompt.app`，不是手工软链接，也不下载预编译 app。`remote2prompt` 启动命令优先打开与本次编译一致的应用程序副本。更新先执行 Formula 的 `brew upgrade --build-from-source`，再执行 Cask 的 `brew upgrade --cask`。
+Homebrew 若提示来源未信任，执行 `brew trust --cask realdgd/remote2prompt/remote2prompt` 后重试。这里的 Cask 始终从源码编译，不使用只对 Formula 生效的 `--build-from-source` 或 `brew test`；安装时自动运行检查，安装后的完整来源/签名/单份 app 验收见[构建与安装](docs/development.md)。
 
-完整卸载（加 `--zap` 清除本应用设置；去掉则保留）：
+更新与完整卸载（`--zap` 清本应用设置；去掉则保留设置）：
 
 ```sh
-brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt-app
-brew uninstall --formula realdgd/remote2prompt/remote2prompt
+brew update
+brew upgrade --cask realdgd/remote2prompt/remote2prompt
+brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt
 ```
 
-Cask 管理应用程序中的本体，Formula 管理源码产物和启动命令；卸载需两条命令。系统隐私授权和音频驱动不随设置清除。开发者仍可 `make homebrew` 生成本地 tap。构建、升级、卸载与发布操作详见 [构建与安装](docs/development.md)。
+从旧双项版本迁移时，先退出应用并确认原生按键已恢复，再执行：
+
+```sh
+brew uninstall --cask realdgd/remote2prompt/remote2prompt-app
+brew uninstall --formula realdgd/remote2prompt/remote2prompt
+brew untap realdgd/remote2prompt
+brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
+brew install --cask realdgd/remote2prompt/remote2prompt
+```
+
+旧 Cask 卸载可加 `--zap` 清设置；不清理系统隐私记录、蓝牙配对或驱动。所有安装验收均从公开 HTTPS tap 和远端源码开始，不使用本地 checkout 或 file URL。
 
 ## 当前进度
 
