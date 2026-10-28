@@ -12,6 +12,8 @@ Status: implemented
 
 `LoopbackWriter` 的串行队列拥有独立 Audio Queue 播放后端。通过公开的 [CurrentDevice UID 属性](https://developer.apple.com/documentation/audiotoolbox/kaudioqueueproperty_currentdevice) 绑定所选回环，直接提交 16 kHz 单声道 Int16 PCM，由系统转换为设备格式。不创建 AVAudioEngine 的默认输入/输出图，不读取麦克风，不回退到系统输出。
 
+突发 BLE 到包造成欠载后，Audio Queue 的默认连续时间戳可能落后于设备时钟。播放后端用纯 `PCMPlayoutClock` 跟踪已排队末尾；不足 10 ms 余量时先 Flush 转换器状态，再把新缓冲放到当前时钟之后 50 ms，不重置或丢弃已排队 PCM。增加仅内存的收包、样本、消费与播放时钟诊断，每两秒刷新。
+
 缓冲消费回调只回收容量与内存，不能当作尾音已播放。消费完成后调用 [AudioQueueStop(false)](https://developer.apple.com/documentation/audiotoolbox/audioqueuestop(_:_:))，结合 IsRunning 停止通知确认真实播放结束；整体仍有 1 秒排空预算。取消、超时和退出立即停止，释放缓冲与回调；正常队列上限仍为 32000 样本。
 
 路由代次独立于按键会话代次。设备通知异步交回所有者队列，不在系统回调中同步销毁输出。停止、替换、初始化失败的后端不能被旧通知复活；旧缓冲和旧排空回调不能结束新会话。路由验证失败通知对应音频运行时，沿用释放修饰键、恢复输入的安全路径。

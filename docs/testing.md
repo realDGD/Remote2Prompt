@@ -30,7 +30,7 @@ UI smoke 只确认真实窗口可见；界面布局、侧栏、滚动、暗色�
 
 ## 真机验收矩阵
 
-回环引擎持续播放回归：先退出实际应用，仅保留一个已安装的兼容回环，再用 CLT 运行 `Remote2PromptMacChecks --loopback-stream-smoke`。它复用同一个输出执行三次会话，共写入 384000 个静音样本，不捕获输入。显式增加 `--switch-input` 才会在播放期间临时切默认输入并恢复；该分支回归输入切换导致输出中断的故障，不由普通检查或 CI 自动调用。测试期间若外部选择了不同输入，不覆盖它；结束会校验默认输入/输出。结果和限制见[引擎恢复记录](validation/2026-10-28-voice-engine-recovery.md)。
+回环引擎持续播放回归：先退出实际应用，仅保留一个已安装的兼容回环，再用 CLT 运行 `Remote2PromptMacChecks --loopback-stream-smoke`。它复用同一个输出执行三次会话，共写入 384000 个静音样本，不捕获输入。显式增加 `--switch-input` 才会在播放期间临时切默认输入并恢复；该分支回归输入切换导致输出中断的故障；再加 `--jitter` 插入到包间隙，要求发生时序恢复且没有缓冲继续排到时钟之前，不由普通检查或 CI 自动调用。测试期间若外部选择了不同输入，不覆盖它；结束会校验默认输入/输出。结果和限制见[引擎恢复记录](validation/2026-10-28-voice-engine-recovery.md)。
 
 显式 `Remote2PromptMacChecks --voice-input-session-smoke` 使用真实 CoreAudio、生产输入运行时和 Audio Queue，模拟三次语音按下/结束及一次按住期间的实体输入抢占，确认切换后输出静音，排空后恢复原 UID 并检查 listener 清理。它不发送系统按键、不访问 HID/BLE 或读取声音；CLI 显式刷新代替 AppKit 定时器，因此不能证明真实遥控器或目标输入法。
 
