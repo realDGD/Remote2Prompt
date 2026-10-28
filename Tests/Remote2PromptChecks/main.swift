@@ -174,6 +174,7 @@ var checks: [(String, () throws -> Void)] = [
 checks.append(contentsOf: mappingChecks())
 checks.append(contentsOf: setupChecks())
 checks.append(contentsOf: voiceProtocolChecks())
+checks.append(contentsOf: playoutClockChecks())
 checks.append(contentsOf: inputPriorityChecks())
 checks.append(contentsOf: voiceInputSnapshotChecks())
 checks.append(contentsOf: configurationTransferChecks())

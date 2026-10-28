@@ -12,6 +12,10 @@ public final class RemoteAudioRuntime: ObservableObject {
     @Published public private(set) var sessionActive = false
     @Published public private(set) var testingTone = false
     public private(set) var receivedSamples = 0
+    @Published public private(set) var progress = VoiceStreamProgress()
+    private var receivedPackets = 0
+    private var lastPacketAt: TimeInterval?
+    private var signalChanging = false
     public var canStart: (() -> Bool)?
     public var prepareInput: ((@escaping (Bool) -> Void) -> Void)?
     public var onBegin: (() -> Bool)?
@@ -100,6 +104,7 @@ public final class RemoteAudioRuntime: ObservableObject {
     }
     public func refreshDevices() {
         guard hardwareEnabled, !stopped else { return }
+        updateProgress()
         let available = LoopbackDevices.available()
         if devices != available { devices = available }
         if let uid = configuration.selectedVirtualInputUID {
@@ -165,7 +170,7 @@ public final class RemoteAudioRuntime: ObservableObject {
         }
         if interruptedTail { cancel() }
         generation &+= 1; let token = generation
-        try? decoder.reset(); receivedSamples = 0; finishing = false; draining = false
+        try? decoder.reset(); receivedSamples = 0; receivedPackets = 0; lastPacketAt = nil; signalChanging = false; finishing = false; draining = false
         protocolStarted = false; allowEarlyAudio = !interruptedTail
         preparingInput = true; preroll.clear()
         testingTone = false; writer.begin(); sessionActive = true
@@ -214,10 +219,12 @@ public final class RemoteAudioRuntime: ObservableObject {
     }
     private func receive(_ packet: Data) {
         guard sessionActive, !draining, protocolStarted || allowEarlyAudio else { return }
+        receivedPackets += 1; lastPacketAt = ProcessInfo.processInfo.systemUptime
         do {
             let samples = try decoder.append(packet)
             guard !samples.isEmpty else { return }
             receivedSamples += samples.count
+            if let low = samples.min(), let high = samples.max() { signalChanging = Int(high) - Int(low) > 64 }
             protocolStarted = true
             if preparingInput { try preroll.append(samples); return }
             let token = generation
@@ -225,6 +232,19 @@ public final class RemoteAudioRuntime: ObservableObject {
         } catch LoopbackFailure.overflow {
             cancel(message: "等待输入切换过久，语音缓存已满，请松开后重试。")
         } catch { invalidateOutput("遥控器音频帧无效，请重新连接音频。") }
+    }
+    private func updateProgress() {
+        let token = generation
+        writer.snapshot { [weak self] output in
+            Task { @MainActor in
+                guard let self, !self.stopped, self.generation == token else { return }
+                var value = VoiceStreamProgress()
+                value.packets = self.receivedPackets; value.decodedSamples = self.receivedSamples
+                value.secondsSincePacket = self.lastPacketAt.map { max(0, Int(ProcessInfo.processInfo.systemUptime - $0)) }
+                value.signalChanging = self.signalChanging; value.output = output
+                if value != self.progress { self.progress = value }
+            }
+        }
     }
     private func write(_ samples: [Int16], token: UInt64) {
         guard !samples.isEmpty else { return }

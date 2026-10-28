@@ -48,6 +48,14 @@ struct VoiceAudioControls: View {
             Button("重新连接音频") { audio.retry() }.disabled(InterfaceInspection.enabled)
             DisclosureGroup("测试与设备状态") {
                 LabeledContent("设备状态", value: audio.outputStatus)
+                LabeledContent("收到音频", value: "\(audio.progress.packets) 包 · \(audio.progress.decodedSamples) 样本")
+                LabeledContent("送入设备 / 设备消费", value: "\(audio.progress.output.submittedSamples) / \(audio.progress.output.consumedSamples) 样本")
+                LabeledContent("待输出", value: "\(audio.progress.output.pendingSamples) 样本")
+                LabeledContent("最后音频", value: audio.progress.secondsSincePacket.map { "\($0) 秒前" } ?? "尚未收到")
+                LabeledContent("输入信号", value: audio.progress.signalChanging ? "有变化" : "当前变化较小")
+                LabeledContent("播放进度", value: audio.progress.output.playback.clockFrame.map { String(format: "%.1f 秒", $0 / 16000) } ?? "未播放")
+                LabeledContent("时序恢复 / 迟到缓冲", value: "\(audio.progress.output.playback.timingRecoveries) / \(audio.progress.output.playback.lateSchedules) 次")
+                Text("计数仅保留在内存，每两秒刷新；设备消费不等于输入法已收到声音。").font(.caption).foregroundStyle(.secondary)
                 Button(audio.testingTone ? "正在发送测试音…" : "发送测试音到虚拟麦克风") { audio.playTestTone() }
                     .disabled(!audio.canTestTone)
                 Text("测试音只发往所选设备，开始语音时会自动停止。应用不安装音频驱动，也不重启系统音频服务。")

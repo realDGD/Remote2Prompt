@@ -75,6 +75,18 @@ private func validate(_ fake: FakeLoopbackPlayback) throws {
 
 func loopbackWriterChecks() -> [(String, @MainActor () throws -> Void)] {
     [
+        ("progress counters reject old callbacks after a new session starts", {
+            let fake = FakeLoopbackPlayback(); let writer = LoopbackWriter(playback: { fake })
+            defer { writer.stop() }
+            try configure(writer); writer.begin(); _ = try append(160, to: writer)
+            let old = fake.takeConsumed(); writer.cancel(); writer.begin(); _ = try append(240, to: writer)
+            old.forEach { $0() }
+            let pending: LoopbackProgress = try waited { writer.snapshot(completion: $0) }
+            try check(pending.submittedSamples == 240 && pending.consumedSamples == 0 && pending.pendingSamples == 240, "Old callback polluted current progress")
+            fake.takeConsumed().forEach { $0() }
+            let done: LoopbackProgress = try waited { writer.snapshot(completion: $0) }
+            try check(done.submittedSamples == 240 && done.consumedSamples == 240 && done.pendingSamples == 0, "Progress did not reflect consumed current audio")
+        }),
         ("consumed buffers do not release a session before hardware drain confirmation", {
             let fake = FakeLoopbackPlayback(); fake.holdDrain()
             let writer = LoopbackWriter(playback: { fake }); defer { writer.stop() }

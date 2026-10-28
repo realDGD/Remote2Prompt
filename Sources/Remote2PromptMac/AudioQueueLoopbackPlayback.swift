@@ -1,5 +1,6 @@
 import AudioToolbox
 import Foundation
+import Remote2PromptCore
 
 /// Explicit-device output, independent of AVAudioEngine's default input/output graph.
 /// Audio Queue converts 16 kHz mono PCM to the chosen device's format. It never captures input.
@@ -7,6 +8,9 @@ final class AudioQueueLoopbackPlayback: LoopbackPlayback, @unchecked Sendable {
     private var output: AudioQueueRef?
     private var deviceUID: String?
     private var started = false
+    private var timeline = PCMPlayoutClock()
+    private var timingRecoveries = 0
+    private var lateSchedules = 0
     private var beginFailure: LoopbackFailure?
     private let callbacks = Callbacks()
 
@@ -77,7 +81,7 @@ final class AudioQueueLoopbackPlayback: LoopbackPlayback, @unchecked Sendable {
     }
     func begin() {
         callbacks.discard()
-        beginFailure = nil; started = false
+        beginFailure = nil; started = false; timeline.reset(); timingRecoveries = 0; lateSchedules = 0
         if let output {
             let status = AudioQueueStop(output, true)
             if status != noErr { beginFailure = .configure(status) }
@@ -107,10 +111,26 @@ final class AudioQueueLoopbackPlayback: LoopbackPlayback, @unchecked Sendable {
         }
         buffer.pointee.mAudioDataByteSize = byteCount
         callbacks.add(buffer, consumed)
-        let queued = AudioQueueEnqueueBuffer(output, buffer, 0, nil)
+        var scheduled = AudioTimeStamp()
+        var start = AudioTimeStamp()
+        let observedClock = health.clockFrame
+        let recovery = started ? timeline.recoveryStart(currentFrame: observedClock) : nil
+        let queued: OSStatus
+        if let recovery {
+            // Subsequent explicit timestamps require flushing converter state (not resetting buffers).
+            let flushed = AudioQueueFlush(output)
+            guard flushed == noErr else { throw .configure(flushed) }
+            start.mSampleTime = recovery; start.mFlags = .sampleTimeValid
+            queued = AudioQueueEnqueueBufferWithParameters(output, buffer, 0, nil, 0, 0, 0, nil, &start, &scheduled)
+            timingRecoveries += 1
+        } else {
+            queued = AudioQueueEnqueueBufferWithParameters(output, buffer, 0, nil, 0, 0, 0, nil, nil, &scheduled)
+        }
         guard queued == noErr else {
             _ = callbacks.take(buffer); AudioQueueFreeBuffer(output, buffer); throw .configure(queued)
         }
+        if let observedClock, started, scheduled.mSampleTime < observedClock { lateSchedules += 1 }
+        timeline.enqueued(startFrame: scheduled.mSampleTime, frameCount: samples.count)
         if !started {
             let status = AudioQueueStart(output, nil)
             guard status == noErr else { throw .configure(status) }
@@ -129,6 +149,18 @@ final class AudioQueueLoopbackPlayback: LoopbackPlayback, @unchecked Sendable {
             if !running { callbacks.completeDrain(true) }
         } else { callbacks.completeDrain(false) }
     }
+    var health: LoopbackPlaybackHealth {
+        var result = LoopbackPlaybackHealth(); result.timingRecoveries = timingRecoveries; result.lateSchedules = lateSchedules
+        if let output {
+            result.running = Self.running(output)
+            var time = AudioTimeStamp()
+            if AudioQueueGetCurrentTime(output, nil, &time, nil) == noErr,
+               time.mFlags.contains(.sampleTimeValid), time.mSampleTime.isFinite {
+                result.clockFrame = time.mSampleTime
+            }
+        }
+        return result
+    }
     func stop() {
         callbacks.observe(nil); callbacks.discard()
         if let output {
@@ -138,7 +170,7 @@ final class AudioQueueLoopbackPlayback: LoopbackPlayback, @unchecked Sendable {
             }
             AudioQueueDispose(output, true)
         }
-        output = nil; deviceUID = nil; started = false; beginFailure = nil
+        output = nil; deviceUID = nil; started = false; beginFailure = nil; timeline.reset(); timingRecoveries = 0; lateSchedules = 0
     }
     deinit { stop() }
 }

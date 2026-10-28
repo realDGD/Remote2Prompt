@@ -36,7 +36,7 @@ enum MacChecks {
             return
         }
         if CommandLine.arguments.contains("--loopback-stream-smoke") {
-            do { try await loopbackStreamSmoke(switchInput: CommandLine.arguments.contains("--switch-input")) }
+            do { try await loopbackStreamSmoke(switchInput: CommandLine.arguments.contains("--switch-input"), jitter: CommandLine.arguments.contains("--jitter")) }
             catch { print("FAIL continuous loopback: \(error)"); exit(1) }
             return
         }

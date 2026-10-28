@@ -22,6 +22,7 @@ public protocol LoopbackPlayback: AnyObject, Sendable {
     func finish(completion: @escaping @Sendable (Bool) -> Void)
     func validateRoute() throws(LoopbackFailure)
     func stop()
+    var health: LoopbackPlaybackHealth { get }
 }
 
 /// All playback state belongs to this serial queue. No default input/output property is ever written.
@@ -30,6 +31,8 @@ public final class LoopbackWriter: @unchecked Sendable {
     private let makePlayback: @Sendable () -> any LoopbackPlayback
     private var playback: (any LoopbackPlayback)?
     private var pending = 0
+    private var submittedSamples = 0
+    private var consumedSamples = 0
     private var generation: UInt64 = 0
     private var routeGeneration: UInt64 = 0
     private var drained: (@Sendable (Bool) -> Void)?
@@ -68,6 +71,7 @@ public final class LoopbackWriter: @unchecked Sendable {
     public func begin() {
         queue.async { [self] in
             generation &+= 1; drained?(false); drained = nil; pending = 0
+            submittedSamples = 0; consumedSamples = 0
             finishingPlayback = false
             playback?.begin()
         }
@@ -84,10 +88,12 @@ public final class LoopbackWriter: @unchecked Sendable {
                 try playback.append(samples) { [weak self] in
                     self?.queue.async { [weak self] in
                         guard let self, self.generation == token else { return }
+                        self.consumedSamples += sampleCount
                         self.pending = max(0, self.pending - sampleCount)
                         self.finishIfConsumed()
                     }
                 }
+                submittedSamples += sampleCount
                 completion(nil)
             } catch { tearDown(); completion(playbackFailure(error)) }
         }
@@ -118,7 +124,20 @@ public final class LoopbackWriter: @unchecked Sendable {
             }
         }
     }
-    public func cancel() { begin() }
+    public func snapshot(completion: @escaping @Sendable (LoopbackProgress) -> Void) {
+        queue.async { [self] in
+            var result = LoopbackProgress()
+            result.submittedSamples = submittedSamples; result.consumedSamples = consumedSamples
+            result.pendingSamples = pending; result.playback = playback?.health ?? LoopbackPlaybackHealth()
+            completion(result)
+        }
+    }
+    public func cancel() {
+        queue.async { [self] in
+            generation &+= 1; drained?(false); drained = nil; pending = 0; finishingPlayback = false
+            playback?.begin()
+        }
+    }
     public func stop(completion: (@Sendable () -> Void)? = nil) { queue.async { [self] in tearDown(); completion?() } }
     private func tearDown() {
         routeGeneration &+= 1; generation &+= 1; pending = 0

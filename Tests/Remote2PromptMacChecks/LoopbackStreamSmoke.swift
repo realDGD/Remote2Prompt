@@ -5,7 +5,7 @@ import Remote2PromptMac
 
 /// Explicit hardware check: silence only, no input capture. Ordinary checks never call it.
 @MainActor
-func loopbackStreamSmoke(switchInput: Bool) async throws {
+func loopbackStreamSmoke(switchInput: Bool, jitter: Bool = false) async throws {
     guard NSRunningApplication.runningApplications(withBundleIdentifier: "dev.remote2prompt.app").isEmpty else {
         throw Failure(message: "Quit Remote2Prompt before the hardware output check")
     }
@@ -30,6 +30,7 @@ func loopbackStreamSmoke(switchInput: Bool) async throws {
             writer.begin()
             let start = ProcessInfo.processInfo.systemUptime
             for index in 0..<800 {
+                if jitter && index > 0 && index % 80 == 0 { try await Task.sleep(for: .milliseconds(180)) }
                 if switchInput && index == 100 {
                     guard setDefaultInput(target) == noErr else { throw Failure(message: "Input transition rejected") }
                 }
@@ -42,6 +43,10 @@ func loopbackStreamSmoke(switchInput: Bool) async throws {
                 if let error { throw error }
                 let remaining = start + Double(index + 1) * 0.01 - ProcessInfo.processInfo.systemUptime
                 if remaining > 0 { try await Task.sleep(for: .seconds(remaining)) }
+            }
+            let progress: LoopbackProgress = await withCheckedContinuation { c in writer.snapshot { c.resume(returning: $0) } }
+            if jitter {
+                try check(progress.playback.timingRecoveries > 0 && progress.playback.lateSchedules == 0, "Underrun kept scheduling behind the playback clock")
             }
             let drained: Bool = await withCheckedContinuation { c in writer.finish { c.resume(returning: $0) } }
             try check(drained, "Playback did not finish before the drain deadline")
@@ -56,7 +61,7 @@ func loopbackStreamSmoke(switchInput: Bool) async throws {
     try await Task.sleep(for: .milliseconds(500))
     try check(before == LoopbackDevices.defaultSnapshot(), "Default input/output were not restored; external selections were respected")
     if let failure { throw failure }
-    print("PASS continuous loopback: \(sessions) sessions, 384000 silent samples drained; input transition=\(switchInput); defaults restored; no input capture")
+    print("PASS continuous loopback: \(sessions) sessions, 384000 silent samples drained; input transition=\(switchInput); jitter=\(jitter); defaults restored; no input capture")
 }
 
 private func readDefaultInput() throws -> AudioDeviceID {
