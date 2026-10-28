@@ -8,7 +8,7 @@ errors = []
 files = []
 Find.find(root) do |path|
   if File.directory?(path)
-    Find.prune if %w[.git .build .swiftpm dist].include?(File.basename(path))
+    Find.prune if %w[.git .build .swiftpm .local dist].include?(File.basename(path))
   elsif File.file?(path)
     files << path
   end

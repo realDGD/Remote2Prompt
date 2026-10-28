@@ -61,8 +61,8 @@ Files: explicit MacChecks hardware diagnostics, docs/testing.md, new validation 
 
 - [x] CLT `make check` 和公开边界检查；无改动时不重复构建。
 - [x] 显式静音回归：长时播放、突发欠载、快速开始/结束/取消、设备快照恢复、资源清理。
-- [ ] 用户已确认可配合：安装版/测试版长时间真实收音、快速重按、RC003断连重连、实际睡眠/解锁；逐项记录是否执行和结果。
-- [ ] Homebrew保持单Cask远端源码构建，安装/发布按已有授权范围处理；最终状态与未覆盖项准确汇报。
+- [x] 用户已确认可配合：安装版/测试版长时间真实收音、快速重按、RC003断连重连、实际睡眠/解锁；逐项记录是否执行和结果。
+- [x] Homebrew保持单Cask远端源码构建，安装/发布按已有授权范围处理；最终状态与未覆盖项准确汇报。
 
 ## Execution ledger
 
@@ -78,3 +78,9 @@ Files: explicit MacChecks hardware diagnostics, docs/testing.md, new validation 
 - Task4: 长测120+8+8秒及30快速周期通过，共2185600静音样本；真实输入事务3轮确认/抢占/恢复通过。新增只读虚拟设备静音/零音量健康后，另3轮384000样本通过。100次模拟重按及音频/输入真实协调器的故障/休眠释放恢复顺序通过，总计78core/89adapter。原生预览的菜单清除和录入清空/确认完成，边界详见[回归记录](../../docs/validation/2026-10-28-audio-health-lifecycle.md)。
 
 - Final local validation: 0.2.7 CLT Release、macOS14最低版本/SDK27、bundle配置自检、仓库及公开边界检查通过。真机协作及发布/远端Homebrew升级尚未执行。
+
+- Release: 用户授权后4e2650b源码与88434b3固定归档Cask推送main；HTTPS远端Homebrew升级0.2.7，配置字节一致、签名/来源/唯一安装/缓存核验通过。发布CI40696877843核实3/3通过。
+- Hardware: 用户确认约10次快速重按后正常语音、无粘键；系统蓝牙单设备断开很快自动连回，再次语音正常；空闲系统睡眠/唤醒后自动恢复语音。长段持续按住约一分钟自动结束，90秒未通过；键盘触发同一输入法两分钟不中断。与上游#355一致，按RC003已知限制及本机未抓控制事件的边界记录，不宣称突破固件限制。
+- No new build/signature after安装：本轮最终只提交文档；实际输入法Auto Detect、活跃语音中睡眠及持续长离线仍未真机覆盖。
+
+- 收尾检查发现文档检查器仍遍历忽略的.local，遇到本轮私有二进制偏好备份时按UTF-8解析失败；与既有.git/.build/dist一致排除.local。文档、公开边界与全历史检查重新通过，不改应用代码、签名或安装来源。
