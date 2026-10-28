@@ -107,12 +107,16 @@ struct SetupWizard: View {
             }
             Section("语音") {
                 Toggle("启用语音触发", isOn: $draft.voiceEnabled)
-                Picker("发送按键", selection: $draft.voiceTrigger) {
-                    ForEach(VoiceTrigger.allCases) { Text($0.title).tag($0) }
+                if draft.voiceEnabled {
+                    triggerPicker
+                } else {
+                    DisclosureGroup("配置语音触发键") { triggerPicker }
                 }
                 SetupAudioOptions(audio: runtime.audio, draft: $draft)
-                Text("请在输入法中设置同一个触发键和虚拟麦克风。向导不读取 Mac 自带麦克风，也不安装驱动。")
-                    .font(.callout).foregroundStyle(.secondary)
+                if draft.voiceEnabled || draft.remoteAudioEnabled {
+                    Text(draft.remoteAudioEnabled ? "请在输入法中设置同一个触发键和虚拟麦克风。向导不读取 Mac 自带麦克风，也不安装驱动。" : "请在输入法中设置同一个触发键。")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
             }
         case .check:
             Section("普通按键") {
@@ -145,7 +149,9 @@ struct SetupWizard: View {
                 LabeledContent("自定义映射", value: draft.mappingsEnabled ? "开启" : "关闭")
                 LabeledContent("语音触发", value: draft.voiceEnabled ? draft.voiceTrigger.title : "关闭")
                 LabeledContent("虚拟麦克风", value: draft.remoteAudioEnabled ? "开启" : "关闭")
-                LabeledContent("按住时切换系统输入", value: draft.preferVirtualInput ? "开启" : "关闭")
+                if draft.remoteAudioEnabled {
+                    LabeledContent("按住时切换系统输入", value: draft.preferVirtualInput ? "开启" : "关闭")
+                }
                 LabeledContent("常用单击动作", value: fillNavigation ? "补齐空项" : "保留现状")
             }
             Section("检查结果") {
@@ -158,6 +164,12 @@ struct SetupWizard: View {
                         .foregroundStyle(.orange)
                 }
             }
+        }
+    }
+
+    private var triggerPicker: some View {
+        Picker("发送按键", selection: $draft.voiceTrigger) {
+            ForEach(VoiceTrigger.allCases) { Text($0.title).tag($0) }
         }
     }
 
@@ -198,18 +210,20 @@ private struct SetupAudioOptions: View {
             get: { draft.remoteAudioEnabled },
             set: { draft.remoteAudioEnabled = $0; if $0 { draft.voiceEnabled = true } }
         ))
-        Picker("虚拟麦克风", selection: Binding(
-            get: { draft.selectedVirtualInputUID ?? "" },
-            set: { draft.selectedVirtualInputUID = $0.isEmpty ? nil : $0 }
-        )) {
-            Text("稍后选择").tag("")
-            ForEach(audio.devices) { Text($0.name).tag($0.uid) }
-            if let uid = draft.selectedVirtualInputUID, !audio.devices.contains(where: { $0.uid == uid }) {
-                Text("已保存的设备不可用").tag(uid)
+        if draft.remoteAudioEnabled {
+            Picker("虚拟麦克风", selection: Binding(
+                get: { draft.selectedVirtualInputUID ?? "" },
+                set: { draft.selectedVirtualInputUID = $0.isEmpty ? nil : $0 }
+            )) {
+                Text("稍后选择").tag("")
+                ForEach(audio.devices) { Text($0.name).tag($0.uid) }
+                if let uid = draft.selectedVirtualInputUID, !audio.devices.contains(where: { $0.uid == uid }) {
+                    Text("已保存的设备不可用").tag(uid)
+                }
             }
+            Toggle("按住语音键时切换系统输入", isOn: $draft.preferVirtualInput)
+            Text("默认跟随系统；开启后仅在按住时切到所选虚拟麦克风，松开排空后恢复。")
+                .font(.caption).foregroundStyle(.secondary)
         }
-        Toggle("按住语音键时切换系统输入", isOn: $draft.preferVirtualInput)
-        Text("默认跟随系统；开启后仅在按住时切到所选虚拟麦克风，松开排空后恢复。")
-            .font(.caption).foregroundStyle(.secondary)
     }
 }

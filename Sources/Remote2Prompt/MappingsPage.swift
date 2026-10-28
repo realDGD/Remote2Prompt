@@ -81,25 +81,34 @@ struct MappingsPage: View {
                 ))
                 .toggleStyle(.switch).controlSize(.small)
             }
-            HStack(spacing: 12) {
-                Text("发送按键").foregroundStyle(.secondary)
-                Picker("语音触发键", selection: Binding(
-                    get: { store.configuration.voiceTrigger },
-                    set: { value in store.update { $0.voiceTrigger = value } }
-                )) {
-                    ForEach(VoiceTrigger.allCases) { Text($0.title).tag($0) }
-                }
-                .labelsHidden().frame(width: 175)
-                Text("在输入法中选择同一个键")
-                    .font(.caption).foregroundStyle(.secondary)
-                Spacer(minLength: 4)
-                Button(action: openAudioSettings) { Label("音频设置", systemImage: "waveform") }
-                    .buttonStyle(.link)
+            if store.configuration.voiceEnabled {
+                voiceTriggerOptions
+            } else {
+                DisclosureGroup("配置语音触发键") { voiceTriggerOptions.padding(.top, 6) }
+                    .font(.callout)
             }
         }
         .padding(18)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.accentColor.opacity(0.16)))
+    }
+
+    private var voiceTriggerOptions: some View {
+        HStack(spacing: 12) {
+            Text("发送按键").foregroundStyle(.secondary)
+            Picker("语音触发键", selection: Binding(
+                get: { store.configuration.voiceTrigger },
+                set: { value in store.update { $0.voiceTrigger = value } }
+            )) {
+                ForEach(VoiceTrigger.allCases) { Text($0.title).tag($0) }
+            }
+            .labelsHidden().frame(width: 175)
+            Text("在输入法中选择同一个键")
+                .font(.caption).foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            Button(action: openAudioSettings) { Label("音频设置", systemImage: "waveform") }
+                .buttonStyle(.link)
+        }
     }
 
     private var ordinaryHeader: some View {

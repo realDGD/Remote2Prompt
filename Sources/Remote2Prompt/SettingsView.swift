@@ -70,6 +70,7 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .navigationTitle((selection ?? .mappings).title)
+            .toolbarBackground(.hidden, for: .windowToolbar)
         }
         .sheet(isPresented: $store.isSetupPresented) { SetupWizard() }
         .frame(minWidth: 1040, minHeight: 640)

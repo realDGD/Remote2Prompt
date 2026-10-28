@@ -7,14 +7,16 @@ struct InputPriorityControls: View {
     @ObservedObject var priority: AudioInputPriorityRuntime
 
     var body: some View {
-        Toggle("按住语音键时使用遥控器输入", isOn: Binding(
-            get: { store.configuration.preferVirtualInput },
-            set: { value in store.update { $0.preferVirtualInput = value } }
-        ))
-        .toggleStyle(.switch).controlSize(.small)
-        Text("平时跟随系统，不抢占麦克风。按下时切换到所选虚拟麦克风，松开并输出完尾音后，恢复按下前的输入。")
-            .font(.callout).foregroundStyle(.secondary)
-        if store.configuration.preferVirtualInput {
+        if store.configuration.remoteAudioEnabled {
+            Toggle("按住语音键时使用遥控器输入", isOn: Binding(
+                get: { store.configuration.preferVirtualInput },
+                set: { value in store.update { $0.preferVirtualInput = value } }
+            ))
+            .toggleStyle(.switch).controlSize(.small)
+            Text("平时跟随系统，不抢占麦克风。按下时切换到所选虚拟麦克风，松开并输出完尾音后，恢复按下前的输入。")
+                .font(.callout).foregroundStyle(.secondary)
+        }
+        if store.configuration.preferVirtualInput || priority.state.needsSettingsFeedback {
             LabeledContent("当前状态", value: phaseTitle)
             LabeledContent("系统正在使用", value: priority.state.observedInput ?? "尚未读取")
             LabeledContent("本次恢复到", value: priority.state.restoreInput ?? "按下语音键时记录")
@@ -28,8 +30,10 @@ struct InputPriorityControls: View {
                 LabeledContent("最近确认", value: priority.state.confirmedInput ?? "无")
                 Button("重试切换") { priority.retry() }
             }
-            Text("需要开启语音触发、接收遥控器声音，并选择可用虚拟麦克风。只切换系统默认输入，不更改输出设备。")
-                .font(.caption).foregroundStyle(.secondary)
+            if store.configuration.remoteAudioEnabled {
+                Text("需要开启语音触发并选择可用虚拟麦克风。只切换系统默认输入，不更改输出设备。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -45,5 +49,12 @@ struct InputPriorityControls: View {
         case .paused: "切换失败，已暂停重试"
         case .stopped: "输入切换已停止"
         }
+    }
+}
+
+extension InputPriorityState {
+    /// Turning audio off must not hide an unfinished restore or a recovery error.
+    var needsSettingsFeedback: Bool {
+        ownsInput || pending || error != nil || phase == .restoring || phase == .noFallback
     }
 }

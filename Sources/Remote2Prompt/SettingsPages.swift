@@ -25,14 +25,14 @@ struct ConnectionPage: View {
             }
             SettingsCard("遥控器语音输入") {
                 VoiceAudioControls(audio: runtime.audio)
-                HStack {
-                    LabeledContent("语音触发键", value: store.configuration.voiceEnabled ? store.configuration.voiceTrigger.title : "未启用")
-                    Button("去设置", action: openMappings).buttonStyle(.link)
+                if store.configuration.remoteAudioEnabled {
+                    HStack {
+                        LabeledContent("语音触发键", value: store.configuration.voiceEnabled ? store.configuration.voiceTrigger.title : "未启用")
+                        Button("去设置", action: openMappings).buttonStyle(.link)
+                    }
                 }
             }
-            SettingsCard("系统输入切换") {
-                InputPriorityControls(priority: runtime.inputPriority)
-            }
+            InputPrioritySection(priority: runtime.inputPriority)
             SettingsCard {
                 DisclosureGroup("连接诊断") {
                     LabeledContent("发现的遥控器接口", value: String(runtime.detectedCount))
@@ -41,6 +41,19 @@ struct ConnectionPage: View {
                         LabeledContent("最后按键", value: "\(activity.isVoice ? "语音键" : activity.button?.title ?? "未知") · \(activity.isDown ? "按下" : "松开")")
                     }
                 }
+            }
+        }
+    }
+}
+
+private struct InputPrioritySection: View {
+    @EnvironmentObject private var store: ConfigurationStore
+    @ObservedObject var priority: AudioInputPriorityRuntime
+
+    var body: some View {
+        if store.configuration.remoteAudioEnabled || priority.state.needsSettingsFeedback {
+            SettingsCard("系统输入切换") {
+                InputPriorityControls(priority: priority)
             }
         }
     }
@@ -81,7 +94,7 @@ private struct SettingsPageStack<Content: View>: View {
         Form { content }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .frame(maxWidth: 820)
+            .toolbarBackground(.hidden, for: .windowToolbar)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
@@ -222,5 +235,7 @@ struct AboutPage: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .toolbarBackground(.hidden, for: .windowToolbar)
     }
 }
