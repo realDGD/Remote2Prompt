@@ -1,8 +1,8 @@
 cask "remote2prompt" do
-  version "0.2.6"
-  sha256 "3897ff1aa1aeb032bc07f93e8b83be07d6afdc382aeab97e51f10c5f7c45a00f"
+  version "0.2.7"
+  sha256 "decca5cb062f4671c502078452c438f2dd330acfc1c5b4e99b0a5277bb680406"
 
-  url "https://github.com/realDGD/Remote2Prompt/archive/11cd0902caddc51b60cb2ff472d27acbbd2fc99d.tar.gz"
+  url "https://github.com/realDGD/Remote2Prompt/archive/4e2650b6a33df034f445859b4e824057f1ea729a.tar.gz"
   name "Remote2Prompt"
   desc "Native macOS remote key mapping and voice app compiled with CLT"
   homepage "https://github.com/realDGD/Remote2Prompt"
@@ -10,16 +10,16 @@ cask "remote2prompt" do
   depends_on macos: :sonoma
 
   preflight_steps do
-    run "/bin/bash", args: ["scripts/build-cask.sh", "0.2.6", "11cd0902caddc51b60cb2ff472d27acbbd2fc99d", "3897ff1aa1aeb032bc07f93e8b83be07d6afdc382aeab97e51f10c5f7c45a00f"],
-                      chdir: "Remote2Prompt-11cd0902caddc51b60cb2ff472d27acbbd2fc99d", print_stdout: true,
+    run "/bin/bash", args: ["scripts/build-cask.sh", "0.2.7", "4e2650b6a33df034f445859b4e824057f1ea729a", "decca5cb062f4671c502078452c438f2dd330acfc1c5b4e99b0a5277bb680406"],
+                      chdir: "Remote2Prompt-4e2650b6a33df034f445859b4e824057f1ea729a", print_stdout: true,
                       env: { "DEVELOPER_DIR" => "/Library/Developer/CommandLineTools" }
   end
 
-  app "Remote2Prompt-11cd0902caddc51b60cb2ff472d27acbbd2fc99d/dist/Remote2Prompt.app"
-  binary "Remote2Prompt-11cd0902caddc51b60cb2ff472d27acbbd2fc99d/packaging/homebrew/remote2prompt"
+  app "Remote2Prompt-4e2650b6a33df034f445859b4e824057f1ea729a/dist/Remote2Prompt.app"
+  binary "Remote2Prompt-4e2650b6a33df034f445859b4e824057f1ea729a/packaging/homebrew/remote2prompt"
 
   postflight_steps do
-    remove ["Remote2Prompt-11cd0902caddc51b60cb2ff472d27acbbd2fc99d/.build", "Remote2Prompt-11cd0902caddc51b60cb2ff472d27acbbd2fc99d/.swiftpm"], recursive: true
+    remove ["Remote2Prompt-4e2650b6a33df034f445859b4e824057f1ea729a/.build", "Remote2Prompt-4e2650b6a33df034f445859b4e824057f1ea729a/.swiftpm"], recursive: true
   end
 
   uninstall quit: "dev.remote2prompt.app"
