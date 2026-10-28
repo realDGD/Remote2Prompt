@@ -2,7 +2,7 @@ import Foundation
 
 /// Versioned persisted preferences. Device identifiers must be macOS UIDs, never transient numeric IDs.
 public struct AppConfiguration: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 4
+    public static let currentSchemaVersion = 5
     public var schemaVersion: Int = currentSchemaVersion
     public var mappingsEnabled = false
     public var voiceEnabled = false
@@ -13,6 +13,8 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
     public var voiceTrigger: VoiceTrigger = .function
     public var selectedVirtualInputUID: String?
     public var bindings: [KeyBinding] = []
+    public var gestureTiming = GestureTiming()
+    public var buttonBehaviors: [ButtonBehaviorOverride] = []
 
     public init() {}
 
@@ -47,6 +49,14 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
         }
     }
 
+    public func behavior(for button: RemoteButton) -> ButtonBehavior {
+        buttonBehaviors.first { $0.button == button }?.behavior ?? ButtonBehavior()
+    }
+    public mutating func setBehavior(_ behavior: ButtonBehavior, for button: RemoteButton) {
+        buttonBehaviors.removeAll { $0.button == button }
+        if behavior != ButtonBehavior() { buttonBehaviors.append(ButtonBehaviorOverride(button: button, behavior: behavior)) }
+    }
+
     public func encoded() throws -> Data {
         try JSONEncoder().encode(self)
     }
@@ -63,11 +73,16 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
             if binding.action == .customShortcut && binding.shortcut == nil { throw ConfigurationError.invalidShortcut }
             if let shortcut = binding.shortcut, !shortcut.isValid { throw ConfigurationError.invalidShortcut }
         }
+        guard configuration.gestureTiming.isValid,
+              Set(configuration.buttonBehaviors.map(\.button)).count == configuration.buttonBehaviors.count else {
+            throw ConfigurationError.invalidGestureSettings
+        }
         configuration.schemaVersion = currentSchemaVersion
         return configuration
     }
 
     private enum CodingKeys: String, CodingKey {
+        case gestureTiming, buttonBehaviors
         case voiceLimitReminderEnabled, voiceLimitReminderPosition
         case schemaVersion, mappingsEnabled, voiceEnabled, remoteAudioEnabled, preferVirtualInput, voiceTrigger, selectedVirtualInputUID, bindings
     }
@@ -84,6 +99,8 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
         voiceTrigger = try values.decodeIfPresent(VoiceTrigger.self, forKey: .voiceTrigger) ?? .function
         selectedVirtualInputUID = try values.decodeIfPresent(String.self, forKey: .selectedVirtualInputUID)
         bindings = try values.decodeIfPresent([KeyBinding].self, forKey: .bindings) ?? []
+        gestureTiming = try values.decodeIfPresent(GestureTiming.self, forKey: .gestureTiming) ?? GestureTiming()
+        buttonBehaviors = try values.decodeIfPresent([ButtonBehaviorOverride].self, forKey: .buttonBehaviors) ?? []
     }
 }
 
@@ -91,6 +108,7 @@ public enum ConfigurationError: Error, Equatable, Sendable {
     case unsupportedVersion(Int)
     case duplicateBinding
     case invalidShortcut
+    case invalidGestureSettings
 }
 
 public enum VoiceLimitReminderPosition: String, Codable, CaseIterable, Sendable {
