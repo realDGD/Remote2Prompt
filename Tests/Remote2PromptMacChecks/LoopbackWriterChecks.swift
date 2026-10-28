@@ -125,6 +125,9 @@ func loopbackWriterChecks() -> [(String, @MainActor () throws -> Void)] {
             fake.setHealth(LoopbackPlaybackHealth()); try configure(writer); fake.failValidation(.unavailable)
             let lost: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
             guard case .failure(.unavailable) = lost else { throw Failure(message: "Lost explicit device was accepted") }
+            try configure(writer); fake.failValidation(.silenced)
+            let muted: Result<LoopbackProgress, LoopbackFailure> = try waited { writer.checkHealth(completion: $0) }
+            guard case .failure(.silenced) = muted else { throw Failure(message: "Silenced device was accepted") }
         }),
         ("progress counters reject old callbacks after a new session starts", {
             let fake = FakeLoopbackPlayback(); let writer = LoopbackWriter(playback: { fake })

@@ -59,8 +59,8 @@ Interfaces: `RemoteAudioRuntime.suspend()` / `resume()`，映射运行时对应�
 
 Files: explicit MacChecks hardware diagnostics, docs/testing.md, new validation record, plan/Notes.
 
-- [ ] CLT `make check` 和公开边界检查；无改动时不重复构建。
-- [ ] 显式静音回归：长时播放、突发欠载、快速开始/结束/取消、设备快照恢复、资源清理。
+- [x] CLT `make check` 和公开边界检查；无改动时不重复构建。
+- [x] 显式静音回归：长时播放、突发欠载、快速开始/结束/取消、设备快照恢复、资源清理。
 - [ ] 用户已确认可配合：安装版/测试版长时间真实收音、快速重按、RC003断连重连、实际睡眠/解锁；逐项记录是否执行和结果。
 - [ ] Homebrew保持单Cask远端源码构建，安装/发布按已有授权范围处理；最终状态与未覆盖项准确汇报。
 
@@ -74,3 +74,7 @@ Files: explicit MacChecks hardware diagnostics, docs/testing.md, new validation 
 - Task2: 1秒维护节奏采用1/2/4秒退避，不引入另一组重试Timer；`make test`76core/84adapter通过（新增串行健康3项、生产运行时恢复6项），无真实设备写入。
 
 - Task3: `make test`78core/87adapter通过；HID所有权、原生通知与实际睡眠仍需真机。唤醒先清睡前计数，等待新设备发现；首次报告仍按住时拒绝语音，报告松开后重新武装。
+
+- Task4: 长测120+8+8秒及30快速周期通过，共2185600静音样本；真实输入事务3轮确认/抢占/恢复通过。新增只读虚拟设备静音/零音量健康后，另3轮384000样本通过。100次模拟重按及音频/输入真实协调器的故障/休眠释放恢复顺序通过，总计78core/89adapter。原生预览的菜单清除和录入清空/确认完成，边界详见[回归记录](../../docs/validation/2026-10-28-audio-health-lifecycle.md)。
+
+- Final local validation: 0.2.7 CLT Release、macOS14最低版本/SDK27、bundle配置自检、仓库及公开边界检查通过。真机协作及发布/远端Homebrew升级尚未执行。

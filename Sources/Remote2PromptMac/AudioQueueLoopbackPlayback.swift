@@ -98,6 +98,11 @@ final class AudioQueueLoopbackPlayback: LoopbackPlayback, @unchecked Sendable {
         // Never continue on the system output if the explicitly chosen virtual device is lost.
         guard actual as String? == uid else { throw .unavailable }
     }
+    func validateHealth() throws(LoopbackFailure) {
+        try validateRoute()
+        guard let deviceUID else { throw .notReady }
+        try LoopbackDevices.validateAudibility(deviceUID)
+    }
     func append(_ samples: [Int16], consumed: @escaping @Sendable () -> Void) throws(LoopbackFailure) {
         if let beginFailure { throw beginFailure }
         try validateRoute()

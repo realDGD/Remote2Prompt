@@ -44,6 +44,21 @@ public enum LoopbackDevices {
                 && string($0, kAudioObjectPropertyName) != nil
         }
     }
+    /// Unknown/unsupported level properties remain unknown. Never write levels or physical devices.
+    static func validateAudibility(_ uid: String) throws(LoopbackFailure) {
+        guard let id = resolve(uid) else { throw .unavailable }
+        for scope in [kAudioDevicePropertyScopeInput, kAudioDevicePropertyScopeOutput] {
+            var muteAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute, mScope: scope, mElement: kAudioObjectPropertyElementMain)
+            var mute: UInt32 = 0; var muteSize = UInt32(MemoryLayout<UInt32>.size)
+            if AudioObjectHasProperty(id, &muteAddress),
+               AudioObjectGetPropertyData(id, &muteAddress, 0, nil, &muteSize, &mute) == noErr, mute != 0 { throw .silenced }
+            var volumeAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar, mScope: scope, mElement: kAudioObjectPropertyElementMain)
+            var volume: Float32 = 0; var volumeSize = UInt32(MemoryLayout<Float32>.size)
+            if AudioObjectHasProperty(id, &volumeAddress),
+               AudioObjectGetPropertyData(id, &volumeAddress, 0, nil, &volumeSize, &volume) == noErr,
+               volume.isFinite, volume <= 0 { throw .silenced }
+        }
+    }
     private static func devices() -> [AudioDeviceID] {
         var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDevices, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
         var size: UInt32 = 0

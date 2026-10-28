@@ -15,6 +15,7 @@ public struct LoopbackProgress: Equatable, Sendable {
 }
 public extension LoopbackPlayback {
     var health: LoopbackPlaybackHealth { LoopbackPlaybackHealth() }
+    func validateHealth() throws(LoopbackFailure) { try validateRoute() }
 }
 public struct VoiceStreamProgress: Equatable, Sendable {
     public var packets = 0

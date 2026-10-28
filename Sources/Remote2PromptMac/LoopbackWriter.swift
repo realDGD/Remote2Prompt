@@ -2,7 +2,7 @@ import AudioToolbox
 import Foundation
 
 public enum LoopbackFailure: Error, LocalizedError, Sendable {
-    case unavailable, configure(Int32), overflow, notReady, playbackStopped, playbackStalled
+    case unavailable, configure(Int32), overflow, notReady, playbackStopped, playbackStalled, silenced
     public var errorDescription: String? {
         switch self {
         case .unavailable: "所选回环设备不可用，请检查 MiRemoteV 2ch 或 BlackHole 2ch。"
@@ -11,6 +11,7 @@ public enum LoopbackFailure: Error, LocalizedError, Sendable {
         case .notReady: "请先选择并连接回环设备。"
         case .playbackStopped: "音频输出意外停止，已结束本次语音。"
         case .playbackStalled: "音频播放进度停滞，已结束本次语音。"
+        case .silenced: "所选虚拟麦克风已静音或音量为零，请在系统音频设置中恢复后重新连接。"
         }
     }
 }
@@ -23,6 +24,7 @@ public protocol LoopbackPlayback: AnyObject, Sendable {
     func append(_ samples: [Int16], consumed: @escaping @Sendable () -> Void) throws(LoopbackFailure)
     func finish(completion: @escaping @Sendable (Bool) -> Void)
     func validateRoute() throws(LoopbackFailure)
+    func validateHealth() throws(LoopbackFailure)
     func stop()
     var health: LoopbackPlaybackHealth { get }
 }
@@ -142,7 +144,7 @@ public final class LoopbackWriter: @unchecked Sendable {
         queue.async { [self] in
             guard let playback else { completion(.failure(.notReady)); return }
             do {
-                try playback.validateRoute()
+                try playback.validateHealth()
                 let value = progress()
                 if let error = healthMonitor.failure(value, at: clock()) { throw error }
                 completion(.success(value))

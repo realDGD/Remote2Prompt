@@ -5,7 +5,7 @@ import Remote2PromptMac
 
 /// Explicit hardware check: silence only, no input capture. Ordinary checks never call it.
 @MainActor
-func loopbackStreamSmoke(switchInput: Bool, jitter: Bool = false) async throws {
+func loopbackStreamSmoke(switchInput: Bool, jitter: Bool = false, extended: Bool = false) async throws {
     guard NSRunningApplication.runningApplications(withBundleIdentifier: "dev.remote2prompt.app").isEmpty else {
         throw Failure(message: "Quit Remote2Prompt before the hardware output check")
     }
@@ -20,16 +20,19 @@ func loopbackStreamSmoke(switchInput: Bool, jitter: Bool = false) async throws {
     let writer = LoopbackWriter()
     var failure: (any Error)?
     var sessions = 0
+    var submitted = 0
+    var rapidCycles = 0
     do {
         let configured: Result<Void, LoopbackFailure> = await withCheckedContinuation { c in
             writer.configure(uid: device.uid) { c.resume(returning: $0) }
         }
         try configured.get()
         // Reuse one output across sessions: returning to a physical input must not poison the next press.
-        for _ in 0..<3 {
+        for round in 0..<3 {
             writer.begin()
             let start = ProcessInfo.processInfo.systemUptime
-            for index in 0..<800 {
+            let buffers = extended && round == 0 ? 12000 : 800
+            for index in 0..<buffers {
                 if jitter && index > 0 && index % 80 == 0 { try await Task.sleep(for: .milliseconds(180)) }
                 if switchInput && index == 100 {
                     guard setDefaultInput(target) == noErr else { throw Failure(message: "Input transition rejected") }
@@ -41,6 +44,13 @@ func loopbackStreamSmoke(switchInput: Bool, jitter: Bool = false) async throws {
                     writer.append([Int16](repeating: 0, count: 160)) { c.resume(returning: $0) }
                 }
                 if let error { throw error }
+                submitted += 160
+                if index % 100 == 0 {
+                    let health: Result<LoopbackProgress, LoopbackFailure> = await withCheckedContinuation { c in
+                        writer.checkHealth { c.resume(returning: $0) }
+                    }
+                    _ = try health.get()
+                }
                 let remaining = start + Double(index + 1) * 0.01 - ProcessInfo.processInfo.systemUptime
                 if remaining > 0 { try await Task.sleep(for: .seconds(remaining)) }
             }
@@ -52,6 +62,22 @@ func loopbackStreamSmoke(switchInput: Bool, jitter: Bool = false) async throws {
             try check(drained, "Playback did not finish before the drain deadline")
             sessions += 1
         }
+        if extended {
+            for index in 0..<30 {
+                writer.begin()
+                let error: LoopbackFailure? = await withCheckedContinuation { c in
+                    writer.append([Int16](repeating: 0, count: 320)) { c.resume(returning: $0) }
+                }
+                if let error { throw error }
+                submitted += 320
+                if index % 3 == 0 { writer.cancel() }
+                else {
+                    let drained: Bool = await withCheckedContinuation { c in writer.finish { c.resume(returning: $0) } }
+                    try check(drained, "Rapid cycle did not drain")
+                }
+                rapidCycles += 1
+            }
+        }
     } catch { failure = error }
     // Await resource cleanup on success AND failure, rather than exiting while a restore is pending.
     await withCheckedContinuation { c in writer.stop { c.resume() } }
@@ -61,7 +87,7 @@ func loopbackStreamSmoke(switchInput: Bool, jitter: Bool = false) async throws {
     try await Task.sleep(for: .milliseconds(500))
     try check(before == LoopbackDevices.defaultSnapshot(), "Default input/output were not restored; external selections were respected")
     if let failure { throw failure }
-    print("PASS continuous loopback: \(sessions) sessions, 384000 silent samples drained; input transition=\(switchInput); jitter=\(jitter); defaults restored; no input capture")
+    print("PASS continuous loopback: \(sessions) sessions, \(submitted) silent samples submitted; rapid cycles=\(rapidCycles); extended=\(extended); input transition=\(switchInput); jitter=\(jitter); defaults restored; no input capture")
 }
 
 private func readDefaultInput() throws -> AudioDeviceID {

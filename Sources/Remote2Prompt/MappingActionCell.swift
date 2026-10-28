@@ -52,6 +52,7 @@ struct MappingActionCell: View {
             }
             .font(.callout).padding(.leading, 10).padding(.trailing, 7)
             .frame(height: 30).contentShape(Rectangle())
+            .accessibilityElement(children: .ignore)
         }
         .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden)
         .frame(maxWidth: .infinity)

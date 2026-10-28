@@ -6,17 +6,16 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
     private let lock = NSLock()
     private var configured = 0
     private var stopped = 0
-    private var held: [@Sendable () -> Void] = []
     var configurations: Int { lock.withLock { configured } }
     var stops: Int { lock.withLock { stopped } }
     func configure(uid: String, configurationChanged: @escaping @Sendable () -> Void) throws(LoopbackFailure) {
         lock.withLock { configured += 1 }
     }
-    func begin() { lock.withLock { held.removeAll() } }
+    func begin() {}
     func append(_ samples: [Int16], consumed: @escaping @Sendable () -> Void) throws(LoopbackFailure) { consumed() }
     func validateRoute() throws(LoopbackFailure) {}
     func finish(completion: @escaping @Sendable (Bool) -> Void) { completion(true) }
-    func stop() { lock.withLock { stopped += 1; held.removeAll() } }
+    func stop() { lock.withLock { stopped += 1 } }
 }
 
 @MainActor private final class RuntimeTransport: RemoteVoiceTransport {
@@ -36,6 +35,26 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
     func stop() { stops += 1; events?("transport.stop") }
     func open() -> Bool { opens += 1; onStarted?(); return true }
     func close() -> Bool { closes += 1; return true }
+}
+
+@MainActor private final class VoiceSessionInputs: AudioInputSystem {
+    var current: String? = "fixture-physical"
+    var change: (@MainActor () -> Void)?
+    var event: ((String) -> Void)?
+    func start(onChange: @escaping @MainActor () -> Void) throws { change = onChange }
+    func snapshot() throws -> SystemInputSnapshot {
+        SystemInputSnapshot(inputs: [
+            SystemAudioInput(policy: AudioInput(uid: "fixture-physical", isVirtual: false), name: "Physical"),
+            SystemAudioInput(policy: AudioInput(uid: "fixture-loopback", isVirtual: true), name: "Virtual")
+        ], defaultUID: current)
+    }
+    func setDefaultInput(_ request: InputPriorityRequest) throws {
+        guard current == request.sourceUID else { throw InputSystemFailure.defaultChanged }
+        current = request.targetUID
+        event?(current == "fixture-physical" ? "input.restore" : "input.virtual")
+        change?()
+    }
+    func stop() { change = nil }
 }
 
 @MainActor private final class AudioHarness {
@@ -133,6 +152,42 @@ private final class RuntimePlayback: LoopbackPlayback, @unchecked Sendable {
             h.runtime.refreshDevices(); try await eventually { h.runtime.isReady }
             oldFailure?("stale failure")
             try check(h.runtime.isReady && h.transport.opens == 1, "Old connection callback invalidated replacement")
+        }),
+        ("rapid repress pairs every trigger and the final release drains exactly once", {
+            let h = AudioHarness(); defer { h.runtime.shutdown() }; h.enable()
+            try await eventually { h.runtime.isReady }
+            for _ in 0..<100 {
+                try check(h.runtime.press(), "Rapid voice press failed")
+                h.transport.onAudio?(Data(repeating: 0, count: 120))
+                h.runtime.release()
+            }
+            try await eventually { !h.runtime.sessionActive }
+            try check(h.begins == 100 && h.ends == 100 && h.transport.opens == 100, "Rapid re-press lost a paired release")
+        }),
+        ("audio failure and sleep restore input after releasing the trigger through the real input runtime", {
+            let h = AudioHarness(); let system = VoiceSessionInputs()
+            let input = AudioInputPriorityRuntime(system: system)
+            defer { h.runtime.shutdown(); input.shutdownImmediately() }
+            var config = AppConfiguration(); config.voiceEnabled = true; config.remoteAudioEnabled = true
+            config.preferVirtualInput = true; config.selectedVirtualInputUID = "fixture-loopback"
+            input.configure(config)
+            system.event = { [weak h] in h?.events.append($0) }
+            h.runtime.prepareInput = { input.beginVoiceSession(completion: $0) }
+            h.runtime.onEnd = { [weak h] in h?.ends += 1; h?.events.append("key.up"); input.endVoiceSession() }
+            h.enable(); try await eventually { h.runtime.isReady }; input.setReady(true)
+            try check(h.runtime.press(), "Voice did not prepare")
+            input.refreshInputs(); try await eventually { h.begins == 1 }
+            try check(system.current == "fixture-loopback", "Trigger preceded confirmed virtual input")
+            h.events.removeAll(); h.transport.onFailure?("fixture link failure")
+            input.refreshInputs(); try await eventually { system.current == "fixture-physical" }
+            try check(h.events.first == "key.up" && h.events.contains("input.restore"), "Failure restored input before key release")
+            h.advance(1); try await eventually { h.runtime.isReady }; input.setReady(true)
+            try check(system.current == "fixture-physical" && !h.runtime.sessionActive, "Recovery took input while idle")
+            try check(h.runtime.press(), "Voice did not prepare after recovery")
+            input.refreshInputs(); try await eventually { h.begins == 2 }
+            h.events.removeAll(); h.runtime.suspend()
+            input.refreshInputs(); try await eventually { system.current == "fixture-physical" }
+            try check(h.events.first == "key.up" && h.events.contains("input.restore"), "Sleep restored input before key release")
         }),
         ("suspend releases voice resources and ignores polling, retry and old callbacks", {
             let h = AudioHarness(); defer { h.runtime.shutdown() }; h.enable()
