@@ -4,7 +4,7 @@
 
 面向 macOS 的原生遥控器语音与按键工具，以 Swift 编写，采用左栏设置，通过 Command Line Tools 构建，支持 Homebrew 从源码安装。
 
-当前是**按键与语音链路开发预览**：已接入 HID、原生键接管与恢复、普通手势、快捷键、独立语音触发，以及 ATVV → IMA/DVI ADPCM → 16 kHz PCM → 所选回环设备的代码链路。RC003短段收音、快速重按、重连及空闲睡眠唤醒已有本机验收，长段约一分钟结束的限制仍存在，见[生命周期记录](docs/validation/2026-10-28-audio-health-lifecycle.md)。新手势及真实时限提醒未完成硬件验收；当前源码发布、首次向导与安装结果见[发布记录](docs/validation/2026-10-29-source-release.md)。
+当前是**按键与语音链路开发预览**：已接入 HID、原生键接管与恢复、普通手势、快捷键、独立语音触发，以及 ATVV → IMA/DVI ADPCM → 16 kHz PCM → 所选回环设备的代码链路。RC003短段收音、快速重按、重连及空闲睡眠唤醒已有本机验收，长段约一分钟结束的限制仍存在，见[生命周期记录](docs/validation/2026-10-28-audio-health-lifecycle.md)。新手势及真实时限提醒未完成硬件验收；当前0.2.12源码发布、首次向导与安装结果见[发布记录](docs/validation/2026-10-29-capsule-follow-release.md)。
 
 ## 使用
 
