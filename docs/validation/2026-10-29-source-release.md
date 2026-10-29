@@ -59,3 +59,9 @@ untap后执行README中的HTTPS tap及单Cask安装命令。新克隆tap HEAD为
 只对向导sheet设置 `preventsApplicationTerminationWhenModal=false`，使退出请求进入现有有界清理；拆除时恢复原值。原生预览验证修复后向导未关闭时Command-Q正常结束进程，没有强杀。未添加守护或自动重启进程，也未请求或重置任何权限。
 
 同时替换0.2.9展示即完成的状态：进行中的本机向导保留pending，只有保存或明确跳过才finished。普通退出和授权重启后回准备页，旧配置的手动向导也可恢复；草稿不持久化。真实ConfigurationStore自检新增中断恢复、手动恢复、旧展示标记及损坏数据边界，CLT构建、bundle、自检与原生退出回归通过。真实TCC系统按钮需要用户后续再次操作核对，不用Command-Q结果伪报该按钮已通过。
+
+0.2.10固定源码为 `df2ca6b7115d19a7b794f40a1df8b001ebed65d8`，公开归档实际下载SHA-256为 `12fd7fa7edca307100c1692fafc53c07bd7d70fabc7d897b222e79a2b69bbda0`；同仓库Cask提交 `923fe607ab6658ad64696bd83135c50dc59fa431`。旧版正常退出且HID恢复记录为空后卸载zap，新克隆HTTPS tap的origin、HEAD、Cask版本和来源均已核对；没有保留开发app或旧设置。
+
+0.2.10远端源码安装实际通过98/98核心、99/99适配器、首次启动CLI自检及独立CLT Release；安装后单Cask来源/版本/摘要、严格签名、Applications唯一真实app、CLI、构建缓存清理和bundle检查通过。`brew test`实际仍退出1并提示无Formula，未伪报为Cask测试成功。
+
+安装版首次打开自动进入准备页。保持向导未关闭执行Command-Q，随后只读检查真实进程已结束、pending仍为真、finished尚未写入；再打开同一Applications app，原生向导重新出现。没有跳过配置、保存草稿、请求权限或写系统输入。应用保留准备页，已请用户另行复测真实TCC系统按钮；截至本次记录该按钮尚无新版人工反馈，不能据普通退出与重开结果判为系统按钮通过。
