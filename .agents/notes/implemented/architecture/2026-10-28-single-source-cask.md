@@ -24,4 +24,6 @@ Status: implemented
 
 首次安装需要 Swift 6 CLT 和编译时间，Homebrew 仍保留普通源码归档缓存与安装元数据。brew test 只支持 Formula，本项目改用安装期检查、安装后来源/签名/配置自检与实际卸载验收，不伪报 brew test 成功。此第三方 tap 的方式依赖 structured steps 的 sandbox 支持；未验证的最低系统、UI 和硬件边界仍单列。
 
+后续0.2.9继续沿用同仓库单Cask，从公开HTTPS新克隆tap和固定源码清洁安装，不保留原设置；98/99安装期检查、首次启动自检、单app来源与签名验证通过。安装版自动显示首次向导；`brew test`实际返回无Formula而非成功。该轮真实记录见[发布与首次安装](../../../../docs/validation/2026-10-29-source-release.md)。
+
 旧双项决定作为[历史](../../archived/architecture/2026-10-27-source-tap-app-lifecycle.md)归档。来源：[Cask Cookbook](https://docs.brew.sh/Cask-Cookbook)、[brew test](https://docs.brew.sh/Manpage#test-options-installed_formula-)。
