@@ -36,6 +36,22 @@ func voiceLimitIndicatorChecks() -> [(String, () throws -> Void)] {
                 try expect(other.presentation(at: 60) == .hidden, "An ordinary stop was mislabeled as a device limit")
             }
         }),
+        ("custom appearance thresholds change visibility without moving the voice limit", {
+            var indicator = VoiceLimitIndicator(); indicator.begin(segment: 1, at: 100, hasRC003Limit: true)
+            for start in [0, 5, 50, 55] {
+                let time = 100 + Double(start)
+                if start > 0 {
+                    try expect(indicator.presentation(at: time - 0.01, startAfter: start) == .hidden, "Appeared before selected threshold")
+                    try expect(indicator.nextUpdate(at: 100, startAfter: start) == time, "Wrong first wakeup")
+                }
+                try expect(indicator.presentation(at: time, startAfter: start) == .countdown(seconds: 60 - start, urgent: start >= 55), "Countdown was rebased to the appearance time")
+                try expect(indicator.presentation(at: 155, startAfter: start) == .countdown(seconds: 5, urgent: true), "Urgency shifted with appearance")
+                try expect(indicator.presentation(at: 160, startAfter: start) == .approachingLimit && indicator.nextUpdate(at: 160, startAfter: start) == nil, "Custom start extended the voice limit")
+            }
+            for invalid in [-1, 56, Int.max] {
+                try expect(indicator.presentation(at: 155, startAfter: invalid) == .hidden && indicator.nextUpdate(at: 155, startAfter: invalid) == nil, "Invalid threshold scheduled work")
+            }
+        }),
         ("duplicate starts and late ends cannot rebase or hide a new voice warning", {
             var indicator = VoiceLimitIndicator(); indicator.begin(segment: 1, at: 0, hasRC003Limit: true)
             try expect(!indicator.begin(segment: 1, at: 30, hasRC003Limit: true), "Duplicate START extended the duration")

@@ -46,7 +46,7 @@ struct VoiceAudioControls: View {
             Text("按住遥控器语音键说话，并在输入法中选择同一个虚拟麦克风。应用不负责安装虚拟设备。")
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
-                Toggle("RC003 临近语音时限时提醒", isOn: Binding(
+                Toggle("RC003 语音时限提醒", isOn: Binding(
                     get: { store.configuration.voiceLimitReminderEnabled },
                     set: { value in store.update { $0.voiceLimitReminderEnabled = value } }
                 ))
@@ -54,6 +54,16 @@ struct VoiceAudioControls: View {
                 Button("预览") { reminder.preview() }.buttonStyle(.borderless)
             }
             if store.configuration.voiceLimitReminderEnabled {
+                HStack {
+                    Stepper("开始显示：语音开始后 \(store.configuration.voiceLimitReminderStartSeconds) 秒", value: Binding(
+                        get: { store.configuration.voiceLimitReminderStartSeconds },
+                        set: { value in store.update { $0.voiceLimitReminderStartSeconds = value } }
+                    ), in: VoiceLimitIndicator.startSecondsRange)
+                    Button("5 秒测试") { store.update { $0.voiceLimitReminderStartSeconds = 5 } }
+                        .buttonStyle(.borderless).disabled(store.configuration.voiceLimitReminderStartSeconds == 5)
+                    Button("恢复默认") { store.update { $0.voiceLimitReminderStartSeconds = VoiceLimitIndicator.defaultStartSeconds } }
+                        .buttonStyle(.borderless).disabled(store.configuration.voiceLimitReminderStartSeconds == VoiceLimitIndicator.defaultStartSeconds)
+                }
                 Picker("固定回退位置", selection: Binding(
                     get: { store.configuration.voiceLimitReminderPosition },
                     set: { value in store.update { $0.voiceLimitReminderPosition = value } }
@@ -61,7 +71,7 @@ struct VoiceAudioControls: View {
                     Text("屏幕底部居中").tag(VoiceLimitReminderPosition.bottomCenter)
                     Text("屏幕右下角").tag(VoiceLimitReminderPosition.bottomTrailing)
                 }
-                Text("适用于 RC003：按约 60 秒单段时限估算，最后 10 秒显示无声提示。不会延长录音，也不影响键盘直接触发的语音。")
+                Text("可设 0–55 秒，0 秒立即显示；默认 50 秒，最后 5 秒变红。测试可用 5 秒，完成后恢复默认。按约 60 秒单段时限估算，不会延长录音，也不影响键盘直接触发的语音。")
                     .font(.caption).foregroundStyle(.secondary)
                 Text("倒计时出现后尝试跟随微信语音胶囊，并避开上方文字；未找到、位置不明确或微信版本不匹配时使用固定位置。预览只显示固定位置。")
                     .font(.caption).foregroundStyle(.secondary)

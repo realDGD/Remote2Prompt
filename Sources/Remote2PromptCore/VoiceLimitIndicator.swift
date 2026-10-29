@@ -20,6 +20,8 @@ public enum VoiceLimitPresentation: Equatable, Sendable {
 /// Pure presentation policy. Owns no timers, windows, Bluetooth, audio or input devices.
 /// Segment IDs must increase for every real voice segment; old events cannot revive or hide a new one.
 public struct VoiceLimitIndicator: Equatable, Sendable {
+    public static let defaultStartSeconds = 50
+    public static let startSecondsRange = 0...55
     public private(set) var segmentID: UInt64?
     private var latestID: UInt64?
     private var beganAt: TimeInterval?
@@ -51,21 +53,21 @@ public struct VoiceLimitIndicator: Equatable, Sendable {
     }
     private mutating func clearActive() { segmentID = nil; beganAt = nil; endedAt = nil; supported = false }
 
-    public func presentation(at time: TimeInterval) -> VoiceLimitPresentation {
-        guard time.isFinite, supported, let beganAt, time >= beganAt else { return .hidden }
+    public func presentation(at time: TimeInterval, startAfter: Int = defaultStartSeconds) -> VoiceLimitPresentation {
+        guard Self.startSecondsRange.contains(startAfter), time.isFinite, supported, let beganAt, time >= beganAt else { return .hidden }
         if let endedAt { return time >= endedAt && time < endedAt + 3 ? (confirmedEnd ? .ended : .endedUnconfirmed) : .hidden }
         let elapsed = time - beganAt
-        guard elapsed >= 50 else { return .hidden }
+        guard elapsed >= Double(startAfter) else { return .hidden }
         guard elapsed < 60 else { return .approachingLimit }
         let seconds = Int(ceil(60 - elapsed))
         return .countdown(seconds: seconds, urgent: elapsed >= 55)
     }
     /// The owner can sleep until the next visible change instead of polling throughout a recording.
-    public func nextUpdate(at time: TimeInterval) -> TimeInterval? {
-        guard time.isFinite, supported, let beganAt, time >= beganAt else { return nil }
+    public func nextUpdate(at time: TimeInterval, startAfter: Int = defaultStartSeconds) -> TimeInterval? {
+        guard Self.startSecondsRange.contains(startAfter), time.isFinite, supported, let beganAt, time >= beganAt else { return nil }
         if let endedAt { return time < endedAt + 3 ? endedAt + 3 : nil }
         let elapsed = time - beganAt
-        if elapsed < 50 { return beganAt + 50 }
+        if elapsed < Double(startAfter) { return beganAt + Double(startAfter) }
         if elapsed < 60 { return beganAt + min(60, floor(elapsed) + 1) }
         return nil
     }

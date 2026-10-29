@@ -2,13 +2,14 @@ import Foundation
 
 /// Versioned persisted preferences. Device identifiers must be macOS UIDs, never transient numeric IDs.
 public struct AppConfiguration: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 5
+    public static let currentSchemaVersion = 6
     public var schemaVersion: Int = currentSchemaVersion
     public var mappingsEnabled = false
     public var voiceEnabled = false
     public var remoteAudioEnabled = false
     public var preferVirtualInput = false
     public var voiceLimitReminderEnabled = false
+    public var voiceLimitReminderStartSeconds = VoiceLimitIndicator.defaultStartSeconds
     public var voiceLimitReminderPosition: VoiceLimitReminderPosition = .bottomCenter
     public var voiceTrigger: VoiceTrigger = .function
     public var selectedVirtualInputUID: String?
@@ -69,6 +70,9 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
         }
         let keys = configuration.bindings.map { "\($0.button.rawValue):\($0.gesture.rawValue)" }
         guard Set(keys).count == keys.count else { throw ConfigurationError.duplicateBinding }
+        guard VoiceLimitIndicator.startSecondsRange.contains(configuration.voiceLimitReminderStartSeconds) else {
+            throw ConfigurationError.invalidVoiceReminderSettings
+        }
         for binding in configuration.bindings {
             if binding.action == .customShortcut && binding.shortcut == nil { throw ConfigurationError.invalidShortcut }
             if let shortcut = binding.shortcut, !shortcut.isValid { throw ConfigurationError.invalidShortcut }
@@ -83,7 +87,7 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case gestureTiming, buttonBehaviors
-        case voiceLimitReminderEnabled, voiceLimitReminderPosition
+        case voiceLimitReminderEnabled, voiceLimitReminderPosition, voiceLimitReminderStartSeconds
         case schemaVersion, mappingsEnabled, voiceEnabled, remoteAudioEnabled, preferVirtualInput, voiceTrigger, selectedVirtualInputUID, bindings
     }
 
@@ -95,6 +99,7 @@ public struct AppConfiguration: Codable, Equatable, Sendable {
         remoteAudioEnabled = try values.decodeIfPresent(Bool.self, forKey: .remoteAudioEnabled) ?? false
         preferVirtualInput = try values.decodeIfPresent(Bool.self, forKey: .preferVirtualInput) ?? false
         voiceLimitReminderEnabled = try values.decodeIfPresent(Bool.self, forKey: .voiceLimitReminderEnabled) ?? false
+        voiceLimitReminderStartSeconds = try values.decodeIfPresent(Int.self, forKey: .voiceLimitReminderStartSeconds) ?? VoiceLimitIndicator.defaultStartSeconds
         voiceLimitReminderPosition = try values.decodeIfPresent(VoiceLimitReminderPosition.self, forKey: .voiceLimitReminderPosition) ?? .bottomCenter
         voiceTrigger = try values.decodeIfPresent(VoiceTrigger.self, forKey: .voiceTrigger) ?? .function
         selectedVirtualInputUID = try values.decodeIfPresent(String.self, forKey: .selectedVirtualInputUID)
@@ -109,6 +114,7 @@ public enum ConfigurationError: Error, Equatable, Sendable {
     case duplicateBinding
     case invalidShortcut
     case invalidGestureSettings
+    case invalidVoiceReminderSettings
 }
 
 public enum VoiceLimitReminderPosition: String, Codable, CaseIterable, Sendable {

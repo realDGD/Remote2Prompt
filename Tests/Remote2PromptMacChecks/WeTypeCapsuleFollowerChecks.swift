@@ -65,7 +65,8 @@ import Remote2PromptMac
             h.follower.update(h.countdown(), allowed: false)
             try check(h.source.reads == 0 && h.jobs.isEmpty, "Inactive mode queried another app")
         }),
-        ("real reminder timing opens window queries only from 50 to 60 seconds", {
+        ("real reminder timing opens queries only from the configured start until sixty seconds", {
+            for start in [0, 5, 50, 55] {
             let h = GeometryHarness()
             var now = 0.0
             var jobs: [(Double, GeometryDeadline)] = []
@@ -76,19 +77,23 @@ import Remote2PromptMac
             defer { observation.cancel(); runtime.shutdown(); h.follower.shutdown() }
             var config = AppConfiguration()
             config.voiceEnabled = true; config.remoteAudioEnabled = true; config.voiceLimitReminderEnabled = true
+            config.voiceLimitReminderStartSeconds = start
             runtime.configure(config)
             var segment = VoiceLimitIndicator(); segment.begin(segment: 1, at: 0, hasRC003Limit: true)
             runtime.update(segment)
-            now = 49.99
-            try check(h.source.reads == 0 && jobs.last!.0 == 50, "Read windows before warning")
-            now = 50; jobs.last!.1.action()
-            try check(h.source.reads == 1, "Real 50 second countdown did not query")
+            if start > 0 {
+                now = Double(start) - 0.01
+                try check(h.source.reads == 0 && jobs.last!.0 == Double(start), "Read windows before configured warning")
+                now = Double(start); jobs.last!.1.action()
+            }
+            try check(h.source.reads == 1, "Configured countdown did not query")
             h.source.finish(snapshot([window()])); let pending = h.jobs.last!.1
-            for second in 51...60 { now = Double(second); jobs.last!.1.action() }
+            now = 60; jobs.last!.1.action()
             pending.action()
             try check(runtime.state.presentation == .approachingLimit && h.source.reads == 1 && pending.cancelled && h.follower.anchor == nil, "60 second state retained tracking")
             runtime.preview()
             try check(h.source.reads == 1 && runtime.state.isPreview, "Preview queried live windows")
+            }
         }),
         ("follower bounds reads refreshes movement and falls back on disappearance", {
             let h = GeometryHarness(); defer { h.follower.shutdown() }

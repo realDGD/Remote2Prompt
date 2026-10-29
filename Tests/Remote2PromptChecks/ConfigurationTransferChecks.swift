@@ -17,9 +17,26 @@ func configurationTransferChecks() -> [(String, () throws -> Void)] {
             let legacy = try AppConfiguration.decode(Data("{\"schemaVersion\":3,\"voiceEnabled\":true}".utf8))
             try expect(!legacy.voiceLimitReminderEnabled && legacy.voiceLimitReminderPosition == .bottomCenter && legacy.voiceEnabled, "Migration changed capabilities")
             var config = legacy; config.voiceLimitReminderEnabled = true; config.voiceLimitReminderPosition = .bottomTrailing
+            config.voiceLimitReminderStartSeconds = 5
             try expect(try AppConfiguration.decode(config.encoded()) == config, "Local reminder preferences lost")
             let imported = try ConfigurationTransfer.load(ConfigurationTransfer.export(config))
-            try expect(!imported.voiceLimitReminderEnabled && imported.voiceLimitReminderPosition == .bottomTrailing, "Import activated reminder or lost placement")
+            try expect(!imported.voiceLimitReminderEnabled && imported.voiceLimitReminderPosition == .bottomTrailing && imported.voiceLimitReminderStartSeconds == 5, "Import activated reminder or lost preferences")
+        }),
+        ("schema six preserves old settings and defaults reminder appearance to fifty seconds", {
+            for schema in 1...5 {
+                let data = Data("{\"schemaVersion\":\(schema),\"voiceEnabled\":true,\"remoteAudioEnabled\":true,\"voiceLimitReminderEnabled\":true,\"voiceTrigger\":\"rightControl\"}".utf8)
+                let migrated = try AppConfiguration.decode(data)
+                try expect(migrated.schemaVersion == 6 && migrated.voiceLimitReminderStartSeconds == 50 && migrated.voiceLimitReminderEnabled && migrated.voiceEnabled && migrated.remoteAudioEnabled && migrated.voiceTrigger == .rightControl, "Migration altered existing choices")
+            }
+            for start in [0, 5, 55] {
+                var c = AppConfiguration(); c.voiceLimitReminderStartSeconds = start
+                try expect(try AppConfiguration.decode(c.encoded()) == c, "Bounded appearance setting failed roundtrip")
+            }
+            for start in [-1, 56, Int.max] {
+                var c = AppConfiguration(); c.voiceLimitReminderStartSeconds = start
+                do { _ = try AppConfiguration.decode(c.encoded()); throw CheckFailure(description: "Invalid reminder setting accepted") }
+                catch ConfigurationError.invalidVoiceReminderSettings {}
+            }
         }),
         ("portable config retains gestures and side-specific trigger with capabilities off", {
             var original = AppConfiguration()

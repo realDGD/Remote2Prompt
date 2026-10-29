@@ -25,7 +25,7 @@ public struct VoiceLimitReminderState: Equatable, Sendable {
     /// Changes once per segment/preview, never once per tick.
     public var displayEpoch: UInt64 = 0
     public var isPreview = false
-    /// Only the live 50–60 second countdown may inspect another application's window geometry.
+    /// Only the visible live countdown may inspect another application's window geometry.
     public var mayFollowCapsule: Bool {
         if case .countdown = presentation { return !isPreview }
         return false
@@ -96,13 +96,16 @@ public struct VoiceLimitReminderState: Equatable, Sendable {
         let enabled = configuration.voiceLimitReminderEnabled && configuration.voiceEnabled && configuration.remoteAudioEnabled
         let active = !stopped && !suspended && now.isFinite && (previewPolicy != nil || enabled)
         let selected = previewPolicy ?? policy
+        // Preview always demonstrates the last eight seconds; changing the real start
+        // threshold never rebases a segment or changes the estimated 60 second limit.
+        let startAfter = previewPolicy != nil ? VoiceLimitIndicator.defaultStartSeconds : configuration.voiceLimitReminderStartSeconds
         var next = VoiceLimitReminderState()
         next.position = configuration.voiceLimitReminderPosition; next.displayEpoch = displayEpoch
         next.isPreview = previewPolicy != nil
-        if active { next.presentation = selected.presentation(at: now) }
+        if active { next.presentation = selected.presentation(at: now, startAfter: startAfter) }
         if next != state { state = next }
         guard active else { return }
-        let times = [selected.nextUpdate(at: now), previewUntil].compactMap { $0 }.filter { $0 > now }
+        let times = [selected.nextUpdate(at: now, startAfter: startAfter), previewUntil].compactMap { $0 }.filter { $0 > now }
         guard let due = times.min() else { return }
         deadline = schedule(due - now) { [weak self] in
             guard let self, self.generation == token else { return }

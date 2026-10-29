@@ -14,8 +14,9 @@ import Remote2PromptMac
     lazy var runtime = VoiceLimitReminderRuntime(clock: { [weak self] in self?.now ?? 0 }, schedule: { [weak self] delay, action in
         let job = ReminderDeadline(action); self?.jobs.append(((self?.now ?? 0) + delay, job)); return job
     })
-    func enable() {
+    func enable(startAfter: Int = VoiceLimitIndicator.defaultStartSeconds) {
         var c = AppConfiguration(); c.voiceEnabled = true; c.remoteAudioEnabled = true; c.voiceLimitReminderEnabled = true
+        c.voiceLimitReminderStartSeconds = startAfter
         runtime.configure(c)
     }
     func segment(_ id: UInt64, at time: Double) -> VoiceLimitIndicator {
@@ -57,6 +58,23 @@ import Remote2PromptMac
             oldWake.action(); oldHide.action()
             try check(h.runtime.state.presentation == .hidden && h.jobs.count == count && h.jobs.last!.0 == 111, "Stale work modified new segment")
             h.fire(); try check(h.runtime.state.presentation == .countdown(seconds: 10, urgent: false), "New warning lost")
+        }),
+        ("changing appearance time preserves the active segment and preview stays five seconds", {
+            let h = ReminderHarness(); defer { h.runtime.shutdown() }
+            h.enable(startAfter: 5); h.runtime.update(h.segment(1, at: 0))
+            try check(h.jobs.last!.0 == 5 && h.runtime.state.presentation == .hidden, "Custom start polled early")
+            h.fire(); let epoch = h.runtime.state.displayEpoch
+            try check(h.runtime.state.presentation == .countdown(seconds: 55, urgent: false), "Quick test shortened the estimated limit")
+            h.now = 10; h.enable()
+            try check(h.runtime.state.presentation == .hidden && h.jobs.last!.0 == 50, "Restoring default kept an early warning")
+            h.enable(startAfter: 0)
+            try check(h.runtime.state.presentation == .countdown(seconds: 50, urgent: false) && h.runtime.state.displayEpoch == epoch, "Appearance change restarted the voice segment")
+            h.now = 60; h.jobs.last!.1.action()
+            try check(h.runtime.state.presentation == .approachingLimit, "Start setting extended sixty seconds")
+            h.enable(startAfter: 55); h.runtime.preview()
+            try check(h.runtime.state.presentation == .countdown(seconds: 8, urgent: false) && h.runtime.state.isPreview, "Late start hid the preview")
+            for _ in 0..<5 { h.fire() }
+            try check(!h.runtime.state.isPreview && h.runtime.state.presentation == .approachingLimit, "Preview did not expire back to the real segment")
         }),
         ("preview expires without hardware and is cancelled by configuration and live events", {
             let h = ReminderHarness(); defer { h.runtime.shutdown() }
