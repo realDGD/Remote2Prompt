@@ -34,4 +34,18 @@ Homebrew的`signer changed`提示属于启动隔离批准继承逻辑，本身�
 
 用户明确授权推送main、更新同仓库tap、从远端源码升级并保留设置。0.2.14源码提交为`deef4b955cb952570f46d992b48e63c241a5ccd5`；实际下载公开HTTPS归档的SHA-256为`fe928945c37387076dd7bb243935c46cc6fa07bf56ebc5836548cf50092e7d59`，唯一Cask固定该完整来源，不使用本地checkout或file URL安装。
 
-升级前通过原生正常退出0.2.13，确认进程结束且原生按键恢复记录为空；私下保存配置、向导标记和本应用两项已有TCC身份。安装不得清除设置或系统授权。实际安装、最终身份、迁移授权与CI结果在执行后追加。
+升级前通过原生正常退出0.2.13，确认进程结束且原生按键恢复记录为空；私下保存配置、向导标记和本应用两项已有TCC身份。实际安装与首次迁移结果如下；CI与后续真实升级分别记录，不把本地验证当作云端或下一次升级通过。
+
+## 实际远端升级与首次迁移
+
+同仓库公开Cask提交`f7e61468ab044d9bfcf75fc9b54e89fe4e1f3342`发布后，本机HTTPS tap从origin拉取并快进到该提交。执行正常`brew upgrade --cask realdgd/remote2prompt/remote2prompt`，实际下载上述固定远端源码，在Homebrew构建沙箱中运行105/105核心、109/109适配器及独立CLT Release构建，完成0.2.13到0.2.14升级并清理旧版。没有卸载zap、使用本地checkout或安装本地归档。
+
+安装后`verify-homebrew-install.sh`和`verify-app.sh /Applications/Remote2Prompt.app`通过：完整源码commit/归档摘要、版本、严格签名、实际显式身份、来源标记策略、自检、CLI、单app和构建缓存均符合预期。真实应用在Applications，Caskroom仅有受管理链接；本轮本地试验app移入可恢复废纸篓，未清空废纸篓。
+
+首次启动前及用户重开后，`configuration.v1`原始数据与向导标记均与升级前一致。既有映射、语音、虚拟麦克风和提醒时间保留；没有重新弹首次向导，也没有为本轮签名试验重新运行胶囊语音验收。
+
+初次迁移时，两项旧TCC要求仍绑定旧代码哈希，不能匹配新包；原生界面显示未允许，系统旧开关仍开着。用户亲自重新关联授权并退出重开后，只读核验系统输入监控与设备控制记录均为Allowed，实际保存要求均变成`identifier "dev.remote2prompt.app"`，不再是代码哈希。新进程的原生权限页同时显示设备控制已授权、按键监听系统已允许。未由代理切换权限、重置TCC、创建证书或修改Gatekeeper。
+
+再用不同代码哈希的离线副本验证这两条系统实际保存的要求，均通过；安装版签名不变，副本未启动或安装，检查后移除。这比只比较自定义规则多了实际TCC持久化证据，但仍不是第二次真实Homebrew升级验收。
+
+[本次main的CI](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml)继续覆盖Linux文档/脱敏/凭据/工作流检查，以及macOS15 arm64与Intel的CLT构建、离线身份检查、远端Cask安装及卸载zap。最终结论以本记录最后提交对应的run为准，不用旧版或取消的运行替代；CI不提供真实TCC授权、Gatekeeper或遥控器验收。
