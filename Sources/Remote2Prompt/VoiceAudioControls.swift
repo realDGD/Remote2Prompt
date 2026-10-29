@@ -54,7 +54,7 @@ struct VoiceAudioControls: View {
                 Button("预览") { reminder.preview() }.buttonStyle(.borderless)
             }
             if store.configuration.voiceLimitReminderEnabled {
-                Picker("提醒位置", selection: Binding(
+                Picker("固定回退位置", selection: Binding(
                     get: { store.configuration.voiceLimitReminderPosition },
                     set: { value in store.update { $0.voiceLimitReminderPosition = value } }
                 )) {
@@ -62,6 +62,8 @@ struct VoiceAudioControls: View {
                     Text("屏幕右下角").tag(VoiceLimitReminderPosition.bottomTrailing)
                 }
                 Text("适用于 RC003：按约 60 秒单段时限估算，最后 10 秒显示无声提示。不会延长录音，也不影响键盘直接触发的语音。")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("倒计时出现后尝试跟随微信语音胶囊，并避开上方文字；未找到、位置不明确或微信版本不匹配时使用固定位置。预览只显示固定位置。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             LabeledContent("音频连接", value: audio.status)

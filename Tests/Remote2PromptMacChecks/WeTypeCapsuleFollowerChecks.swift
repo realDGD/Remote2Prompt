@@ -122,6 +122,30 @@ import Remote2PromptMac
             h.follower.update(h.countdown()); h.source.finish(snapshot([window()]))
             try check(h.follower.anchor == nil && h.jobs.isEmpty && h.source.reads == 1, "Reentrant cancellation left stale state")
             observation.cancel()
+        }),
+        ("shutdown is terminal even when a subscriber tries to restart during anchor clearing", {
+            let h = GeometryHarness()
+            h.follower.update(h.countdown()); h.source.finish(snapshot([window()]))
+            var restartOnNil = false
+            let observation = h.follower.anchors.sink { value in
+                if restartOnNil && value == nil { h.follower.update(h.countdown(epoch: 2)) }
+            }
+            restartOnNil = true; h.follower.shutdown()
+            try check(h.source.reads == 1 && h.follower.anchor == nil && h.jobs.last!.1.cancelled, "Subscriber restarted shutdown")
+            observation.cancel()
+        }),
+        ("segment change during anchor clearing cannot start the replacement read twice", {
+            let h = GeometryHarness(); defer { h.follower.shutdown() }
+            h.follower.update(h.countdown()); h.source.finish(snapshot([window()]))
+            var replaceOnNil = false
+            let observation = h.follower.anchors.sink { value in
+                if replaceOnNil && value == nil { replaceOnNil = false; h.follower.update(h.countdown(epoch: 3)) }
+            }
+            replaceOnNil = true; h.follower.update(h.countdown(epoch: 2))
+            try check(h.source.reads == 2 && h.source.completions.count == 1, "Reentrant segment duplicated query")
+            h.source.finish(snapshot([window(3)]))
+            try check(h.follower.anchor == window(3).bounds, "Replacement segment lost")
+            observation.cancel()
         })
     ]
 }

@@ -207,7 +207,14 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
                                 fputs("Reminder smoke failed: preview did not hide or focus changed\n", stderr); exit(1)
                             }
                             print("Reminder lifecycle smoke passed: panel visible, urgent, hidden after five seconds; key/main and activation unchanged; click-through property true")
-                            NSApp.terminate(nil)
+                            Task { @MainActor in
+                                do {
+                                    try await smokeCapsuleFollowing()
+                                    NSApp.terminate(nil)
+                                } catch {
+                                    fputs("Synthetic capsule HUD smoke failed: \(error)\n", stderr); exit(1)
+                                }
+                            }
                         }
                     }
                 } else {

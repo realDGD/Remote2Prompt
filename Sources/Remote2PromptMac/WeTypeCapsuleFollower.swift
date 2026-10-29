@@ -131,12 +131,16 @@ public struct WeTypeCapsuleMatcher: Sendable {
         guard wanted != active || (wanted && state.displayEpoch != epoch) else { return }
         generation &+= 1; deadline?.cancel(); deadline = nil
         matcher.clear(); active = wanted; epoch = state.displayEpoch
+        let token = generation
         if anchor != nil { anchorSubject.send(nil) }
-        if active { read() }
+        if active, !stopped, generation == token { read() }
     }
     public func shutdown() {
         guard !stopped else { return }
-        update(VoiceLimitReminderState()); stopped = true
+        // Mark terminal before publishing nil: a subscriber cannot restart us during delivery.
+        stopped = true; active = false; generation &+= 1
+        deadline?.cancel(); deadline = nil; matcher.clear()
+        if anchor != nil { anchorSubject.send(nil) }
     }
     private func read() {
         guard active, !stopped else { return }

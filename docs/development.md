@@ -35,6 +35,8 @@ macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问�
 
 `make run` 会打开设置窗口。菜单栏可重开窗口；关闭窗口不会退出进程。执行程序支持 `--version`、`--self-check`；`--smoke-test` 启动真实 AppKit/SwiftUI 窗口，确认存在后自行退出，不访问硬件。`--smoke-test-reminder` 单独预览无声时限浮条并检查橙/红/隐藏及非激活/穿透属性，使用独立配置，不要求设置窗口自动出现；仅解锁后执行，不能代替全屏、多屏和真实遥控器检查。`--smoke-test-background`检查设置窗口创建前已建立配置订阅，同样不访问硬件。
 
+提醒smoke还用注入的数字几何检查真实面板跟随和回退，不查询其他应用窗口。需要只读实测本机微信窗口时，单独运行`./scripts/probe-wetype-windows.sh [秒数]`；默认60秒、最大300秒，用户自行操作输入法，探针只输出数字窗口归属、层级、透明度及边界，不读标题、文字或音频。输出留在本地忽略目录，不自动上传。
+
 ## 单 Cask 源码安装
 
 源码与 tap 位于同一个 [public 仓库](https://github.com/realDGD/Remote2Prompt)，仅维护 `Casks/remote2prompt.rb`。Cask 固定完整 commit、归档 URL 与 SHA-256；structured preflight 运行 `scripts/build-cask.sh VERSION COMMIT SHA256`，在下载的源码中执行核心/适配器检查和独立 CLT 编译。
