@@ -35,14 +35,14 @@ import Remote2PromptMac
     hud.update(policy)
     try await Task.sleep(for: .milliseconds(250))
     let fixed = hud.inspectionFrame
-    try require(fixed != nil && source.reads > 0, "Missing panel/fallback")
+    try require(fixed?.size == VoiceLimitHUDLayout.size && source.reads > 0, "Missing panel/fallback or inconsistent compact size")
 
     let appKitBounds = CGRect(x: screen.visibleFrame.midX - 175, y: screen.visibleFrame.midY, width: 350, height: 130)
     let first = CGRect(x: appKitBounds.minX, y: screen.frame.maxY - appKitBounds.maxY, width: 350, height: 130)
     source.move(to: first)
     try await Task.sleep(for: .milliseconds(250))
     let expected = VoiceReminderPlacement.following(topLeftWindow: first, primaryMaxY: screen.frame.maxY,
-        screens: NSScreen.screens.map { ReminderScreen(frame: $0.frame, visibleFrame: $0.visibleFrame) }, size: CGSize(width: 264, height: 74))
+        screens: NSScreen.screens.map { ReminderScreen(frame: $0.frame, visibleFrame: $0.visibleFrame) }, size: VoiceLimitHUDLayout.size)
         .map { CGPoint(x: $0.x.rounded(), y: $0.y.rounded()) }
     try require(expected != nil && hud.inspectionFrame?.origin == expected && hud.inspectionFrame != fixed, "Panel did not follow geometry")
 

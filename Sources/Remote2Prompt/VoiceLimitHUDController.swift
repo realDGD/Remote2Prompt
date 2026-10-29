@@ -9,6 +9,11 @@ private final class VoiceLimitPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
+enum VoiceLimitHUDLayout {
+    static let size = CGSize(width: 192, height: 34)
+    static let cornerRadius: CGFloat = 17
+}
+
 /// Application-owned, so closing settings does not detach the reminder.
 @MainActor final class VoiceLimitHUDController: ObservableObject {
     let runtime: VoiceLimitReminderRuntime
@@ -82,7 +87,7 @@ private final class VoiceLimitPanel: NSPanel {
         let window: VoiceLimitPanel
         if let panel { window = panel }
         else {
-            window = VoiceLimitPanel(contentRect: NSRect(x: 0, y: 0, width: 264, height: 74), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            window = VoiceLimitPanel(contentRect: NSRect(origin: .zero, size: VoiceLimitHUDLayout.size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
             window.title = "语音时限提醒"
             window.isOpaque = false; window.backgroundColor = .clear
             window.hasShadow = true; window.level = .floating
@@ -133,27 +138,26 @@ private struct VoiceLimitHUD: View {
     }
     private var title: String {
         switch presentation {
-        case .countdown(let seconds, _): "本段约剩 \(seconds) 秒"
-        case .approachingLimit: "已接近单段时限"
+        case .countdown(let seconds, _): "约剩 \(seconds) 秒"
+        case .approachingLimit: "接近单段时限"
         case .ended: "已到单段上限"
         case .endedUnconfirmed: "本段语音已结束"
         case .hidden: ""
         }
     }
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "mic.fill").font(.system(size: 21, weight: .medium))
+        HStack(spacing: 6) {
+            Image(systemName: "mic.fill").font(.system(size: 12, weight: .medium))
                 .foregroundStyle(urgent ? .red : .orange)
-                .frame(width: 30)
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(.system(size: 14, weight: .semibold)).monospacedDigit()
-                Text("松开再按，接着说").font(.system(size: 12)).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
+                .frame(width: 14)
+            Text(title).font(.system(size: 12, weight: .semibold)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.9)
+            Spacer(minLength: 4)
+            Text("松开再按").font(.system(size: 11)).foregroundStyle(.secondary).fixedSize()
         }
-        .padding(.horizontal, 18).frame(width: 264, height: 74)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.primary.opacity(0.1), lineWidth: 0.5))
+        .padding(.horizontal, 10).frame(width: VoiceLimitHUDLayout.size.width, height: VoiceLimitHUDLayout.size.height)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: VoiceLimitHUDLayout.cornerRadius))
+        .overlay(RoundedRectangle(cornerRadius: VoiceLimitHUDLayout.cornerRadius).strokeBorder(.primary.opacity(0.1), lineWidth: 0.5))
         .accessibilityElement(children: .combine)
         // No animation/ticker: respects Reduce Motion and never flashes or speaks.
     }

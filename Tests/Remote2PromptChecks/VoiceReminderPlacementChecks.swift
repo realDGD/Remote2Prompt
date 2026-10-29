@@ -29,6 +29,16 @@ func voiceReminderPlacementChecks() -> [(String, () throws -> Void)] {
             let anchor = CGRect(x: 400, y: 10, width: 350, height: 130)
             try expect(point.map { !CGRect(origin: $0, size: size).intersects(anchor) } == true, "Reminder covers text/capsule")
         }),
+        ("compact reminder fits a shallow lower gap but still avoids the Dock edge", {
+            let compact = CGSize(width: 192, height: 34)
+            let window = CGRect(x: 400, y: 670, width: 350, height: 130)
+            let point = VoiceReminderPlacement.following(topLeftWindow: window, primaryMaxY: 900, screens: [primary], size: compact)
+            let large = VoiceReminderPlacement.following(topLeftWindow: window, primaryMaxY: 900, screens: [primary], size: size)
+            try expect(point == CGPoint(x: 479, y: 58), "Compact panel did not use the shallow lower gap")
+            try expect(large == CGPoint(x: 758, y: 100), "Large panel incorrectly fit the same gap")
+            let edge = VoiceReminderPlacement.following(topLeftWindow: CGRect(x: 400, y: 760, width: 350, height: 130), primaryMaxY: 900, screens: [primary], size: compact)
+            try expect(edge == CGPoint(x: 758, y: 36), "Compact panel overlapped a bottom-edge capsule")
+        }),
         ("invalid offscreen or impossible geometry requests fixed fallback", {
             let bad = CGRect(x: CGFloat.nan, y: 0, width: 300, height: 130)
             let offscreen = CGRect(x: 5000, y: 5000, width: 300, height: 130)
