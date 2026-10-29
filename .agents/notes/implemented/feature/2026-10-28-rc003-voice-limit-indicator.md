@@ -28,4 +28,4 @@ ATVV STOP保留ordinaryReported/timeLimitReported/unspecified分类。上游报�
 
 独立CLT初始`make check`通过；后续`make test`通过85核心/99适配器，更新后的`make build`与bundle/文档/公开边界检查通过。覆盖真实运行时的START起点、重复START、reported结束中性化、主机关闭确认、新旧连接、配置迁移、预览到期、旧deadline、新段、睡眠与退出；不向桌面发送按键。验证细节见[本轮记录](../../../../docs/validation/2026-10-29-voice-limit-indicator.md)。
 
-首次检查时Mac锁屏；用户解锁后已完成隔离设置选项、原生浮条橙/红/自动隐藏及本应用key/main/激活状态检查。实际鼠标点透、全屏、Stage Manager、多屏、浅色及真实RC003仍待验收。已准备隔离硬件的`--smoke-test-reminder`入口，不能把窗口属性和构建通过当作这些场景已通过。STOP没有段标识；旧连接回调已隔离，同一连接新START之后迟到STOP仍需真实控制事件核验，未加入任意忽略窗口。提醒不能保证延长一分钟，也不能挽回已丢失的声音。基础提醒随后已随0.2.8发布，当前安装版与来源见[发布记录](../../../../docs/validation/2026-10-29-source-release.md)。当前新增的本地胶囊跟随范围见[跟随决策](2026-10-29-follow-wetype-capsule.md)，不因此改动已安装0.2.11或用户设置。
+首次检查时Mac锁屏；用户解锁后已完成隔离设置选项、原生浮条橙/红/自动隐藏及本应用key/main/激活状态检查。实际鼠标点透、全屏、Stage Manager、多屏、浅色及真实RC003仍待验收。已准备隔离硬件的`--smoke-test-reminder`入口，不能把窗口属性和构建通过当作这些场景已通过。STOP没有段标识；旧连接回调已隔离，同一连接新START之后迟到STOP仍需真实控制事件核验，未加入任意忽略窗口。提醒不能保证延长一分钟，也不能挽回已丢失的声音。基础提醒随后已随0.2.8发布，当前安装版与来源见[发布记录](../../../../docs/validation/2026-10-29-source-release.md)。0.2.12新增的胶囊跟随范围见[跟随决策](2026-10-29-follow-wetype-capsule.md)，交付结果另行记录。
