@@ -7,6 +7,19 @@ func advancedGestureChecks() -> [(String, () throws -> Void)] {
         return c
     }
     return [
+        ("gesture deadlines choose the earliest owner and disappear after cancellation", {
+            var c = fixture(); var g = ButtonGestures()
+            try expect(g.nextDeadline == nil, "Idle recognizer requested polling")
+            _ = g.handle(owner: "a", button: .up, isDown: true, at: 0, configuration: c)
+            c.gestureTiming.repeatDelayMilliseconds = 200
+            _ = g.handle(owner: "b", button: .up, isDown: true, at: 0.1, configuration: c)
+            try expect(abs((g.nextDeadline ?? 0) - 0.3) < 0.00001, "Earlier owner deadline lost")
+            g.cancel(owner: "b")
+            try expect(g.nextDeadline == 0.45, "Cancel lost another owner deadline")
+            _ = g.advance(to: 0.451)
+            try expect(abs((g.nextDeadline ?? 0) - 0.531) < 0.00001, "Repeat did not rearm one future deadline")
+            g.cancelAll(); try expect(g.nextDeadline == nil, "Cancelled recognizer kept a wakeup")
+        }),
         ("custom unmodified navigation repeats automatically but modified commands do not", {
             var c = AppConfiguration(); c.setShortcut(.init(keyCode: 123), for: .up, gesture: .click)
             var g = ButtonGestures()

@@ -48,6 +48,8 @@ public final class RemoteMappingRuntime: ObservableObject {
     private var voicePressGate = FreshVoicePressGate()
     private var pollTimer: Timer?
     private var gestureTimer: Timer?
+    private var gestureTimerDeadline: Double?
+    private var gestureTimerGeneration: UInt64 = 0
     private var observations: [NSObjectProtocol] = []
     private var workspaceObservations: [NSObjectProtocol] = []
     private var systemSuspended = false
@@ -138,7 +140,10 @@ public final class RemoteMappingRuntime: ObservableObject {
             || configuration.selectedVirtualInputUID != value.selectedVirtualInputUID
             || configuration.preferVirtualInput != value.preferVirtualInput
         if configuration.mappingsEnabled != value.mappingsEnabled || configuration.voiceEnabled != value.voiceEnabled || voiceRouteChanged { stop() }
-        if configuration.bindings != value.bindings { gestures.cancelAll() }
+        if configuration.bindings != value.bindings || configuration.gestureTiming != value.gestureTiming
+            || configuration.buttonBehaviors != value.buttonBehaviors {
+            gestures.cancelAll(); scheduleGestureTimer()
+        }
         configuration = value
         inputPriority.configure(value)
         audio.configure(value)
@@ -197,9 +202,7 @@ public final class RemoteMappingRuntime: ObservableObject {
             isRunning = true; errorMessage = nil
             updateInputPriority()
             status = setupActive ? "设置向导正在检测按键，日常映射已暂停" : configuration.mappingsEnabled ? "按键映射已启用" : "语音触发已启用，普通映射已关闭"
-            gestureTimer = Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { [weak self] _ in
-                MainActor.assumeIsolated { self?.tick() }
-            }
+            scheduleGestureTimer()
         } catch { fail(error.localizedDescription) }
     }
 
@@ -354,7 +357,7 @@ public final class RemoteMappingRuntime: ObservableObject {
                     }
                 }
             }
-            publishPressed()
+            scheduleGestureTimer(); publishPressed()
         } catch { fail(error.localizedDescription) }
     }
     private func disconnected(_ owner: String) {
@@ -363,14 +366,31 @@ public final class RemoteMappingRuntime: ObservableObject {
         audio.setRemoteCount(monitor.deviceCount)
         audio.cancel(message: configuration.remoteAudioEnabled ? "遥控器已断开，语音已结束。" : nil)
         setupInput.disconnected(owner: owner)
-        held.removeValue(forKey: owner); gestures.cancel(owner: owner)
+        held.removeValue(forKey: owner); gestures.cancel(owner: owner); scheduleGestureTimer()
         do { try deliver(voice.end(owner: owner)) } catch { fail(error.localizedDescription) }
         publishPressed()
     }
+    private func scheduleGestureTimer() {
+        let next = isRunning && !setupActive && configuration.mappingsEnabled ? gestures.nextDeadline : nil
+        if next == gestureTimerDeadline, gestureTimer?.isValid == true || next == nil { return }
+        gestureTimerGeneration &+= 1; let token = gestureTimerGeneration
+        gestureTimer?.invalidate(); gestureTimer = nil; gestureTimerDeadline = next
+        guard let next else { return }
+        let timer = Timer(timeInterval: max(0.001, next - ProcessInfo.processInfo.systemUptime), repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.gestureTimerGeneration == token else { return }
+                self.tick()
+            }
+        }
+        gestureTimer = timer; RunLoop.main.add(timer, forMode: .common)
+    }
     private func tick() {
+        gestureTimer = nil; gestureTimerDeadline = nil
         guard isRunning && !setupActive && configuration.mappingsEnabled else { return }
-        do { try perform(gestures.advance(to: ProcessInfo.processInfo.systemUptime)) }
-        catch { fail(error.localizedDescription) }
+        do {
+            try perform(gestures.advance(to: ProcessInfo.processInfo.systemUptime))
+            scheduleGestureTimer()
+        } catch { fail(error.localizedDescription) }
     }
     private func perform(_ invocations: [MappedInvocation]) throws {
         for invocation in invocations { try sender.perform(invocation); lastOutput = .action(invocation) }
@@ -393,7 +413,7 @@ public final class RemoteMappingRuntime: ObservableObject {
         inputPriority.setReady(false)
         guard isRunning || !held.isEmpty || voice.heldTrigger != nil || lease?.hasPendingRecovery == true || setupInput.stage != .idle || hadActiveAudio else { return }
         isRunning = false
-        gestureTimer?.invalidate(); gestureTimer = nil
+        gestureTimerGeneration &+= 1; gestureTimer?.invalidate(); gestureTimer = nil; gestureTimerDeadline = nil
         monitor.stop(); gestures.cancelAll(); held.removeAll()
         setupInput.invalidate()
         do { try deliver(voice.cancelAll()); try sender.releaseAll() }

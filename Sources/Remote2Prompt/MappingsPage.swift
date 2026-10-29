@@ -17,32 +17,35 @@ struct MappingsPage: View {
     var openAudioSettings: () -> Void = {}
 
     var body: some View {
-        HStack(alignment: .top, spacing: 22) {
-            remotePanel
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        voiceCard.id("voice")
-                        ordinaryHeader
-                        VStack(spacing: 12) {
-                            mappingGroup("方向导航", buttons: [.up, .down, .left, .right, .select])
-                            mappingGroup("常用按键", buttons: [.back, .home, .menu, .tv])
-                            mappingGroup("设备控制", buttons: [.volumeUp, .volumeDown, .power])
+        VStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 22) {
+                remotePanel
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            voiceCard.id("voice")
+                            ordinaryHeader
+                            VStack(spacing: 12) {
+                                mappingGroup("方向导航", buttons: [.up, .down, .left, .right, .select])
+                                mappingGroup("常用按键", buttons: [.back, .home, .menu, .tv])
+                                mappingGroup("设备控制", buttons: [.volumeUp, .volumeDown, .power])
+                            }
+                            Text("点选动作即可保存。键盘图标可直接录入快捷键；未设置双击或长按时，单击立即响应。")
+                                .font(.caption).foregroundStyle(.secondary)
                         }
-                        Text("点选动作即可保存。键盘图标可直接录入快捷键；未设置双击或长按时，单击立即响应。")
-                            .font(.caption).foregroundStyle(.secondary)
+                        .padding(.vertical, 2)
+                        .padding(.trailing, 4)
                     }
-                    .padding(.vertical, 2)
-                    .padding(.trailing, 4)
-                }
-                .onAppear { proxy.scrollTo("voice", anchor: .top) }
-                .onChange(of: selectionRequest) { _, _ in
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        if let button = selected { proxy.scrollTo(button, anchor: .center) }
-                        else { proxy.scrollTo("voice", anchor: .top) }
+                    .onAppear { proxy.scrollTo("voice", anchor: .top) }
+                    .onChange(of: selectionRequest) { _, _ in
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if let button = selected { proxy.scrollTo(button, anchor: .center) }
+                            else { proxy.scrollTo("voice", anchor: .top) }
+                        }
                     }
                 }
             }
+            GestureAdvancedControls(selected: $selected, onSelection: { selectionRequest += 1 })
         }
         .padding(22)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -131,7 +134,7 @@ struct MappingsPage: View {
 
     private var remotePanel: some View {
         GeometryReader { geometry in
-            let scale = min(0.82, max(0.5, (geometry.size.height - 50) / 690))
+            let scale = min(0.82, max(0.28, (geometry.size.height - 50) / 690))
             VStack(spacing: 14) {
                 RemoteDiagram(selection: $selected, active: runtime.activeButtons, voiceHeld: runtime.voiceHeld,
                               onSelection: { selectionRequest += 1 })

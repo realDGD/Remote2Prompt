@@ -11,7 +11,7 @@
 
 ## 配置与界面
 
-`ConfigurationStore` 在 MainActor 上保存整个配置，存储键保持 `configuration.v1`，应用标识为 `dev.remote2prompt.app`。数据 schema 为 4：保留独立 `voiceEnabled` 和默认关闭的 `remoteAudioEnabled`，新增默认关闭的 `voiceLimitReminderEnabled` 与位置。schema3迁移不改变原有开关。读取 schema 1/2 保留原设置；原映射已开则迁移语音触发为开，不自动启用遥控器音频。未知版本、重复绑定及无效快捷键拒绝加载，保留原始数据并暂停编辑。
+`ConfigurationStore` 在 MainActor 上保存整个配置，存储键保持 `configuration.v1`，应用标识为 `dev.remote2prompt.app`。数据 schema 为 5，新增有界 `GestureTiming` 与稀疏逐键 `ButtonBehaviorOverride`，缺省保留300/550/450/80ms与关闭的长按/双击连发选项。旧时序与次级手势优先级不变，无修饰自定义方向/退格现在与内置动作同样自动连发。保留schema4的时限提醒配置、独立 `voiceEnabled` 和默认关闭的 `remoteAudioEnabled`。schema3迁移不改变原有开关。读取 schema 1/2 保留原设置；原映射已开则迁移语音触发为开，不自动启用遥控器音频。未知版本、重复绑定、无效快捷键、越界时序及重复逐键策略拒绝加载，保留原始数据并暂停编辑。
 
 原生四页设置使用 `NavigationSplitView`。映射页左侧常驻遥控器，右侧语音卡置顶，普通键按三组显示三列；点击示意图定位对应行，快捷键图标直接录入，动作菜单内可清除。录入器只处理当前窗口，候选确认前不改配置。遥控器图由 SwiftUI 几何绘制，不包含品牌图片。`SetupWizard` 使用临时检测模式，复用 HID 链路而不执行普通映射或语音触发；仅完成时合并选择，取消恢复原状态。`SetupInputCheck` 限定本次阶段与同一来源的成对事件，断连或停止清除结果，不证明音频或输入法可用。
 
@@ -21,7 +21,7 @@ SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>
 
 ## 设备、权限与事件
 
-发现阶段只读 IORegistry 属性，不实例化 HID user client。接管时 `HIDRemoteMonitor` 才打开限定 VID/PID 的原始键盘报告通道。`XiaomiRemote` 解析三个 little-endian 16-bit usage，支持 report 1 的 6/7 字节布局，语音 0x3E 不进入普通手势。`ButtonGestures` 使用外部单调时间：双击 0.30 秒、长按 0.55 秒；可重复动作 0.45 秒后每 0.08 秒重复，不补发积压。
+发现阶段只读 IORegistry 属性，不实例化 HID user client。接管时 `HIDRemoteMonitor` 才打开限定 VID/PID 的原始键盘报告通道。`XiaomiRemote` 解析三个 little-endian 16-bit usage，支持 report 1 的 6/7 字节布局，语音 0x3E 不进入普通手势。`ButtonGestures` 使用外部单调时间：默认双击 0.30 秒、长按 0.55 秒；可重复动作 0.45 秒后每 0.08 秒重复，不补发积压。这些时序可配置；每个手势在首次按下时锁定动作和策略，长按、双击锁定与重复分别处理。`RemoteMappingRuntime` 根据 `nextDeadline` 在主运行循环 `.common` 模式只安排一个按需单次计时器，不再固定20ms扫描普通手势；取消或改期递增代次，旧回调不能补发。映射、时序或逐键策略变化清空待执行普通手势，不因这些参数变化结束语音。详见[高级手势决策](../.agents/notes/implemented/feature/2026-10-29-advanced-gesture-behavior.md)。
 
 `NativeKeyLease` 按服务与所属源写入、验证和恢复原生映射。恢复日志 v2 记录本次源范围，兼容旧 v1；仅开启语音时只接管语音键，普通映射开而语音关时不接管语音键。日志在设备写入前原子保存；外部软件后来的修改保留。理由见 [设备租约决策](../.agents/notes/implemented/architecture/2026-10-27-device-scoped-key-lease.md)。
 

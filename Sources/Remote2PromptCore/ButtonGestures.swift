@@ -35,6 +35,7 @@ public struct ButtonGestures: Sendable {
     }
     private var states: [Key: State] = [:]
     public init() {}
+    public var nextDeadline: Double? { states.values.compactMap(\.deadline).min() }
 
     public mutating func handle(
         owner: String, button: RemoteButton, isDown: Bool, at time: Double, configuration: AppConfiguration

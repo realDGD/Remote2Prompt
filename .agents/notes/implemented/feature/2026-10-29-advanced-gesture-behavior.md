@@ -1,14 +1,14 @@
 # Agent Note: Advanced gesture behavior and repeat
 
-Status: proposed
+Status: implemented
 
 ## Problem
 
-旧识别器把“长按动作”和“动作连续执行”合并为互斥分支；双击第二下按住只能转成长按。用户要求区分手势与重复，并在遥控器与三列编辑区下方提供高级配置。schema5配置和识别器策略已接入；Mac配置取消门禁及界面尚未接入。
+旧识别器把“长按动作”和“动作连续执行”合并为互斥分支；双击第二下按住只能转成长按。用户要求区分手势与重复，并在遥控器与三列编辑区下方提供高级配置。schema5配置、识别器、Mac取消门禁和原生界面已接入。
 
-## Proposal
+## Decision
 
-全局时序保留已有默认：双击300ms、长按550ms、单击/双击开始连发等待450ms、重复间隔80ms。界面使用有界毫秒数；非法值和重复逐键配置拒绝加载，不静默覆盖。schema1–4迁移不启用新重复行为，便携导入保留参数但仍关闭能力。
+全局时序保留已有默认：双击300ms、长按550ms、单击/双击开始连发等待450ms、重复间隔80ms。界面使用有界毫秒数；非法值和重复逐键配置拒绝加载，不静默覆盖。schema1–4迁移保留旧时序与次级手势优先级，不开启长按/双击连发；无修饰自定义方向与退格现在和内置动作一样自动连发。便携导入保留参数但仍关闭能力。
 
 每个普通按键有独立配置：单击重复为自动/关闭/开启；长按重复默认关闭；双击后按住重复默认关闭。自动只处理内置导航/退格/音量及无修饰的自定义方向/退格，不自动重复提交、撤销等快捷键；显式开启才允许其他动作重复。
 
@@ -22,6 +22,8 @@ Status: proposed
 
 高级配置是整块映射区下方的默认折叠区，左侧全局时序，右侧跟随遥控器选中的普通按键。保留三列编辑和常驻图；提供分别恢复默认，不创建新设置页或JSON编辑器。
 
+普通手势暴露最早deadline，Mac所有者只安排一个主运行循环单次计时器；无待判定/连发时不安排普通手势唤醒。改期和取消递增代次，旧回调不复活。该选择同时支持自定义时序和减少空闲扫描，不作为已测量的整体性能改善。
+
 ## Alternatives considered
 
 - 无线麦普通HID路径的300/550ms判定、次级手势抑制单击可沿用；其固定物理键连发范围、600ms稳定释放和特殊面板接管不直接套用。
@@ -31,12 +33,8 @@ Status: proposed
 
 参考：[Karabiner按住](https://karabiner-elements.pqrs.org/docs/json/complex-modifications-manipulator-definition/to-if-held-down/)、[单独短按](https://karabiner-elements.pqrs.org/docs/json/complex-modifications-manipulator-definition/to-if-alone/)、[重复](https://karabiner-elements.pqrs.org/docs/json/complex-modifications-manipulator-definition/to/repeat/)、[双击示例](https://karabiner-elements.pqrs.org/docs/json/complex-modifications-manipulator-definition/to-delayed-action/)。
 
-## Acceptance criteria
-
-默认旧时序与互斥、可调阈值、长按重复、双击后按住重复、第一下按住锁定单击、同键不同来源、未知/边界配置、参数中途更改及取消都需检查。任意快捷键重复只在显式开启后发生。原生界面验证折叠、参数输入、选中键切换、条件控件和恢复；CLT与真实遥控器分别记录，不自动升级安装。
-
-## Risks
+## Consequences
 
 数值是判定阈值，系统调度会带来延迟。显式重复会反复执行用户选择的动作，界面应直说该效果；不修改物理键盘全局重复设置。新策略只能证明合成时序，RC003按键抖动和目标软件实际响应仍需真机。
 
-当前纯策略与模拟检查97核心/99适配器通过，新增长按重复、第二下锁定双击重复、第一下按住与双击区分、时序可调、取消及自定义导航重复检查。没有执行系统输入或改动已安装应用。
+当前纯策略与模拟检查98核心/99适配器、CLT构建和bundle检查通过。原生隔离预览完成折叠、条件控件、毫秒编辑与步进、逐键隔离和恢复默认检查。没有执行真实HID手势、系统输入或改动已安装应用；详情见[验证记录](../../../../docs/validation/2026-10-29-advanced-gestures.md)。

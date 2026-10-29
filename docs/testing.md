@@ -70,3 +70,5 @@ M0 结果保存在 [初始化记录](validation/2026-10-27-bootstrap.md)。M1 �
 资源检查的普通用例使用真实Task调度器，确认提醒对象在显式shutdown或直接释放后不被deadline留住。可选`DEVELOPER_DIR=/Library/Developer/CommandLineTools /usr/bin/xcrun swift run Remote2PromptMacChecks --voice-reminder-resource-probe`执行200轮预热+3批1000轮，并报告自身RSS与weak释放结果；不创建面板、打开设备或写系统输入，不设RSS通过阈值，也不替代整个应用的内存分析。
 
 跨组件重按检查把真实音频、输入事务和VoiceSession接在一起，注入延迟恢复；同时覆盖等待恢复时休眠，要求按键请求成对且旧完成不能复活新会话。与单个策略或单独输入运行时检查分开记录。
+
+高级手势普通检查覆盖schema1–4缺省迁移、schema5本地与便携往返、数值范围/重复逐键策略拒绝、短按/双击/长按互斥、可调时序、长按连发、第二下锁定双击连发、只有双击时第一下按住锁定单击、同键不同来源、取消和迟到不补积压，以及最早deadline和空闲无deadline。原生隔离预览检查折叠、毫秒编辑/步进、逐键策略与恢复；真实RC003抖动、系统调度和目标应用实际重复另行验收，见[高级手势检查](validation/2026-10-29-advanced-gestures.md)。
