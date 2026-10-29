@@ -29,9 +29,9 @@ macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问�
 
 默认仍是临时签名，其 designated requirement 绑定本次代码哈希，代码变化后系统可能不再接受旧授权。可通过 `CODE_SIGN_IDENTITY='证书名称或指纹' make build` 使用本机已有的代码签名身份；保持同一身份可让系统识别后续版本。该选项不创建证书、不改钥匙串，也不自动签名公证或发布。
 
-无线麦的源码开发构建为临时签名显式指定 `identifier` 识别规则，本项目提供相同语义的可选模式：`REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1 make build`。它只按 `dev.remote2prompt.app` 匹配、没有签名者约束，其他程序也能声明同一标识。本地普通构建仍默认关闭；用户明确选择后，0.2.14开发源码的Homebrew构建开启该试验，初次与来源信息写入后的最终签名共用`sign-app.sh`。
+无线麦的源码开发构建为临时签名显式指定 `identifier` 识别规则，本项目提供相同语义的可选模式：`REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1 make build`。它只按 `dev.remote2prompt.app` 匹配、没有签名者约束，其他程序也能声明同一标识。本地普通构建仍默认关闭；用户明确选择后，0.2.14的Homebrew构建开启该试验，初次与来源信息写入后的最终签名共用`sign-app.sh`。
 
-最终应用声明`identifier-only-adhoc-v1`策略，核验脚本同时检查严格签名和实际指定要求。`./scripts/check-signing-identity.sh [APP]`用离线副本验证不同代码哈希、来源信息重签、错误标识与内容损坏；不启动应用或更改系统授权。完整性与源码归档摘要不能代替签名者认证；此方式没有Developer ID、公证或Gatekeeper批准。当前公开Cask和安装版仍为0.2.13；真实授权跨远端升级保留仍待用户配合验收，见[试验记录](validation/2026-10-29-certificate-free-identity.md)。
+最终应用声明`identifier-only-adhoc-v1`策略，核验脚本同时检查严格签名和实际指定要求。`./scripts/check-signing-identity.sh [APP]`用离线副本验证不同代码哈希、来源信息重签、错误标识与内容损坏；不启动应用或更改系统授权。完整性与源码归档摘要不能代替签名者认证；此方式没有Developer ID、公证或Gatekeeper批准。源码与公开Cask已接入；首次迁移和真实授权跨远端升级保留仍需分别验收，见[试验记录](validation/2026-10-29-certificate-free-identity.md)。
 
 改变签名方式后，已有授权可能仍须重新关联当前构建。稳定签名用于避免后续身份漂移，不等于保证系统首次弹窗出现；必须另行记录实际授权和按键结果。
 

@@ -8,9 +8,9 @@ Status: implemented
 
 ## Decision
 
-用户明确选择尝试无证书的固定身份规则。0.2.14开发源码的Homebrew构建采用显式`identifier "dev.remote2prompt.app"`，不绑定每次变化的代码哈希。初次打包和写入来源信息后的最终签名共用`scripts/sign-app.sh`，并检查实际指定要求而不只检查签名完整性。本地普通构建继续默认哈希身份，显式开启固定模式才使用新规则。
+用户明确选择尝试无证书的固定身份规则。0.2.14的Homebrew构建采用显式`identifier "dev.remote2prompt.app"`，不绑定每次变化的代码哈希。初次打包和写入来源信息后的最终签名共用`scripts/sign-app.sh`，并检查实际指定要求而不只检查签名完整性。本地普通构建继续默认哈希身份，显式开启固定模式才使用新规则。
 
-`HomebrewSource.plist`声明`identifier-only-adhoc-v1`策略，构建和安装核验检查声明与最终身份一致；旧版缺少声明时明确报告旧版检查。公开Cask与安装版仍为0.2.13，尚未采用此规则；真实TCC授权跨更新持久性尚未验证，不把离线代码要求检查写成授权成功。
+`HomebrewSource.plist`声明`identifier-only-adhoc-v1`策略，构建和安装核验检查声明与最终身份一致；旧版缺少声明时明确报告旧版检查。源码和公开Cask已接入；实际安装迁移以验证记录为准，真实TCC授权跨更新持久性尚未验证，不把离线代码要求检查写成授权成功。
 
 ## Alternatives considered
 

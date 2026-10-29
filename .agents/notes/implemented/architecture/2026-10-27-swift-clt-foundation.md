@@ -28,7 +28,7 @@ HID、系统按键、原生映射恢复、ATVV 蓝牙音频、PCM 回环输出�
 
 ## Consequences
 
-本地开发构建默认临时签名，其识别规则绑定代码哈希。构建脚本支持 `CODE_SIGN_IDENTITY` 使用已有证书，另提供本地默认关闭的 `REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1`，语义参考无线麦的开发构建。后者只匹配应用标识，没有签名者约束；用户后续明确选择在Homebrew源码构建中试用，开发源码已接入，当前公开Cask与安装版尚未采用。公开二进制分发仍需独立确定稳定签名及公证方案。
+本地开发构建默认临时签名，其识别规则绑定代码哈希。构建脚本支持 `CODE_SIGN_IDENTITY` 使用已有证书，另提供本地默认关闭的 `REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1`，语义参考无线麦的开发构建。后者只匹配应用标识，没有签名者约束；用户后续明确选择在Homebrew源码构建中试用，源码与公开Cask已接入；安装迁移和真实授权保留单独记录。公开二进制分发仍需独立确定稳定签名及公证方案。
 
 签名集中在`scripts/sign-app.sh`，本地普通构建仍默认哈希身份。`scripts/check-signing-identity.sh`用不启动的副本检查更新、来源信息重签、错误身份和内容完整性。用户后续选择的Homebrew固定身份试验见[决定](2026-10-29-certificate-free-upgrade-identity.md)，离线匹配不等于实际TCC授权保留。
 

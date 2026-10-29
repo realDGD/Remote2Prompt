@@ -6,7 +6,7 @@
 - `Remote2PromptMac`：设备与权限、原生按键租约、系统动作、CoreBluetooth、回环设备与音频输出。
 - `Remote2Prompt`：SwiftUI/AppKit 原生设置、配置保存和操作引导。
 - `Tests/Remote2PromptChecks`、`Tests/Remote2PromptMacChecks`：不依赖 XCTest 的检查入口。macOS 模拟检查注入设备服务与事件出口，不向桌面发送按键。
-- `scripts/` 与 `packaging/homebrew/`：独立 CLT 构建、bundle/仓库检查及源码 Cask 生成；公开 tap 只有根目录 `Casks/remote2prompt.rb`。Cask 在源码内编译、记录签名来源，将 app 本体移入 Applications 并清理构建缓存；标准 artifacts 拥有 app 和命令的卸载，不再保留 Formula/keg app。0.2.14开发源码按用户选择采用固定标识ad-hoc身份，初次与来源信息后的签名统一并核验实际要求；只约束标识、不认证签名者，当前公开Cask尚未采用，真实TCC持久性待验。
+- `scripts/` 与 `packaging/homebrew/`：独立 CLT 构建、bundle/仓库检查及源码 Cask 生成；公开 tap 只有根目录 `Casks/remote2prompt.rb`。Cask 在源码内编译、记录签名来源，将 app 本体移入 Applications 并清理构建缓存；标准 artifacts 拥有 app 和命令的卸载，不再保留 Formula/keg app。0.2.14源码与Cask按用户选择采用固定标识ad-hoc身份，初次与来源信息后的签名统一并核验实际要求；只约束标识、不认证签名者，实际迁移与TCC持久性仍以独立验证记录为准。
 - `.agents/notes/`：持久决策；`.agents/plans/`：实施清单；`.agents/skills/`：项目检查与 Note 工作流。
 
 ## 配置与界面

@@ -8,7 +8,7 @@ Status: implemented
 
 ## Decision
 
-以单 Cask `remote2prompt` 从固定 GitHub commit 与 SHA-256 归档构建；structured preflight 运行依赖已封闭的 SwiftPM 检查和 CLT 构建。来源信息写入 app 资源后重新临时签名，标准 app artifact 移动唯一 app 到 Applications，binary artifact 管理启动命令。postflight 清理自身构建缓存，Caskroom 的 app 只保留受 Homebrew 管理的链接，不是另一份 app。0.2.14开发源码的初次/最终签名与策略声明采用用户选择的[固定身份试验](2026-10-29-certificate-free-upgrade-identity.md)，当前公开Cask与安装版尚未迁移，不把源码接入说成系统授权已保留。
+以单 Cask `remote2prompt` 从固定 GitHub commit 与 SHA-256 归档构建；structured preflight 运行依赖已封闭的 SwiftPM 检查和 CLT 构建。来源信息写入 app 资源后重新临时签名，标准 app artifact 移动唯一 app 到 Applications，binary artifact 管理启动命令。postflight 清理自身构建缓存，Caskroom 的 app 只保留受 Homebrew 管理的链接，不是另一份 app。0.2.14源码与公开Cask的初次/最终签名与策略声明采用用户选择的[固定身份试验](2026-10-29-certificate-free-upgrade-identity.md)，安装迁移以验证记录为准，不把签名规则接入说成系统授权已保留。
 
 普通卸载移除 app、命令与 staged 记录；加 --zap 清本应用设置，系统权限与驱动不在范围内。旧双项用户先正常退出并检查恢复记录，再卸载旧 Cask/Formula。安装验证必须从 HTTPS 重新 tap 下载，不使用本地 checkout 或 file URL。此方案用于本项目第三方 tap，不声称满足官方 homebrew/cask 的预编译分发准入条件。
 
