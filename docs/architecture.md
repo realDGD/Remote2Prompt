@@ -17,6 +17,8 @@
 
 SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>` 显式引用公开 `SwiftUI.State<Value>` 包装器。不能未经独立 CLT 验证改回裸宏。
 
+首次设置窗口就绪后，ConfigurationStore在无配置且无本地 `initialSetup.presented.v1` 标记时自动展示向导。展示即写标记，跳过后不反复打扰，手动入口仍可用；该标记不进入schema5和便携导出，也不当作硬件验收。已有配置或读取错误时不自动弹出，不覆盖原始数据；zap清理整个本应用偏好域后恢复首次流程。
+
 `ConfigurationTransfer` 拥有可移植 JSON 格式及大小、schema 和映射校验；UI 使用原生文件面板与替换确认，移除设备身份并关闭导入能力。`SetupWizard` 的四步草稿与可选检查分开，跳过不产生硬件成功证据。`MenuAudioInputs` 直接观察两个音频所有者，复用既有输入目录和显式 `userSelection` 请求；手动切换不创建语音所有权，语音/恢复期间互斥。
 
 ## 设备、权限与事件

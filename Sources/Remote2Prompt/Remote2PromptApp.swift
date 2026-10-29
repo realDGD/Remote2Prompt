@@ -31,7 +31,8 @@ enum Launcher {
             do {
                 let configuration = AppConfiguration()
                 guard try AppConfiguration.decode(configuration.encoded()) == configuration else { exit(1) }
-                print("Remote2Prompt self-check passed (configuration only; no hardware access)")
+                try checkInitialSetupLifecycle()
+                print("Remote2Prompt self-check passed (configuration and first-launch lifecycle; no hardware access)")
             } catch {
                 fputs("Remote2Prompt self-check failed: \(error)\n", stderr)
                 exit(1)

@@ -6,9 +6,14 @@ import Remote2PromptCore
 final class ConfigurationStore: ObservableObject {
     @Published private(set) var configuration = AppConfiguration()
     @Published private(set) var persistenceError: String?
-    @Published var isSetupPresented = false
+    @Published var isSetupPresented = false {
+        didSet {
+            if isSetupPresented { defaults.set(true, forKey: initialSetupKey) }
+        }
+    }
     private let defaults: UserDefaults
     private let key = "configuration.v1"
+    private let initialSetupKey = "initialSetup.presented.v1"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -19,6 +24,13 @@ final class ConfigurationStore: ObservableObject {
             // Leave stored bytes intact; do not replace an unreadable or newer configuration.
             persistenceError = "设置无法读取，原始数据已保留。本次打开仅供查看：\(error.localizedDescription)"
         }
+    }
+
+    /// A local presentation marker is separate from portable configuration and hardware evidence.
+    func presentInitialSetupIfNeeded() {
+        guard persistenceError == nil, !isSetupPresented,
+              defaults.object(forKey: key) == nil, !defaults.bool(forKey: initialSetupKey) else { return }
+        isSetupPresented = true
     }
 
     func update(_ change: (inout AppConfiguration) -> Void) {

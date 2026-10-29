@@ -73,6 +73,12 @@ struct SettingsView: View {
             .toolbarBackground(.hidden, for: .windowToolbar)
         }
         .sheet(isPresented: $store.isSetupPresented) { SetupWizard() }
+        .task {
+            // Wait for a settings hierarchy; inspection smoke commands retain their isolated targets.
+            if !InterfaceInspection.enabled || InterfaceInspection.interactive {
+                store.presentInitialSetupIfNeeded()
+            }
+        }
         .frame(minWidth: 1040, minHeight: 640)
     }
 }
