@@ -12,6 +12,8 @@ Status: implemented
 
 `.gitignore` 排除构建、环境、签名材料、原始诊断、硬件捕获、录音及编辑器用户状态。`scripts/check-publication.rb` 检查受跟踪文件与路径，`--history` 同时检查全部可达文件快照；只输出位置与分类，不打印原值。标准 ATVV 协议 UUID、产品 VID/PID、驱动固定 UID 和系统标准路径可以公开，真实外设 UUID、硬件地址与用户目录不可以。新增二进制或非标准 UUID 先明确其来源和公开范围，不能直接加宽忽略规则。
 
+用户再次要求“建立public仓库”时，先核对现有公开仓库并沿用唯一的 `realDGD/Remote2Prompt`，不重复创建仓库或拆出tap。源码、固定来源的Cask和验证记录分阶段提交推送。用户明确要求不保留设置时，先正常退出并确认恢复记录已清空，再执行单Cask的卸载与zap，从公开HTTPS仓库重新tap和下载源码；本机checkout只能提供只读验收脚本，不能充当安装来源。
+
 GitHub Actions 使用 push、pull_request 与手动触发。Linux 检查文档、全历史脱敏、Gitleaks 和工作流语法；macOS 矩阵分别使用 Apple Silicon 与 Intel 的独立 CLT，运行核心/模拟检查、Release 打包和固定远端源码的 Homebrew 安装、应用程序本体、自检、卸载与可选设置清理。Action 固定到提交，下载的检查工具固定版本与摘要；权限为 contents: read，不持久化 checkout 凭据，不在 PR 中使用发布凭据或真实硬件。
 
 仓库公开与发布授权只适用于本次用户明确指定的操作，后续提交不自动获得 push 或 Release 授权。不自动选择开源许可证、安装音频驱动、请求系统权限、发布二进制或修改分支保护。用户后续明确授权的源码 tap 与应用生命周期已接入同一仓库，理由见 [分发决定](../architecture/2026-10-28-single-source-cask.md)。来源说明和功能未验收边界保留在当前文档。
