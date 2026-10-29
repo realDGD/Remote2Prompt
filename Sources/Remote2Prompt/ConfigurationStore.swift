@@ -8,12 +8,13 @@ final class ConfigurationStore: ObservableObject {
     @Published private(set) var persistenceError: String?
     @Published var isSetupPresented = false {
         didSet {
-            if isSetupPresented { defaults.set(true, forKey: initialSetupKey) }
+            if isSetupPresented { defaults.set(true, forKey: pendingSetupKey) }
         }
     }
     private let defaults: UserDefaults
     private let key = "configuration.v1"
-    private let initialSetupKey = "initialSetup.presented.v1"
+    private let initialSetupFinishedKey = "initialSetup.finished.v1"
+    private let pendingSetupKey = "setup.pending.v1"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -26,11 +27,19 @@ final class ConfigurationStore: ObservableObject {
         }
     }
 
-    /// A local presentation marker is separate from portable configuration and hardware evidence.
+    /// A process exit must not count as a completed or explicitly skipped wizard.
     func presentInitialSetupIfNeeded() {
-        guard persistenceError == nil, !isSetupPresented,
-              defaults.object(forKey: key) == nil, !defaults.bool(forKey: initialSetupKey) else { return }
+        guard persistenceError == nil, !isSetupPresented else { return }
+        let fresh = defaults.object(forKey: key) == nil && !defaults.bool(forKey: initialSetupFinishedKey)
+        guard fresh || defaults.bool(forKey: pendingSetupKey) else { return }
         isSetupPresented = true
+    }
+
+    func finishSetupPresentation() {
+        defaults.set(true, forKey: initialSetupFinishedKey)
+        defaults.removeObject(forKey: pendingSetupKey)
+        defaults.removeObject(forKey: "initialSetup.presented.v1")
+        isSetupPresented = false
     }
 
     func update(_ change: (inout AppConfiguration) -> Void) {

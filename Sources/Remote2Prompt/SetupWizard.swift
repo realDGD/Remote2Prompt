@@ -25,7 +25,6 @@ private enum SetupStep: Int, CaseIterable {
 struct SetupWizard: View {
     @EnvironmentObject private var store: ConfigurationStore
     @EnvironmentObject private var runtime: RemoteMappingRuntime
-    @Environment(\.dismiss) private var dismiss
     @ViewState private var step: SetupStep = .preparation
     @ViewState private var draft = AppConfiguration()
     @ViewState private var fillNavigation = false
@@ -50,7 +49,7 @@ struct SetupWizard: View {
             Form { content }.formStyle(.grouped)
             Divider()
             HStack {
-                Button("跳过配置") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("跳过配置") { store.finishSetupPresentation() }.keyboardShortcut(.cancelAction)
                     .help("不保存本次选择，恢复原有配置")
                 Spacer()
                 if step == .configuration || step == .check {
@@ -65,6 +64,7 @@ struct SetupWizard: View {
             }.padding(20)
         }
         .frame(width: 720, height: 650)
+        .background(SetupTerminationPolicy().frame(width: 0, height: 0))
         .onAppear {
             draft = store.configuration
             fillNavigation = draft.bindings.isEmpty
@@ -197,7 +197,7 @@ struct SetupWizard: View {
             var value = draft
             if fillNavigation { value.fillBasicNavigationBindings() }
             store.update { $0 = value }
-            if store.persistenceError == nil { dismiss() }
+            if store.persistenceError == nil { store.finishSetupPresentation() }
         } else if step != .check || checkPassed, let next = SetupStep(rawValue: step.rawValue + 1) { move(to: next) }
     }
 }

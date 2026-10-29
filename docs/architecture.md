@@ -17,7 +17,9 @@
 
 SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>` 显式引用公开 `SwiftUI.State<Value>` 包装器。不能未经独立 CLT 验证改回裸宏。
 
-首次设置窗口就绪后，ConfigurationStore在无配置且无本地 `initialSetup.presented.v1` 标记时自动展示向导。展示即写标记，跳过后不反复打扰，手动入口仍可用；该标记不进入schema5和便携导出，也不当作硬件验收。已有配置或读取错误时不自动弹出，不覆盖原始数据；zap清理整个本应用偏好域后恢复首次流程。
+首次设置窗口就绪后，ConfigurationStore在无配置且没有 `initialSetup.finished.v1` 时自动展示向导。展示仅写 `setup.pending.v1`，保存或明确跳过才标记结束并清除进行中状态；进程退出、权限重启和窗口关闭不等于完成。进行中的手动向导在有旧配置时也会恢复到准备页，未确认草稿不持久化。标记不进入schema5和便携导出，不当作硬件验收；读取错误时不自动弹出，不覆盖原始数据。zap恢复首次流程。0.2.9的“已展示”不能区分完成与中断，无配置时需重新引导一次。
+
+向导自身的AppKit sheet通过嵌入NSView在挂载时设 `preventsApplicationTerminationWhenModal=false`，移除时恢复原值，使系统授权的退出重开和正常退出能进入应用既有有界清理代理；不改变其他模态窗口，不增加自动重启进程或后台守护。
 
 `ConfigurationTransfer` 拥有可移植 JSON 格式及大小、schema 和映射校验；UI 使用原生文件面板与替换确认，移除设备身份并关闭导入能力。`SetupWizard` 的四步草稿与可选检查分开，跳过不产生硬件成功证据。`MenuAudioInputs` 直接观察两个音频所有者，复用既有输入目录和显式 `userSelection` 请求；手动切换不创建语音所有权，语音/恢复期间互斥。
 

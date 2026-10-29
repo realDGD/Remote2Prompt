@@ -51,3 +51,11 @@ untap后执行README中的HTTPS tap及单Cask安装命令。新克隆tap HEAD为
 现有main工作流继续检查Linux公开边界、全历史凭据和工作流语法，以及macOS15 arm64/Intel独立CLT、远端同仓库Cask安装、安装后核验和实际卸载zap。实际结果见本轮最终main提交对应的[Actions](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml)，旧版或已取消的run不作为最终版本通过证据。
 
 本轮不请求用户辅助按键，不自动恢复旧能力或修改TCC。RC003新手势、50/55秒提醒、目标输入法焦点/鼠标实际穿透、全屏/多屏及最低macOS14真实UI仍保持单列的未验收边界；CI和首次向导成功不能代替这些项目。
+
+## 授权退出重开追查与0.2.10修复
+
+用户在首次向导中授予输入监控、点击系统退出重开后报告未重开。取证时仍是首次启动的旧PID，主循环及权限轮询仍运行，不能归因于3.5秒退出恢复超时。隔离硬件预览复现向导打开时Command-Q无效，跳过后才正常退出；与[Apple关于模态窗口阻止终止且不咨询代理的说明](https://developer.apple.com/documentation/appkit/nswindow/preventsapplicationterminationwhenmodal)吻合。
+
+只对向导sheet设置 `preventsApplicationTerminationWhenModal=false`，使退出请求进入现有有界清理；拆除时恢复原值。原生预览验证修复后向导未关闭时Command-Q正常结束进程，没有强杀。未添加守护或自动重启进程，也未请求或重置任何权限。
+
+同时替换0.2.9展示即完成的状态：进行中的本机向导保留pending，只有保存或明确跳过才finished。普通退出和授权重启后回准备页，旧配置的手动向导也可恢复；草稿不持久化。真实ConfigurationStore自检新增中断恢复、手动恢复、旧展示标记及损坏数据边界，CLT构建、bundle、自检与原生退出回归通过。真实TCC系统按钮需要用户后续再次操作核对，不用Command-Q结果伪报该按钮已通过。
