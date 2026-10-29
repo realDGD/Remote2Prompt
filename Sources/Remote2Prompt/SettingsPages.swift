@@ -221,7 +221,12 @@ struct AboutPage: View {
     var body: some View {
         Form {
             Section {
-                Label("Remote2Prompt", systemImage: "mic.badge.plus")
+                Label {
+                    Text("Remote2Prompt")
+                } icon: {
+                    Image(nsImage: NSApplication.shared.applicationIconImage)
+                        .resizable().scaledToFit().frame(width: 40, height: 40)
+                }
                     .font(.title2.bold())
                 Text("把遥控器变成 Mac 的语音与按键入口。")
                     .foregroundStyle(.secondary)
