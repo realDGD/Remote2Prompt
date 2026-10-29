@@ -10,7 +10,7 @@ repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 export DEVELOPER_DIR=/Library/Developer/CommandLineTools
 export REMOTE2PROMPT_HOMEBREW_BUILD=1
 export CODE_SIGN_IDENTITY=-
-export REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=0
+export REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1
 export CONFIGURATION=release
 unset SDKROOT
 "$repo_dir/scripts/test.sh"
@@ -22,5 +22,6 @@ stamp="$app/Contents/Resources/HomebrewSource.plist"
 /usr/libexec/PlistBuddy -c "Add :commit string $2" "$stamp"
 /usr/libexec/PlistBuddy -c "Add :sha256 string $3" "$stamp"
 /usr/libexec/PlistBuddy -c "Add :builder string clt-source-cask" "$stamp"
-/usr/bin/codesign --force --sign - --timestamp=none "$app"
+/usr/libexec/PlistBuddy -c "Add :signingPolicy string identifier-only-adhoc-v1" "$stamp"
+"$repo_dir/scripts/sign-app.sh" "$app"
 "$repo_dir/scripts/verify-app.sh" "$app"

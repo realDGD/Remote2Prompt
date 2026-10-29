@@ -25,5 +25,12 @@ if ! /usr/bin/otool -l "$app_dir/Contents/MacOS/Remote2Prompt" | /usr/bin/awk \
 fi
 echo "Mach-O metadata verified: macOS $minimum_system_version minimum, SDK $sdk_version"
 /usr/bin/codesign --verify --deep --strict "$app_dir"
+stamp="$app_dir/Contents/Resources/HomebrewSource.plist"
+if [[ -f "$stamp" ]]; then
+    policy="$(/usr/libexec/PlistBuddy -c 'Print signingPolicy' "$stamp" 2>/dev/null || true)"
+    if [[ -n "$policy" ]]; then
+        "$repo_dir/scripts/verify-signing-identity.sh" "$app_dir" "$policy"
+    fi
+fi
 "$app_dir/Contents/MacOS/Remote2Prompt" --version
 "$app_dir/Contents/MacOS/Remote2Prompt" --self-check

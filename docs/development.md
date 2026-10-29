@@ -17,7 +17,7 @@ make build
 
 默认 Release 产物为 `dist/Remote2Prompt.app`，只包含当前架构。`CONFIGURATION=debug make build` 可生成调试包。脚本将 `VERSION` 写入 Info.plist，以临时签名生成可运行 bundle；临时签名不等于 Developer ID、公证或可公开分发的正式包。
 
-必须先退出从目标路径运行的 app 再重建；构建脚本会拒绝覆盖运行中的应用。临时签名的指定要求绑定代码摘要，更新构建可能使原有 TCC 授权不再匹配。运行时用 Security API 检测磁盘与进程代码不一致并暂停映射，避免把旧进程权限误当作新构建状态。不要通过修改隐私数据库或放宽签名要求绕过授权。
+必须先退出从目标路径运行的 app 再重建；构建脚本会拒绝覆盖运行中的应用。本地默认临时签名的指定要求绑定代码摘要，更新构建可能使原有 TCC 授权不再匹配。运行时用 Security API 检测磁盘与进程代码不一致并暂停映射，避免把旧进程权限误当作新构建状态。不得修改隐私数据库替用户授权；用户明确选择的固定身份试验见下节。
 
 macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问”，旧的 Privacy_Accessibility deep link 仍指向该页。输入监听未允许时直接使用 IOHIDRequestAccess，未获允许时再调用 CGRequestListenEventAccess。未知状态的首次请求不立即打开设置抢走系统提示的焦点；原状态已拒绝时打开设置，另有独立设置入口。已允许时只提供设置入口；macOS 不保证重复弹窗或自动列出条目。监听检查返回 granted 也可能来自设备控制授权，不能据此确认输入监控列表中的独立条目。运行时以实际 HID 打开和报告接收结果验证设备可用性；失败则恢复原生映射并停止。
 
@@ -29,7 +29,9 @@ macOS 27 将“辅助功能”权限页改名为“设备控制和数据访问�
 
 默认仍是临时签名，其 designated requirement 绑定本次代码哈希，代码变化后系统可能不再接受旧授权。可通过 `CODE_SIGN_IDENTITY='证书名称或指纹' make build` 使用本机已有的代码签名身份；保持同一身份可让系统识别后续版本。该选项不创建证书、不改钥匙串，也不自动签名公证或发布。
 
-无线麦的源码开发构建为临时签名显式指定 `identifier` 识别规则，本项目提供相同语义的可选模式：`REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1 make build`。它只按 `dev.remote2prompt.app` 匹配、没有签名者约束，其他本地程序也能声明同一标识；因此默认关闭，仅在维护者明确接受这一身份边界后用于本地开发，不作为公开分发方案。当前测试应用尚未应用此选项。这些入口仅供后续明确选择；本轮保持默认临时签名，不创建证书、不改钥匙串，也不启用放宽的 identifier 规则。
+无线麦的源码开发构建为临时签名显式指定 `identifier` 识别规则，本项目提供相同语义的可选模式：`REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1 make build`。它只按 `dev.remote2prompt.app` 匹配、没有签名者约束，其他程序也能声明同一标识。本地普通构建仍默认关闭；用户明确选择后，0.2.14开发源码的Homebrew构建开启该试验，初次与来源信息写入后的最终签名共用`sign-app.sh`。
+
+最终应用声明`identifier-only-adhoc-v1`策略，核验脚本同时检查严格签名和实际指定要求。`./scripts/check-signing-identity.sh [APP]`用离线副本验证不同代码哈希、来源信息重签、错误标识与内容损坏；不启动应用或更改系统授权。完整性与源码归档摘要不能代替签名者认证；此方式没有Developer ID、公证或Gatekeeper批准。当前公开Cask和安装版仍为0.2.13；真实授权跨远端升级保留仍待用户配合验收，见[试验记录](validation/2026-10-29-certificate-free-identity.md)。
 
 改变签名方式后，已有授权可能仍须重新关联当前构建。稳定签名用于避免后续身份漂移，不等于保证系统首次弹窗出现；必须另行记录实际授权和按键结果。
 
@@ -50,7 +52,7 @@ open /Applications/Remote2Prompt.app
 
 需要时仅信任这个 Cask：`brew trust --cask realdgd/remote2prompt/remote2prompt`。该第三方 tap 使用安装期源码编译，不声称属于官方 homebrew/cask 的预编译分发模式。Homebrew structured steps 在其 sandbox 内执行构建；SwiftPM 缓存位于归档自身 `.build`，只关闭 SwiftPM 嵌套 sandbox，不关闭 Homebrew sandbox。
 
-构建把版本、源码 commit 和归档 SHA-256 写入 `Contents/Resources/HomebrewSource.plist` 后重新临时签名。标准 app artifact 将唯一 app 移入 Applications，在 staged 位置保留链接；postflight 清理 `.build` 与 `.swiftpm`。启动命令沿受管理链接定位实际 appdir，不保留 keg app，也不安装 Formula。
+构建把版本、源码 commit、归档 SHA-256 和签名策略写入 `Contents/Resources/HomebrewSource.plist` 后，通过统一入口重新临时签名。来源标记本身也在签名密封范围内；核验会检查声明策略与最终身份一致。旧版没有策略字段时只报告旧版检查，不宣称固定身份已验证。标准 app artifact 将唯一 app 移入 Applications，在 staged 位置保留链接；postflight 清理 `.build` 与 `.swiftpm`。启动命令沿受管理链接定位实际 appdir，不保留 keg app，也不安装 Formula。
 
 安装后可在源码工作区执行只读验收（它不安装本地源码）：
 

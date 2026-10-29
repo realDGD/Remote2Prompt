@@ -1,6 +1,7 @@
 #!/bin/bash
 # Read-only installed-Cask checks; no UI or device adapters.
 set -euo pipefail
+repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 if [[ $# -eq 0 ]]; then
     values="$(brew info --json=v2 --cask realdgd/remote2prompt/remote2prompt | /usr/bin/ruby -rjson -e '
       c = JSON.parse(STDIN.read).fetch("casks").first
@@ -25,6 +26,12 @@ stamp="$app/Contents/Resources/HomebrewSource.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print sha256' "$stamp")" == "$3" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print builder' "$stamp")" == clt-source-cask ]]
 /usr/bin/codesign --verify --deep --strict "$app"
+policy="$(/usr/libexec/PlistBuddy -c 'Print signingPolicy' "$stamp" 2>/dev/null || true)"
+if [[ -n "$policy" ]]; then
+    "$repo_dir/scripts/verify-signing-identity.sh" "$app" "$policy"
+else
+    echo "Legacy source Cask: no fixed signing policy declared; stable update identity is not verified."
+fi
 "$app/Contents/MacOS/Remote2Prompt" --self-check
 [[ "$(remote2prompt --version)" == "Remote2Prompt $1" ]]
 if brew list --formula remote2prompt >/dev/null 2>&1 || brew list --cask remote2prompt-app >/dev/null 2>&1; then

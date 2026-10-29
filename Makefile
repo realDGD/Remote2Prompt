@@ -18,6 +18,7 @@ test:
 
 check: test build
 	./scripts/verify-app.sh
+	./scripts/check-signing-identity.sh
 	$(MAKE) docs-check
 	$(MAKE) privacy-check
 

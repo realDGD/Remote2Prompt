@@ -2,7 +2,9 @@
 
 ## 自动检查
 
-`make test` 使用 Swift 可执行程序运行核心行为检查，不依赖完整 Xcode 中的 XCTest。任何检查失败都退出非零状态；`make check` 继续构建应用、校验 Info.plist/版本/可执行权限/临时签名及 Mach-O 最低系统与实际 CLT SDK，再检查本地文档链接和 Agent Note 状态。
+`make test` 使用 Swift 可执行程序运行核心行为检查，不依赖完整 Xcode 中的 XCTest。任何检查失败都退出非零状态；`make check` 继续构建应用、校验 Info.plist/版本/可执行权限/临时签名及 Mach-O 最低系统与实际 CLT SDK，执行离线签名身份检查，再检查本地文档链接和 Agent Note 状态。
+
+`./scripts/check-signing-identity.sh [APP]`仅创建和移除离线副本，检查更新后代码哈希变化、来源信息重签、显式身份不变、错误应用标识和内容损坏。没有启动应用、写入TCC或运行按键与音频；真实授权跨升级保留和Gatekeeper首次启动需另行验收，见[固定身份试验](validation/2026-10-29-certificate-free-identity.md)。
 
 `make privacy-check` 拒绝本机用户目录、硬件地址、外设 UUID、未经审阅的二进制及被强制跟踪的本地文件；只输出位置与类别。`ruby scripts/check-publication.rb --history` 同时覆盖全部可达历史路径和内容。CI 另用 Gitleaks 扫描历史凭据，并通过 actionlint 检查工作流。扫描不代替人工审阅，忽略规则也不会删除已有历史。
 
