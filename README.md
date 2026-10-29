@@ -4,7 +4,7 @@
 
 面向 macOS 的原生遥控器语音与按键工具，以 Swift 编写，采用左栏设置，通过 Command Line Tools 构建，支持 Homebrew 从源码安装。
 
-当前是**按键与语音链路开发预览**：已接入 HID、原生键接管与恢复、普通手势、快捷键、独立语音触发，以及 ATVV → IMA/DVI ADPCM → 16 kHz PCM → 所选回环设备的代码链路。RC003短段收音、快速重按、重连及空闲睡眠唤醒已有本机验收，长段约一分钟结束的限制仍存在，见[生命周期记录](docs/validation/2026-10-28-audio-health-lifecycle.md)。新手势及真实时限提醒未完成硬件验收；当前0.2.12源码发布、首次向导与安装结果见[发布记录](docs/validation/2026-10-29-capsule-follow-release.md)。
+当前是**按键与语音链路开发预览**：已接入 HID、原生键接管与恢复、普通手势、快捷键、独立语音触发，以及 ATVV → IMA/DVI ADPCM → 16 kHz PCM → 所选回环设备的代码链路。RC003短段收音、快速重按、重连及空闲睡眠唤醒已有本机验收，长段约一分钟结束的限制仍存在，见[生命周期记录](docs/validation/2026-10-28-audio-health-lifecycle.md)。新手势及真实时限提醒未完成硬件验收；0.2.12清洁安装与首次向导见[发布记录](docs/validation/2026-10-29-capsule-follow-release.md)，0.2.13保留配置升级与真机验收见[新记录](docs/validation/2026-10-29-compact-reminder-timing.md)。
 
 ## 使用
 
@@ -36,7 +36,7 @@
 
 ## 开发
 
-后续本地开发版将提醒收为192×34单行，并提供“语音开始后0–55秒显示”，默认50秒；可一键5秒测试或恢复默认。改变出现时间不会移动60秒估计上限，预览仍为5秒。新源码尚未发布，当前Homebrew安装仍为0.2.12；检查与真机边界见[记录](docs/validation/2026-10-29-compact-reminder-timing.md)。
+0.2.13将提醒收为192×34单行，并提供“语音开始后0–55秒显示”，默认50秒；可一键5秒测试或恢复默认。改变出现时间不会移动60秒估计上限，预览仍为5秒。源码已公开，保留配置的远端升级进展、检查与真机边界见[记录](docs/validation/2026-10-29-compact-reminder-timing.md)。
 
 运行要求 macOS 14+；构建需要包含 Swift 6 的独立 Command Line Tools（例如 Xcode 16 对应版本或更新版本）。不需要完整 Xcode、外部 Swift 包或本地签名证书。默认构建当前架构；Intel 和最低系统仍需单独验收。
 
