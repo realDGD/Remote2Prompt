@@ -10,7 +10,9 @@
 
 ## 发布与安装执行记录
 
-本节在实际执行后填写源码commit、远端归档摘要、tap提交、CI和安装核验结果。安装必须使用README的公开HTTPS tap与固定远端归档，不使用本地checkout或file URL。清理只针对本项目app、Homebrew条目及用户授权清除的设置；保留系统TCC、蓝牙配对和其他应用。
+功能以`50361db`、`81bea85`、`eb35ccc`三个阶段提交。版本源码commit为`18cb09b779bb01ca1218fc03f4ae215a9195a72c`，已推送main；从该commit的公开HTTPS归档下载并计算SHA-256为`ab8f3e300262c4761bf19dabb4b949b7e50f91551732c58f2f77cdfebe122f2f`，同仓库唯一Cask固定此来源。发布前公开边界全历史扫描、gitleaks全历史凭据扫描、actionlint与文档检查通过。
+
+安装必须使用README的公开HTTPS tap与固定远端归档，不使用本地checkout或file URL。清理只针对本项目app、Homebrew条目及用户授权清除的设置；保留系统TCC、蓝牙配对和其他应用。实际CI、清洁安装及核验结果在执行后追加。
 
 `brew test`仅支持Formula。本项目保持单Cask安装，记录该命令的真实结果，同时以安装期源码测试、CLT编译和`verify-homebrew-install.sh`完成适用的安装核验；不把命令不适用伪报为通过。
 
