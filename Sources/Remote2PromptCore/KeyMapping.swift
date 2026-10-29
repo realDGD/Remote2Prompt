@@ -58,7 +58,8 @@ public struct MappedInvocation: Equatable, Sendable {
         self.shortcut = shortcut
     }
     public var allowsRepeat: Bool {
-        [.arrowUp, .arrowDown, .arrowLeft, .arrowRight, .backspace, .volumeUp, .volumeDown].contains(action)
+        if [.arrowUp, .arrowDown, .arrowLeft, .arrowRight, .backspace, .volumeUp, .volumeDown].contains(action) { return true }
+        return action == .customShortcut && shortcut.map { $0.modifiers.isEmpty && [51, 123, 124, 125, 126].contains($0.keyCode) } == true
     }
     /// The UI and system adapter share the exact key that an ordinary action resolves to.
     public var resolvedShortcut: KeyboardShortcut? {
