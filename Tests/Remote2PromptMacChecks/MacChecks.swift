@@ -261,6 +261,7 @@ enum MacChecks {
         cases.append(contentsOf: inputPriorityAdapterChecks())
         cases.append(contentsOf: loopbackWriterChecks())
         cases.append(contentsOf: voiceLimitReminderChecks())
+        cases.append(contentsOf: weTypeCapsuleFollowerChecks())
         var failures = 0
         for (name, run) in cases {
             do { try run(); print("PASS \(name)") }

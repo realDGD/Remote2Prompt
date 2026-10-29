@@ -6,7 +6,7 @@ import Remote2PromptCore
     func cancel()
 }
 
-@MainActor private final class SleepingDeadline: VoiceLimitDeadline {
+@MainActor final class SleepingDeadline: VoiceLimitDeadline {
     private var task: Task<Void, Never>?
     init(delay: TimeInterval, action: @escaping @MainActor () -> Void) {
         task = Task { @MainActor in
@@ -24,6 +24,12 @@ public struct VoiceLimitReminderState: Equatable, Sendable {
     public var position: VoiceLimitReminderPosition = .bottomCenter
     /// Changes once per segment/preview, never once per tick.
     public var displayEpoch: UInt64 = 0
+    public var isPreview = false
+    /// Only the live 50–60 second countdown may inspect another application's window geometry.
+    public var mayFollowCapsule: Bool {
+        if case .countdown = presentation { return !isPreview }
+        return false
+    }
     public init() {}
 }
 
@@ -92,6 +98,7 @@ public struct VoiceLimitReminderState: Equatable, Sendable {
         let selected = previewPolicy ?? policy
         var next = VoiceLimitReminderState()
         next.position = configuration.voiceLimitReminderPosition; next.displayEpoch = displayEpoch
+        next.isPreview = previewPolicy != nil
         if active { next.presentation = selected.presentation(at: now) }
         if next != state { state = next }
         guard active else { return }
