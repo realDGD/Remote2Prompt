@@ -53,13 +53,7 @@ fi
 /usr/libexec/PlistBuddy -c "Set CFBundleShortVersionString $version" "$app_dir/Contents/Info.plist"
 printf 'APPL????' > "$app_dir/Contents/PkgInfo"
 chmod 755 "$app_dir/Contents/MacOS/Remote2Prompt"
-sign_arguments=(--force --sign "$signing_identity" --timestamp=none)
-if [[ "$stable_adhoc" == "1" ]]; then
-    # Explicit local-development opt-in. This identifies code by name, without a signer anchor.
-    sign_arguments+=(--requirements '=designated => identifier "dev.remote2prompt.app"')
-fi
-/usr/bin/codesign "${sign_arguments[@]}" "$app_dir"
-/usr/bin/codesign --verify --deep --strict "$app_dir"
+"$repo_dir/scripts/sign-app.sh" "$app_dir"
 if [[ -e "$destination" ]]; then rm -rf "$destination"; fi
 mv "$app_dir" "$destination"
 echo "Built $destination ($DEVELOPER_DIR)"

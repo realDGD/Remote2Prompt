@@ -30,4 +30,6 @@ HID、系统按键、原生映射恢复、ATVV 蓝牙音频、PCM 回环输出�
 
 开发构建默认临时签名，其识别规则绑定代码哈希。构建脚本支持 `CODE_SIGN_IDENTITY` 使用已有证书，另提供默认关闭的 `REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1`，语义参考无线麦的开发构建。后者只匹配应用标识，没有签名者约束，需维护者明确接受后用于本地开发；源码具备这个选项不代表当前应用已经采用。公开分发仍需独立确定稳定签名及公证方案。
 
+签名集中在`scripts/sign-app.sh`，本地普通构建仍默认哈希身份。`scripts/check-signing-identity.sh`用不启动的副本检查更新、来源信息重签、错误身份和内容完整性。用户后续选择的Homebrew固定身份试验见[提案](../../proposed/architecture/2026-10-29-certificate-free-upgrade-identity.md)，离线匹配不等于实际TCC授权保留。
+
 构建、测试和本地源码安装共用一个 Package，无额外包管理依赖。应用包、版本和签名由脚本维护；原创图标由系统 CoreGraphics/ImageIO 在 CLT 中生成并用 iconutil 打包，不依赖 Xcode 资产编译器。后续资源也必须通过脚本显式打包。临时签名和单机编译不能替代公证、Intel 或最低系统验收。
