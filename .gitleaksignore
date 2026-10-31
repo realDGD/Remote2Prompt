@@ -1,0 +1,4 @@
+# False positives: UserDefaults key appearance.keepDockVisible.v1, not credentials.
+# Exact committed occurrences only; future findings remain scanned.
+1adf3be5a55d557bcd421532721ca695f059bad5:Sources/VoiRemote/AppPresentation.swift:generic-api-key:10
+1adf3be5a55d557bcd421532721ca695f059bad5:Sources/VoiRemote/AppPresentation.swift:generic-api-key:24
