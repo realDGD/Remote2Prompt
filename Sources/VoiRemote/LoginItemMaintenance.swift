@@ -38,12 +38,13 @@ enum LoginItemMaintenance {
         }
     }
 
-    static func prepareForRemoval(defaults: UserDefaults = .standard, service: LoginItemService = .live) throws {
+    static func prepareForRemoval(defaults: UserDefaults = .standard, service: LoginItemService = .live,
+                                  persist: (UserDefaults) -> Bool = { $0.synchronize() }) throws {
         switch service.status() {
         case .enabled:
             // Commit intent before unregistering. A failed removal/install can retry safely.
             defaults.set(true, forKey: pendingPreference)
-            guard defaults.synchronize() else { throw Failure.persistence }
+            guard persist(defaults) else { throw Failure.persistence }
             try service.unregister()
         case .requiresApproval:
             // Respect a user revocation in System Settings rather than enabling it on install.

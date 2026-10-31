@@ -26,27 +26,38 @@ func checkLoginItemMaintenance() throws {
         if refuseRemoval { throw CheckFailure.simulated }
         state = .notRegistered
     })
+    func prepare() throws {
+        // Like the service adapter, durability is simulated: Cask build checks have no home access.
+        try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service, persist: { _ in true })
+    }
 
-    try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service)
+    do {
+        try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service, persist: { _ in false })
+        throw CheckFailure.failed("Persistence failure was ignored")
+    } catch LoginItemMaintenance.Failure.persistence {}
+    try require(state == .enabled && events.isEmpty, "Unsaved intent allowed removal")
+    LoginItemMaintenance.cancelPending(in: defaults)
+
+    try prepare()
     try require(state == .notRegistered, "Removal did not unregister")
     try LoginItemMaintenance.restoreAfterInstall(defaults: defaults, service: service)
     try require(state == .enabled && events == ["unregister", "register"] && !LoginItemMaintenance.isPending(in: defaults),
                 "Enabled login item did not survive installation")
 
     events.removeAll(); state = .notFound
-    try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service)
+    try prepare()
     try LoginItemMaintenance.restoreAfterInstall(defaults: defaults, service: service)
     try require(events.isEmpty, "Fresh or disabled installation enabled a login item")
 
     state = .enabled
-    try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service)
+    try prepare()
     refuseRegistration = true
     do {
         try LoginItemMaintenance.restoreAfterInstall(defaults: defaults, service: service)
         throw CheckFailure.failed("Registration failure was hidden")
     } catch CheckFailure.simulated {}
     try require(LoginItemMaintenance.isPending(in: defaults), "Failure discarded recovery intent")
-    try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service)
+    try prepare()
     try require(LoginItemMaintenance.isPending(in: defaults), "Repeated cleanup lost an interrupted recovery")
     refuseRegistration = false
     try LoginItemMaintenance.restoreAfterInstall(defaults: defaults, service: service)
@@ -54,7 +65,7 @@ func checkLoginItemMaintenance() throws {
 
     refuseRemoval = true
     do {
-        try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service)
+        try prepare()
         throw CheckFailure.failed("Removal failure was hidden")
     } catch CheckFailure.simulated {}
     let prior = events.count
@@ -62,16 +73,16 @@ func checkLoginItemMaintenance() throws {
     try require(events.count == prior && !LoginItemMaintenance.isPending(in: defaults), "Already enabled recovery registered twice")
     refuseRemoval = false
 
-    try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service)
+    try prepare()
     state = .requiresApproval
     let count = events.count
     try LoginItemMaintenance.restoreAfterInstall(defaults: defaults, service: service)
     try require(state == .requiresApproval && events.count == count, "Recovery overrode system disapproval")
-    try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service)
+    try prepare()
     try require(!LoginItemMaintenance.isPending(in: defaults), "Disallowed service was queued for re-enabling")
 
     state = .enabled
-    try LoginItemMaintenance.prepareForRemoval(defaults: defaults, service: service)
+    try prepare()
     LoginItemMaintenance.cancelPending(in: defaults) // Explicit user disable or zap.
     let before = events.count
     try LoginItemMaintenance.restoreAfterInstall(defaults: defaults, service: service)
