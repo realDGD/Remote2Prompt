@@ -1,8 +1,8 @@
 cask "voiremote" do
   version "0.3.2"
-  sha256 "48ebd46b1a5d33de3c423f648c65698edde8fe92729742737c3234ff9acae5db"
+  sha256 "fa09729cd77c7ad3f3caf010d34cc7517048140b8dc2ca5ea35272d7ed69b524"
 
-  url "https://github.com/realDGD/VoiRemote/archive/e754b16ae462f5e3ceb9f16449095025993152bd.tar.gz"
+  url "https://github.com/realDGD/VoiRemote/archive/3ba53f40893d36c864c9b188cc997acc22d50766.tar.gz"
   name "VoiRemote"
   desc "Native macOS remote key mapping and voice app compiled with CLT"
   homepage "https://github.com/realDGD/VoiRemote"
@@ -10,16 +10,16 @@ cask "voiremote" do
   depends_on macos: :sonoma
 
   preflight_steps do
-    run "/bin/bash", args: ["scripts/build-cask.sh", "0.3.2", "e754b16ae462f5e3ceb9f16449095025993152bd", "48ebd46b1a5d33de3c423f648c65698edde8fe92729742737c3234ff9acae5db"],
-                      chdir: "VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd", print_stdout: true,
+    run "/bin/bash", args: ["scripts/build-cask.sh", "0.3.2", "3ba53f40893d36c864c9b188cc997acc22d50766", "fa09729cd77c7ad3f3caf010d34cc7517048140b8dc2ca5ea35272d7ed69b524"],
+                      chdir: "VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766", print_stdout: true,
                       env: { "DEVELOPER_DIR" => "/Library/Developer/CommandLineTools" }
   end
 
-  app "VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd/dist/VoiRemote.app"
-  binary "VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd/packaging/homebrew/voiremote"
+  app "VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/dist/VoiRemote.app"
+  binary "VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/packaging/homebrew/voiremote"
 
   postflight_steps do
-    remove ["VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd/.build", "VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd/.swiftpm"], recursive: true
+    remove ["VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/.build", "VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/.swiftpm"], recursive: true
     run "VoiRemote.app/Contents/MacOS/VoiRemote", base: :appdir,
         args: ["--restore-login-item"], print_stdout: true, must_succeed: false
   end
