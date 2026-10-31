@@ -89,6 +89,10 @@ jobs:
           fi
           brew install --cask realdgd/voiremote/voiremote
           ./scripts/verify-homebrew-install.sh
+          case "$(voiremote --login-item-status)" in
+            notRegistered|notFound) ;;
+            *) echo "Fresh installation unexpectedly enabled a login item" >&2; exit 1 ;;
+          esac
       - name: Verify single-item uninstall and settings cleanup
         run: |
           defaults write dev.voiremote.app homebrewCICheck -bool true

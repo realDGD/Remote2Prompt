@@ -1,8 +1,8 @@
 cask "voiremote" do
-  version "0.3.1"
-  sha256 "c481b5462475855cdccb9c7eae91b92a09dbb4976013ef11af3b5e209c2e8bec"
+  version "0.3.2"
+  sha256 "48ebd46b1a5d33de3c423f648c65698edde8fe92729742737c3234ff9acae5db"
 
-  url "https://github.com/realDGD/VoiRemote/archive/93a31a8eaa1b8e4256268192e00d26f82340d4fc.tar.gz"
+  url "https://github.com/realDGD/VoiRemote/archive/e754b16ae462f5e3ceb9f16449095025993152bd.tar.gz"
   name "VoiRemote"
   desc "Native macOS remote key mapping and voice app compiled with CLT"
   homepage "https://github.com/realDGD/VoiRemote"
@@ -10,16 +10,18 @@ cask "voiremote" do
   depends_on macos: :sonoma
 
   preflight_steps do
-    run "/bin/bash", args: ["scripts/build-cask.sh", "0.3.1", "93a31a8eaa1b8e4256268192e00d26f82340d4fc", "c481b5462475855cdccb9c7eae91b92a09dbb4976013ef11af3b5e209c2e8bec"],
-                      chdir: "VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc", print_stdout: true,
+    run "/bin/bash", args: ["scripts/build-cask.sh", "0.3.2", "e754b16ae462f5e3ceb9f16449095025993152bd", "48ebd46b1a5d33de3c423f648c65698edde8fe92729742737c3234ff9acae5db"],
+                      chdir: "VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd", print_stdout: true,
                       env: { "DEVELOPER_DIR" => "/Library/Developer/CommandLineTools" }
   end
 
-  app "VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc/dist/VoiRemote.app"
-  binary "VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc/packaging/homebrew/voiremote"
+  app "VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd/dist/VoiRemote.app"
+  binary "VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd/packaging/homebrew/voiremote"
 
   postflight_steps do
-    remove ["VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc/.build", "VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc/.swiftpm"], recursive: true
+    remove ["VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd/.build", "VoiRemote-e754b16ae462f5e3ceb9f16449095025993152bd/.swiftpm"], recursive: true
+    run "VoiRemote.app/Contents/MacOS/VoiRemote", base: :appdir,
+        args: ["--restore-login-item"], print_stdout: true, must_succeed: false
   end
 
   uninstall quit: "dev.voiremote.app",
