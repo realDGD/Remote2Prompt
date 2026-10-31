@@ -87,6 +87,7 @@ struct SettingsWindowAttachment: NSViewRepresentable {
 @MainActor
 final class LoginItemSettings: ObservableObject {
     @Published private(set) var enabled = false
+    @Published private(set) var recoveryPending = false
     @Published private(set) var detail = ""
     @Published private(set) var error: String?
     let inspection: Bool
@@ -94,14 +95,17 @@ final class LoginItemSettings: ObservableObject {
     func refresh() {
         guard !inspection else { detail = "预览模式，不修改系统登录项。"; return }
         let status = SMAppService.mainApp.status
+        recoveryPending = LoginItemMaintenance.isPending()
         enabled = status == .enabled || status == .requiresApproval
         switch status {
         case .enabled: detail = "登录后静默运行，只显示菜单栏图标。"
         case .requiresApproval: detail = "需要在系统登录项设置中允许 VoiRemote。"
         case .notRegistered:
-            detail = LoginItemMaintenance.isPending()
+            detail = recoveryPending
                 ? "安装后未能恢复自动启动，可在此重新开启。" : "未启用自动启动。"
-        case .notFound: detail = "系统尚未找到登录项。可尝试启用；若失败，请确认应用位于“应用程序”。"
+        case .notFound:
+            detail = recoveryPending ? "安装后未能恢复自动启动，可在此重新开启。"
+                : "系统尚未找到登录项。可尝试启用；若失败，请确认应用位于“应用程序”。"
         @unknown default: detail = "无法确认系统登录项状态。"
         }
     }
@@ -121,6 +125,12 @@ final class LoginItemSettings: ObservableObject {
         } catch { self.error = "无法更新登录项：\(error.localizedDescription)" }
         refresh()
     }
+    func cancelRecovery() {
+        guard !inspection else { return }
+        LoginItemMaintenance.cancelPending()
+        error = nil
+        refresh()
+    }
     func openSystemSettings() { if !inspection { SMAppService.openSystemSettingsLoginItems() } }
 }
 
@@ -134,6 +144,9 @@ struct GeneralPage: View {
                     .disabled(login.inspection)
                 Text(login.detail).font(.callout).foregroundStyle(.secondary)
                 if let error = login.error { Text(error).foregroundStyle(.red) }
+                if login.recoveryPending && !login.enabled {
+                    Button("保持关闭，不再恢复") { login.cancelRecovery() }
+                }
                 Button("打开系统登录项设置…") { login.openSystemSettings() }.disabled(login.inspection)
             }
             Section("Dock") {
