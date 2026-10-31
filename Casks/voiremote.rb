@@ -1,8 +1,8 @@
 cask "voiremote" do
-  version "0.3.2"
-  sha256 "fa09729cd77c7ad3f3caf010d34cc7517048140b8dc2ca5ea35272d7ed69b524"
+  version "0.3.3"
+  sha256 "2352f7c24afb2685573fc58bd0f9a12a864d911b66da547f2e2ac01249c5921b"
 
-  url "https://github.com/realDGD/VoiRemote/archive/3ba53f40893d36c864c9b188cc997acc22d50766.tar.gz"
+  url "https://github.com/realDGD/VoiRemote/archive/27076da60f88e0bc9c07800eb52185cc0762795e.tar.gz"
   name "VoiRemote"
   desc "Native macOS remote key mapping and voice app compiled with CLT"
   homepage "https://github.com/realDGD/VoiRemote"
@@ -10,26 +10,26 @@ cask "voiremote" do
   depends_on macos: :sonoma
 
   preflight_steps do
-    run "/bin/bash", args: ["scripts/build-cask.sh", "0.3.2", "3ba53f40893d36c864c9b188cc997acc22d50766", "fa09729cd77c7ad3f3caf010d34cc7517048140b8dc2ca5ea35272d7ed69b524"],
-                      chdir: "VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766", print_stdout: true,
+    run "/bin/bash", args: ["scripts/build-cask.sh", "0.3.3", "27076da60f88e0bc9c07800eb52185cc0762795e", "2352f7c24afb2685573fc58bd0f9a12a864d911b66da547f2e2ac01249c5921b"],
+                      chdir: "VoiRemote-27076da60f88e0bc9c07800eb52185cc0762795e", print_stdout: true,
                       env: { "DEVELOPER_DIR" => "/Library/Developer/CommandLineTools" }
   end
 
-  app "VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/dist/VoiRemote.app"
-  binary "VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/packaging/homebrew/voiremote"
+  installer script: {
+    executable: "VoiRemote-27076da60f88e0bc9c07800eb52185cc0762795e/scripts/install-cask-app.sh",
+    args: ["#{appdir}/VoiRemote.app", "27076da60f88e0bc9c07800eb52185cc0762795e"],
+  }
+  binary "VoiRemote-27076da60f88e0bc9c07800eb52185cc0762795e/packaging/homebrew/voiremote"
 
   postflight_steps do
-    remove ["VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/.build", "VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/.swiftpm"], recursive: true
-  end
-
-  # ServiceManagement needs Mach services unavailable in the file-preparation sandbox.
-  postflight do
-    system_command "#{appdir}/VoiRemote.app/Contents/MacOS/VoiRemote",
-                   args: ["--restore-login-item"], print_stdout: true, must_succeed: false
+    remove ["VoiRemote-27076da60f88e0bc9c07800eb52185cc0762795e/.build", "VoiRemote-27076da60f88e0bc9c07800eb52185cc0762795e/.swiftpm"], recursive: true
   end
 
   uninstall quit: "dev.voiremote.app",
-            script: { executable: "#{appdir}/VoiRemote.app/Contents/MacOS/VoiRemote", args: ["--unregister-login-item"] }
+            script: {
+              executable: "VoiRemote-27076da60f88e0bc9c07800eb52185cc0762795e/scripts/uninstall-cask-app.sh",
+              args: ["#{appdir}/VoiRemote.app", "27076da60f88e0bc9c07800eb52185cc0762795e"],
+            }
 
   zap trash: [
     "~/Library/Application Support/VoiRemote",
