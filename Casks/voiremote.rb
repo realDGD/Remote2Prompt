@@ -1,8 +1,8 @@
 cask "voiremote" do
-  version "0.2.15"
-  sha256 "7fbeb789304a767e47b3fe9ad8a36ccdb7a76e53801af002bbf5c1c7cef1281a"
+  version "0.3.0"
+  sha256 "56c15ffa5d8001508ccf62c4645d6ef41753ca268c58f49fe22c08c3ef27c1dc"
 
-  url "https://github.com/realDGD/VoiRemote/archive/b03ada8b16c22a19b0edb34060cd5a232708f952.tar.gz"
+  url "https://github.com/realDGD/VoiRemote/archive/ad9140ca389be71960edc9a9f76e315e12ad6916.tar.gz"
   name "VoiRemote"
   desc "Native macOS remote key mapping and voice app compiled with CLT"
   homepage "https://github.com/realDGD/VoiRemote"
@@ -10,19 +10,20 @@ cask "voiremote" do
   depends_on macos: :sonoma
 
   preflight_steps do
-    run "/bin/bash", args: ["scripts/build-cask.sh", "0.2.15", "b03ada8b16c22a19b0edb34060cd5a232708f952", "7fbeb789304a767e47b3fe9ad8a36ccdb7a76e53801af002bbf5c1c7cef1281a"],
-                      chdir: "VoiRemote-b03ada8b16c22a19b0edb34060cd5a232708f952", print_stdout: true,
+    run "/bin/bash", args: ["scripts/build-cask.sh", "0.3.0", "ad9140ca389be71960edc9a9f76e315e12ad6916", "56c15ffa5d8001508ccf62c4645d6ef41753ca268c58f49fe22c08c3ef27c1dc"],
+                      chdir: "VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916", print_stdout: true,
                       env: { "DEVELOPER_DIR" => "/Library/Developer/CommandLineTools" }
   end
 
-  app "VoiRemote-b03ada8b16c22a19b0edb34060cd5a232708f952/dist/VoiRemote.app"
-  binary "VoiRemote-b03ada8b16c22a19b0edb34060cd5a232708f952/packaging/homebrew/voiremote"
+  app "VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916/dist/VoiRemote.app"
+  binary "VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916/packaging/homebrew/voiremote"
 
   postflight_steps do
-    remove ["VoiRemote-b03ada8b16c22a19b0edb34060cd5a232708f952/.build", "VoiRemote-b03ada8b16c22a19b0edb34060cd5a232708f952/.swiftpm"], recursive: true
+    remove ["VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916/.build", "VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916/.swiftpm"], recursive: true
   end
 
-  uninstall quit: "dev.voiremote.app"
+  uninstall quit: "dev.voiremote.app",
+            script: { executable: "#{appdir}/VoiRemote.app/Contents/MacOS/VoiRemote", args: ["--unregister-login-item"] }
 
   zap trash: [
     "~/Library/Application Support/VoiRemote",
