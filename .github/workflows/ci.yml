@@ -91,7 +91,7 @@ jobs:
           fi
           set -o pipefail
           brew install --cask realdgd/voiremote/voiremote 2>&1 | tee "$RUNNER_TEMP/voiremote-install.log"
-          if /usr/bin/grep -E 'Calling `(preflight|postflight|uninstall_preflight|uninstall_postflight)` is deprecated' "$RUNNER_TEMP/voiremote-install.log"; then
+          if /usr/bin/grep -E 'Calling .*(preflight|postflight|uninstall_preflight|uninstall_postflight).* is deprecated' "$RUNNER_TEMP/voiremote-install.log"; then
             exit 1
           fi
           ./scripts/verify-homebrew-install.sh
