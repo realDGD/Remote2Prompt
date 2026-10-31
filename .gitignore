@@ -29,8 +29,8 @@ diagnostics/
 captures/
 recordings/
 configuration-exports/
-*.remote2prompt.json
-Remote2Prompt-config*.json
+*.voiremote.json
+VoiRemote-config*.json
 *.log
 *.trace
 *.crash

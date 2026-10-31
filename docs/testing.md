@@ -10,7 +10,7 @@
 
 核心用例覆盖默认关闭、旧配置缺省、格式错误/未来版本/重复绑定、映射替换与删除、#435 设备抢占和恢复、多遥控器最后断连、失效回退设备、无设备、左右 Control 键码、成对释放、重复事件、会话中设置变化和取消。
 
-核心检查不发送 CGEvent、不连接蓝牙、不更改默认音频输入。`Remote2PromptMacChecks` 使用模拟 HID 服务、临时恢复文件和注入的事件出口，验证部分写入回滚、读回失配、文件不可写/损坏、跨启动隔离、外部映射修改、新接口、左右 Control 标记、物理修饰键冲突及权限丢失后的释放；不向桌面实际发送输入。
+核心检查不发送 CGEvent、不连接蓝牙、不更改默认音频输入。`VoiRemoteMacChecks` 使用模拟 HID 服务、临时恢复文件和注入的事件出口，验证部分写入回滚、读回失配、文件不可写/损坏、跨启动隔离、外部映射修改、新接口、左右 Control 标记、物理修饰键冲突及权限丢失后的释放；不向桌面实际发送输入。
 
 向导检查覆盖两个不同普通键的成对检测、语音独立阶段、旧松开事件、重复报告、其他遥控器来源、断连和重跑后的证据失效，以及补齐导航映射时保留自定义动作。真机还须检查：进入向导暂停日常动作，取消保留配置并恢复之前状态，检测中断后不能继续，完成后才保存。不要用模拟事件替代向导的生产通过条件。
 
@@ -21,20 +21,20 @@
 ```sh
 make build
 ./scripts/verify-app.sh
-dist/Remote2Prompt.app/Contents/MacOS/Remote2Prompt --smoke-test
+dist/VoiRemote.app/Contents/MacOS/VoiRemote --smoke-test
 make homebrew
 # 安装必须按 development.md 从远端 HTTPS tap 开始；安装后执行 scripts/verify-homebrew-install.sh
 ```
 
 UI smoke 只确认真实窗口可见；界面布局、侧栏、滚动、暗色和键盘导航需要目视检查。`--smoke-test-guide` 额外检查拖入帮助面板可见，不打开系统授权、不访问 HID/蓝牙；`--preview-directory` 导出的自身视图缓存不能代替完整原生控件检查。设置保存还需关闭重开核验。当前单 Cask 在安装期运行核心/适配器检查；安装后 `scripts/verify-homebrew-install.sh` 对照 Cask 的固定远端来源核对签名资源标记、版本、签名、自检、CLI、唯一 app 和构建缓存清理。CI 实际从 HTTPS tap 安装，再验证卸载与 zap；不支持 Formula 专属的 brew test，也不据此证明蓝牙、语音或系统权限可用。
 
-普通检查新增覆盖 schema 3 独立语音开关及迁移、ATVV 能力包与合成 IMA/DVI 解码、仅语音模式的源租约恢复和修饰键释放。单独执行 `Remote2PromptMacChecks --loopback-output-smoke` 会向已识别回环设备写入 800 个静音样本并检查排空及默认设备快照；普通 `make test` 不运行它。此硬件检查不读取麦克风，不证明蓝牙音频和目标输入法工作。
+普通检查新增覆盖 schema 3 独立语音开关及迁移、ATVV 能力包与合成 IMA/DVI 解码、仅语音模式的源租约恢复和修饰键释放。单独执行 `VoiRemoteMacChecks --loopback-output-smoke` 会向已识别回环设备写入 800 个静音样本并检查排空及默认设备快照；普通 `make test` 不运行它。此硬件检查不读取麦克风，不证明蓝牙音频和目标输入法工作。
 
 ## 真机验收矩阵
 
-回环引擎持续播放回归：先退出实际应用，仅保留一个已安装的兼容回环，再用 CLT 运行 `Remote2PromptMacChecks --loopback-stream-smoke`。它复用同一个输出执行三次会话，共写入 384000 个静音样本，不捕获输入。显式增加 `--switch-input` 才会在播放期间临时切默认输入并恢复；该分支回归输入切换导致输出中断的故障；再加 `--jitter` 插入到包间隙，要求发生时序恢复且没有缓冲继续排到时钟之前，不由普通检查或 CI 自动调用。测试期间若外部选择了不同输入，不覆盖它；结束会校验默认输入/输出。结果和限制见[引擎恢复记录](validation/2026-10-28-voice-engine-recovery.md)。
+回环引擎持续播放回归：先退出实际应用，仅保留一个已安装的兼容回环，再用 CLT 运行 `VoiRemoteMacChecks --loopback-stream-smoke`。它复用同一个输出执行三次会话，共写入 384000 个静音样本，不捕获输入。显式增加 `--switch-input` 才会在播放期间临时切默认输入并恢复；该分支回归输入切换导致输出中断的故障；再加 `--jitter` 插入到包间隙，要求发生时序恢复且没有缓冲继续排到时钟之前，不由普通检查或 CI 自动调用。测试期间若外部选择了不同输入，不覆盖它；结束会校验默认输入/输出。结果和限制见[引擎恢复记录](validation/2026-10-28-voice-engine-recovery.md)。
 
-显式 `Remote2PromptMacChecks --voice-input-session-smoke` 使用真实 CoreAudio、生产输入运行时和 Audio Queue，模拟三次语音按下/结束及一次按住期间的实体输入抢占，确认切换后输出静音，排空后恢复原 UID 并检查 listener 清理。它不发送系统按键、不访问 HID/BLE 或读取声音；CLI 显式刷新代替 AppKit 定时器，因此不能证明真实遥控器或目标输入法。
+显式 `VoiRemoteMacChecks --voice-input-session-smoke` 使用真实 CoreAudio、生产输入运行时和 Audio Queue，模拟三次语音按下/结束及一次按住期间的实体输入抢占，确认切换后输出静音，排空后恢复原 UID 并检查 listener 清理。它不发送系统按键、不访问 HID/BLE 或读取声音；CLI 显式刷新代替 AppKit 定时器，因此不能证明真实遥控器或目标输入法。
 
 语音会话输入检查使用 UID 快照和模拟系统，覆盖空闲不写、按下锁定当前输入、按住抢占、松开恢复、其他虚拟/未知原输入、快速重按、延迟确认、松开后新选择、缺少快照/恢复设备、失败限频和正常退出。`--check-input-catalog` 是只读目录及 listener 清理，不切换设备，不能代替下表。
 
@@ -70,12 +70,12 @@ M0 结果保存在 [初始化记录](validation/2026-10-27-bootstrap.md)。M1 �
 
 新源码的时机检查将真实提醒运行时与跟随器组合阈值扩展为0/5/50/55秒：选定时机前零查询、到点开始、60秒仍停止；检查0立即、无效范围拒绝、schema1–5默认迁移50、便携导入能力关闭。更改阈值不重置已有段，5秒预览不受55秒设置隐藏，结束后恢复真实段。紧凑布局同时检查34pt提示能放入较浅下沿间隙、Dock边缘仍改放侧面；真实微信与遥控器另行验收。
 
-解锁后可运行`dist/Remote2Prompt.app/Contents/MacOS/Remote2Prompt --smoke-test-reminder --preview-directory .local/voice-limit-ui`，隔离配置且关闭硬件，单独检查提醒橙/红/5秒隐藏、本应用key/main与激活状态不变及鼠标穿透属性并保存自身视图。它不要求设置窗口自动出现；设置窗口通过Computer Use单独检查。实际点击穿透、前台输入焦点不变、设置关闭后继续显示、全屏/多屏/Stage Manager及真实RC003仍须原生验收；锁屏时跳过该入口。`--smoke-test-background`在delegate初始化、任何设置窗口创建之前，确认配置更新已到达提醒运行时；不启用硬件。结果见[提醒检查](validation/2026-10-29-voice-limit-indicator.md)。
+解锁后可运行`dist/VoiRemote.app/Contents/MacOS/VoiRemote --smoke-test-reminder --preview-directory .local/voice-limit-ui`，隔离配置且关闭硬件，单独检查提醒橙/红/5秒隐藏、本应用key/main与激活状态不变及鼠标穿透属性并保存自身视图。它不要求设置窗口自动出现；设置窗口通过Computer Use单独检查。实际点击穿透、前台输入焦点不变、设置关闭后继续显示、全屏/多屏/Stage Manager及真实RC003仍须原生验收；锁屏时跳过该入口。`--smoke-test-background`在delegate初始化、任何设置窗口创建之前，确认配置更新已到达提醒运行时；不启用硬件。结果见[提醒检查](validation/2026-10-29-voice-limit-indicator.md)。
 
 该提醒入口随后注入数字窗口几何，验证实际NSPanel移动、文字气泡向上扩展时下沿稳定、消失后固定回退、隐藏/预览/退出停止查询及本应用焦点不变。不读取真实微信窗口，不驱动遥控器或输入法；已有只读窗口实测与待验收矩阵见[胶囊跟随记录](validation/2026-10-29-wetype-capsule-follow.md)。
 
 
-资源检查的普通用例使用真实Task调度器，确认提醒对象在显式shutdown或直接释放后不被deadline留住。可选`DEVELOPER_DIR=/Library/Developer/CommandLineTools /usr/bin/xcrun swift run Remote2PromptMacChecks --voice-reminder-resource-probe`执行200轮预热+3批1000轮，并报告自身RSS与weak释放结果；不创建面板、打开设备或写系统输入，不设RSS通过阈值，也不替代整个应用的内存分析。
+资源检查的普通用例使用真实Task调度器，确认提醒对象在显式shutdown或直接释放后不被deadline留住。可选`DEVELOPER_DIR=/Library/Developer/CommandLineTools /usr/bin/xcrun swift run VoiRemoteMacChecks --voice-reminder-resource-probe`执行200轮预热+3批1000轮，并报告自身RSS与weak释放结果；不创建面板、打开设备或写系统输入，不设RSS通过阈值，也不替代整个应用的内存分析。
 
 跨组件重按检查把真实音频、输入事务和VoiceSession接在一起，注入延迟恢复；同时覆盖等待恢复时休眠，要求按键请求成对且旧完成不能复活新会话。与单个策略或单独输入运行时检查分开记录。
 

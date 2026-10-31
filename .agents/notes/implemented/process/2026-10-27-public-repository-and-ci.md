@@ -8,11 +8,11 @@ Status: implemented
 
 ## Decision
 
-仓库采用 GitHub public 维护，当前 owner 与项目名为 `realDGD/Remote2Prompt`。保留原有提交历史，公开前检查所有可达文件快照并运行凭据扫描；发现敏感值时必须先清理完整受影响历史，不能只删除最新版本。Git 作者使用已核对的 GitHub noreply 邮箱。本次未发现需要重写历史的敏感值。
+仓库采用 GitHub public 维护，当前 owner 与项目名为 `realDGD/VoiRemote`。保留原有提交历史，公开前检查所有可达文件快照并运行凭据扫描；发现敏感值时必须先清理完整受影响历史，不能只删除最新版本。Git 作者使用已核对的 GitHub noreply 邮箱。本次未发现需要重写历史的敏感值。
 
 `.gitignore` 排除构建、环境、签名材料、原始诊断、硬件捕获、录音及编辑器用户状态。`scripts/check-publication.rb` 检查受跟踪文件与路径，`--history` 同时检查全部可达文件快照；只输出位置与分类，不打印原值。标准 ATVV 协议 UUID、产品 VID/PID、驱动固定 UID 和系统标准路径可以公开，真实外设 UUID、硬件地址与用户目录不可以。新增二进制或非标准 UUID 先明确其来源和公开范围，不能直接加宽忽略规则。
 
-用户再次要求“建立public仓库”时，先核对现有公开仓库并沿用唯一的 `realDGD/Remote2Prompt`，不重复创建仓库或拆出tap。源码、固定来源的Cask和验证记录分阶段提交推送。用户明确要求不保留设置时，先正常退出并确认恢复记录已清空，再执行单Cask的卸载与zap，从公开HTTPS仓库重新tap和下载源码；本机checkout只能提供只读验收脚本，不能充当安装来源。
+用户再次要求“建立public仓库”时，先核对现有公开仓库并沿用唯一的 `realDGD/VoiRemote`，不重复创建仓库或拆出tap。源码、固定来源的Cask和验证记录分阶段提交推送。用户明确要求不保留设置时，先正常退出并确认恢复记录已清空，再执行单Cask的卸载与zap，从公开HTTPS仓库重新tap和下载源码；本机checkout只能提供只读验收脚本，不能充当安装来源。
 
 GitHub Actions 使用 push、pull_request 与手动触发。Linux 检查文档、全历史脱敏、Gitleaks 和工作流语法；macOS 矩阵分别使用 Apple Silicon 与 Intel 的独立 CLT，运行核心/模拟检查、Release 打包和固定远端源码的 Homebrew 安装、应用程序本体、自检、卸载与可选设置清理。Action 固定到提交，下载的检查工具固定版本与摘要；权限为 contents: read，不持久化 checkout 凭据，不在 PR 中使用发布凭据或真实硬件。
 

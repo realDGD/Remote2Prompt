@@ -1,0 +1,12 @@
+#!/bin/bash
+# Homebrew links this script; the staged app points at the actual appdir.
+set -euo pipefail
+script="${BASH_SOURCE[0]}"
+while [[ -L "$script" ]]; do
+    directory="$(cd -P "$(dirname "$script")" && pwd)"
+    link="$(/usr/bin/readlink "$script")"
+    case "$link" in /*) script="$link" ;; *) script="$directory/$link" ;; esac
+done
+app="$(cd "$(dirname "$script")/../../dist/VoiRemote.app" && pwd -P)"
+if [[ $# -eq 0 ]]; then exec /usr/bin/open "$app"; fi
+exec "$app/Contents/MacOS/VoiRemote" "$@"

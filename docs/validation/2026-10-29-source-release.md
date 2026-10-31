@@ -1,6 +1,6 @@
 # 0.2.8至0.2.10源码发布、首次向导及清洁安装
 
-日期：2026-10-29。用户明确授权提交、公开推送、同仓库tap、清洁源码安装及清除现有设置。本轮复用现有唯一public仓库 `realDGD/Remote2Prompt`，不新建第二个仓库、Formula或伴随Cask。
+日期：2026-10-29。用户明确授权提交、公开推送、同仓库tap、清洁源码安装及清除现有设置。本轮复用现有唯一public仓库 `realDGD/VoiRemote`，不新建第二个仓库、Formula或伴随Cask。
 
 ## 发布范围
 
@@ -22,11 +22,11 @@
 
 ## 0.2.8实际安装与发现
 
-旧版本经原生退出，HID恢复记录的originals为空后执行 `brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt`。实际移除应用、CLI、Caskroom、偏好和Application Support；安装前另行确认生产偏好域不存在。两份本地开发app移到可恢复废纸篓，未清空废纸篓或改动系统隐私记录。
+旧版本经原生退出，HID恢复记录的originals为空后执行 `brew uninstall --cask --zap realdgd/voiremote/voiremote`。实际移除应用、CLI、Caskroom、偏好和Application Support；安装前另行确认生产偏好域不存在。两份本地开发app移到可恢复废纸篓，未清空废纸篓或改动系统隐私记录。
 
-untap后执行README中的HTTPS tap及单Cask安装命令。新克隆tap HEAD为 `85abf5730d2fd8923df3771e6d427810878730d1`，origin为唯一公开仓库；Cask固定上一节源码。下载归档内98/98核心、99/99适配器检查与独立CLT编译通过，唯一app本体移入 `/Applications/Remote2Prompt.app`。
+untap后执行README中的HTTPS tap及单Cask安装命令。新克隆tap HEAD为 `85abf5730d2fd8923df3771e6d427810878730d1`，origin为唯一公开仓库；Cask固定上一节源码。下载归档内98/98核心、99/99适配器检查与独立CLT编译通过，唯一app本体移入 `/Applications/VoiRemote.app`。
 
-安装后来源/版本/摘要标记、严格签名、自检、CLI、无旧包、无第二份Caskroom app及构建缓存清理均通过。`brew test realdgd/remote2prompt/remote2prompt`实际退出1，提示没有该Formula；不是Cask测试成功，也不是源码编译失败。安装期检查与 `verify-homebrew-install.sh` 才是本次Cask验收。
+安装后来源/版本/摘要标记、严格签名、自检、CLI、无旧包、无第二份Caskroom app及构建缓存清理均通过。`brew test realdgd/voiremote/voiremote`实际退出1，提示没有该Formula；不是Cask测试成功，也不是源码编译失败。安装期检查与 `verify-homebrew-install.sh` 才是本次Cask验收。
 
 原生安装版确认0.2.8、三项能力关闭、映射全空和高级配置收起。但首次仅显示按键设置，缺少自动向导。用户指出后，核对出根因为只有手动入口；因此追加0.2.9修复，不把0.2.8首次体验判为通过。
 
@@ -44,11 +44,11 @@ untap后执行README中的HTTPS tap及单Cask安装命令。新克隆tap HEAD为
 
 `verify-homebrew-install.sh`、安装版 `verify-app.sh`、版本及CLI自检通过：0.2.9、完整来源标记、严格签名、最低macOS14/实际SDK27、单一Cask、Applications唯一真实app、Caskroom受管理链接、无旧Formula/Cask及构建缓存。开发app和独立预览再次移到可恢复废纸篓；工作区内不保留app副本。实际 `brew test` 再次退出1，原因仍是没有该Formula，未伪报成功。
 
-首次打开前，生产偏好域仍不存在。原生Computer Use打开 `/Applications/Remote2Prompt.app` 后，未点击任何向导入口即自动显示“准备遥控器”，包括跳过配置与继续配置。随后只读确认 `initialSetup.presented.v1` 为真且 `configuration.v1` 尚不存在：展示标记和配置分离，旧设置没有恢复。应用留在准备页供用户继续，未跳过安装版向导、请求权限或保存草稿。当前权限显示未允许，不把界面验收说成真实遥控器可用。
+首次打开前，生产偏好域仍不存在。原生Computer Use打开 `/Applications/VoiRemote.app` 后，未点击任何向导入口即自动显示“准备遥控器”，包括跳过配置与继续配置。随后只读确认 `initialSetup.presented.v1` 为真且 `configuration.v1` 尚不存在：展示标记和配置分离，旧设置没有恢复。应用留在准备页供用户继续，未跳过安装版向导、请求权限或保存草稿。当前权限显示未允许，不把界面验收说成真实遥控器可用。
 
 ## CI与验证边界
 
-现有main工作流继续检查Linux公开边界、全历史凭据和工作流语法，以及macOS15 arm64/Intel独立CLT、远端同仓库Cask安装、安装后核验和实际卸载zap。实际结果见本轮最终main提交对应的[Actions](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml)，旧版或已取消的run不作为最终版本通过证据。
+现有main工作流继续检查Linux公开边界、全历史凭据和工作流语法，以及macOS15 arm64/Intel独立CLT、远端同仓库Cask安装、安装后核验和实际卸载zap。实际结果见本轮最终main提交对应的[Actions](https://github.com/realDGD/VoiRemote/actions/workflows/ci.yml)，旧版或已取消的run不作为最终版本通过证据。
 
 本轮不请求用户辅助按键，不自动恢复旧能力或修改TCC。RC003新手势、50/55秒提醒、目标输入法焦点/鼠标实际穿透、全屏/多屏及最低macOS14真实UI仍保持单列的未验收边界；CI和首次向导成功不能代替这些项目。
 

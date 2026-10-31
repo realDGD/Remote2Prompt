@@ -7,7 +7,7 @@ require "tmpdir"
 require "uri"
 
 root = File.expand_path("..", __dir__)
-options = { tap: "remote2prompt/local" }
+options = { tap: "voiremote/local" }
 OptionParser.new do |parser|
   parser.banner = "Usage: prepare-homebrew.rb [--remote FULL_COMMIT --tap OWNER/NAME]"
   parser.on("--remote COMMIT", "Pin a public GitHub source archive to this full commit") { |value| options[:ref] = value }
@@ -33,10 +33,10 @@ entries << "LICENSE" if File.file?(File.join(root, "LICENSE"))
 %w[Formula Casks].each { |entry| entries << entry if File.directory?(File.join(root, entry)) }
 archive = nil
 checksum = nil
-Dir.mktmpdir("remote2prompt-archive-") do |temporary|
+Dir.mktmpdir("voiremote-archive-") do |temporary|
   pending = File.join(temporary, "source.tar.gz")
   if options[:ref]
-    url = "https://github.com/realDGD/Remote2Prompt/archive/#{options[:ref]}.tar.gz"
+    url = "https://github.com/realDGD/VoiRemote/archive/#{options[:ref]}.tar.gz"
     success = system("/usr/bin/curl", "--fail", "--location", "--retry", "3", "--silent", "--show-error", url, "--output", pending)
   else
     success = system(
@@ -47,42 +47,42 @@ Dir.mktmpdir("remote2prompt-archive-") do |temporary|
   end
   abort "Source archive failed" unless success
   checksum = Digest::SHA256.file(pending).hexdigest
-  archive = File.join(output, "remote2prompt-#{version}-#{checksum[0, 12]}.tar.gz")
+  archive = File.join(output, "voiremote-#{version}-#{checksum[0, 12]}.tar.gz")
   FileUtils.mv(pending, archive)
 end
 
 tap = File.join(output, "tap")
 FileUtils.mkdir_p(File.join(tap, "Casks"))
 FileUtils.rm_rf(File.join(tap, "Formula"))
-FileUtils.rm_f(File.join(tap, "Casks", "remote2prompt-app.rb"))
-url = options[:ref] ? "https://github.com/realDGD/Remote2Prompt/archive/#{options[:ref]}.tar.gz" : "file://#{URI::DEFAULT_PARSER.escape(archive)}"
+FileUtils.rm_f(File.join(tap, "Casks", "voiremote-app.rb"))
+url = options[:ref] ? "https://github.com/realDGD/VoiRemote/archive/#{options[:ref]}.tar.gz" : "file://#{URI::DEFAULT_PARSER.escape(archive)}"
 head, result = Open3.capture2("git", "-C", root, "rev-parse", "HEAD")
 abort "Cannot identify source commit" unless result.success? && head.strip.match?(/\A[0-9a-f]{40}\z/)
 source_commit = options[:ref] || head.strip
-source_root = options[:ref] ? "Remote2Prompt-#{options[:ref]}" : "."
-template = File.read(File.join(root, "packaging", "homebrew", "remote2prompt.rb.in"))
+source_root = options[:ref] ? "VoiRemote-#{options[:ref]}" : "."
+template = File.read(File.join(root, "packaging", "homebrew", "voiremote.rb.in"))
 rendered = template.gsub("@SOURCE_URL@", url.dump).gsub("@VERSION@", version.dump)
                    .gsub("@SHA256@", checksum.dump).gsub("@TAP@", options[:tap])
                    .gsub("@SOURCE_COMMIT@", source_commit.dump).gsub("@SOURCE_ROOT@", source_root)
-target = File.join(tap, "Casks", "remote2prompt.rb")
+target = File.join(tap, "Casks", "voiremote.rb")
 File.write(target, rendered)
 abort "Ruby syntax check failed" unless system("/usr/bin/ruby", "-c", target)
 File.write(File.join(tap, ".gitignore"), ".DS_Store\n.build/\n*.log\n")
 readme = <<~MD
-  # Remote2Prompt source tap
+  # VoiRemote source tap
 
-  [Source](https://github.com/realDGD/Remote2Prompt), macOS 14+, Swift 6 Command Line Tools. No Xcode or local signing certificate is required.
+  [Source](https://github.com/realDGD/VoiRemote), macOS 14+, Swift 6 Command Line Tools. No Xcode or local signing certificate is required.
 
   ```sh
-  brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
-  brew install --cask realdgd/remote2prompt/remote2prompt
-  remote2prompt --self-check
+  brew tap realdgd/voiremote https://github.com/realDGD/VoiRemote.git
+  brew install --cask realdgd/voiremote/voiremote
+  voiremote --self-check
   ```
 
   The single cask compiles a fixed source archive, moves the app into Applications and removes its build cache. No companion formula or driver is installed. This generated directory is a packaging preview; installation tests must use the published HTTPS tap, never this checkout or its file URL.
 
   ```sh
-  brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt
+  brew uninstall --cask --zap realdgd/voiremote/voiremote
   ```
 
   `--zap` removes only this app's settings and caches; omit it to retain settings. macOS privacy grants and audio drivers are untouched. Source code is public; a project license has not yet been selected.
@@ -97,9 +97,9 @@ abort "Tap staging failed" unless system("/usr/bin/git", "-C", tap, "add", "--al
 unless system("/usr/bin/git", "-C", tap, "diff", "--cached", "--quiet")
   abort "Tap commit failed" unless system(
     "/usr/bin/git", "-C", tap,
-    "-c", "user.name=Remote2Prompt local packaging", "-c", "user.email=local@remote2prompt.invalid",
+    "-c", "user.name=VoiRemote local packaging", "-c", "user.email=local@voiremote.invalid",
     "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
-    "commit", "--quiet", "-m", "Package Remote2Prompt #{version}#{options[:ref] ? " from " + options[:ref][0, 12] : " locally"}"
+    "commit", "--quiet", "-m", "Package VoiRemote #{version}#{options[:ref] ? " from " + options[:ref][0, 12] : " locally"}"
   )
 end
 puts "Source: #{archive}"

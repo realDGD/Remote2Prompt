@@ -1,7 +1,7 @@
 .PHONY: help build test check docs-check privacy-check run homebrew clean
 
 help:
-	@echo "build       Build dist/Remote2Prompt.app using Command Line Tools"
+	@echo "build       Build dist/VoiRemote.app using Command Line Tools"
 	@echo "test        Run dependency-free core checks (no XCTest/Xcode required)"
 	@echo "check       Run checks, build and verify the app, check documentation"
 	@echo "docs-check  Verify Agent Note lifecycle, Markdown links and repository hygiene"
@@ -29,7 +29,7 @@ privacy-check:
 	/usr/bin/ruby scripts/check-publication.rb
 
 run: build
-	open dist/Remote2Prompt.app
+	open dist/VoiRemote.app
 
 homebrew:
 	/usr/bin/ruby scripts/prepare-homebrew.rb

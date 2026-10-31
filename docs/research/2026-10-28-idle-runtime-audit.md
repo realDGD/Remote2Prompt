@@ -18,7 +18,7 @@
 
 ## 已复现：菜单刷新不能恢复首次初始化失败
 
-[菜单](../../Sources/Remote2Prompt/MenuAudioInputs.swift) 的“刷新输入设备”调用 [运行时](../../Sources/Remote2PromptMac/AudioInputPriorityRuntime.swift) 的 `refreshInputs()`，后者只调用 `coordinator.refresh()`。[协调器](../../Sources/Remote2PromptMac/InputPriorityCoordinator.swift) 首次 `start()` 失败后没有置 `running`，而 `refresh()` 首先要求 `running`，因此手动刷新和周期刷新都不会重新注册监听。
+[菜单](../../Sources/VoiRemote/MenuAudioInputs.swift) 的“刷新输入设备”调用 [运行时](../../Sources/VoiRemoteMac/AudioInputPriorityRuntime.swift) 的 `refreshInputs()`，后者只调用 `coordinator.refresh()`。[协调器](../../Sources/VoiRemoteMac/InputPriorityCoordinator.swift) 首次 `start()` 失败后没有置 `running`，而 `refresh()` 首先要求 `running`，因此手动刷新和周期刷新都不会重新注册监听。
 
 隔离复制运行时，只在 `refreshInputs()` 内先调用现有幂等 `coordinator.start()`，再调用 `refresh()`，用同一探针重新编译：菜单刷新重新启动 1 次、目录 2 项、phase 为 disabled；原有空闲、1000 次循环和关闭检查结果保持一致。**这份候选修改仅在被忽略的实验目录验证，尚未接入生产源码。** 方案与需要补的故障回归见 [提案](../../.agents/notes/proposed/bug-fix/2026-10-28-input-catalog-start-recovery.md)。
 
@@ -30,11 +30,11 @@
 
 | 项目 | 源码证据 | 后续验证与约束 |
 | --- | --- | --- |
-| 映射关闭时仍有检查 | [RemoteMappingRuntime](../../Sources/Remote2PromptMac/RemoteMappingRuntime.swift) 创建 1 秒 timer；refresh 检查代码身份并请求权限快照，回调查询 HID 数量，之后才判断映射/语音/向导是否开启。 | 标称每小时 3600 次 timer 回调是按间隔推算，不是实测系统调用次数；权限探针会合并并发请求。可评估事件驱动与低频兜底，不能取消启用期间的权限撤销与原生映射保护。 |
-| 两个音频目录轮询 | 输入优先运行时与 [RemoteAudioRuntime](../../Sources/Remote2PromptMac/RemoteAudioRuntime.swift) 各有 2 秒 timer；前者已有 CoreAudio 变更监听。 | 本轮只测到前者的模拟快照次数。需分别量化查询耗时，再评估共享目录/变更通知；动作前仍须新鲜读回，菜单也不能长期显示陈旧设备。 |
-| 关闭语音后仍可能保持回环引擎 | 音频运行时的 routeChanged、refreshDevices 可调用 prepareOutput，不以 wanted 为前提；[LoopbackWriter](../../Sources/Remote2PromptMac/LoopbackWriter.swift) 配置时启动 engine/player。关闭路径停止 BLE，没有同步关闭 writer。 | 这是测试音可用的现有设计，不能直接判为错误。可评估显式测试音临时打开、结束排空关闭，以及语音就绪状态分层；未测引擎实际 RSS/功耗，不宣称节省值。 |
+| 映射关闭时仍有检查 | [RemoteMappingRuntime](../../Sources/VoiRemoteMac/RemoteMappingRuntime.swift) 创建 1 秒 timer；refresh 检查代码身份并请求权限快照，回调查询 HID 数量，之后才判断映射/语音/向导是否开启。 | 标称每小时 3600 次 timer 回调是按间隔推算，不是实测系统调用次数；权限探针会合并并发请求。可评估事件驱动与低频兜底，不能取消启用期间的权限撤销与原生映射保护。 |
+| 两个音频目录轮询 | 输入优先运行时与 [RemoteAudioRuntime](../../Sources/VoiRemoteMac/RemoteAudioRuntime.swift) 各有 2 秒 timer；前者已有 CoreAudio 变更监听。 | 本轮只测到前者的模拟快照次数。需分别量化查询耗时，再评估共享目录/变更通知；动作前仍须新鲜读回，菜单也不能长期显示陈旧设备。 |
+| 关闭语音后仍可能保持回环引擎 | 音频运行时的 routeChanged、refreshDevices 可调用 prepareOutput，不以 wanted 为前提；[LoopbackWriter](../../Sources/VoiRemoteMac/LoopbackWriter.swift) 配置时启动 engine/player。关闭路径停止 BLE，没有同步关闭 writer。 | 这是测试音可用的现有设计，不能直接判为错误。可评估显式测试音临时打开、结束排空关闭，以及语音就绪状态分层；未测引擎实际 RSS/功耗，不宣称节省值。 |
 | PCM 入队之前没有明确总量限制 | LoopbackWriter.append 先把持有 samples 的闭包送入串行 queue，32000 样本上限在闭包执行后才检查；pending 只计已调度音频。 | 队列被阻塞时，等待闭包未包含在该上限内；这是源码可见的上界缺口，尚未复现真实内存增长。下一步应注入停滞消费者，验证入口计数、取消代次和溢出语义；不能静默丢音或以平均 RSS 掩盖上界。 |
-| BLE 发现无截止时间 | [RemoteVoiceBluetooth](../../Sources/Remote2PromptMac/RemoteVoiceBluetooth.swift) 的 discover 扫描没有期限，8 秒 timeout 从 connect 才开始。 | 与第一轮调研一致，不作为重复的新发现；接续睡眠/锁屏生命周期提案，使用虚拟时钟验证扫描和退避。 |
+| BLE 发现无截止时间 | [RemoteVoiceBluetooth](../../Sources/VoiRemoteMac/RemoteVoiceBluetooth.swift) 的 discover 扫描没有期限，8 秒 timeout 从 connect 才开始。 | 与第一轮调研一致，不作为重复的新发现；接续睡眠/锁屏生命周期提案，使用虚拟时钟验证扫描和退避。 |
 
 ## 本轮没有覆盖
 

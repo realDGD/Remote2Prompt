@@ -38,9 +38,9 @@ Homebrew的`signer changed`提示属于启动隔离批准继承逻辑，本身�
 
 ## 实际远端升级与首次迁移
 
-同仓库公开Cask提交`f7e61468ab044d9bfcf75fc9b54e89fe4e1f3342`发布后，本机HTTPS tap从origin拉取并快进到该提交。执行正常`brew upgrade --cask realdgd/remote2prompt/remote2prompt`，实际下载上述固定远端源码，在Homebrew构建沙箱中运行105/105核心、109/109适配器及独立CLT Release构建，完成0.2.13到0.2.14升级并清理旧版。没有卸载zap、使用本地checkout或安装本地归档。
+同仓库公开Cask提交`f7e61468ab044d9bfcf75fc9b54e89fe4e1f3342`发布后，本机HTTPS tap从origin拉取并快进到该提交。执行正常`brew upgrade --cask realdgd/voiremote/voiremote`，实际下载上述固定远端源码，在Homebrew构建沙箱中运行105/105核心、109/109适配器及独立CLT Release构建，完成0.2.13到0.2.14升级并清理旧版。没有卸载zap、使用本地checkout或安装本地归档。
 
-安装后`verify-homebrew-install.sh`和`verify-app.sh /Applications/Remote2Prompt.app`通过：完整源码commit/归档摘要、版本、严格签名、实际显式身份、来源标记策略、自检、CLI、单app和构建缓存均符合预期。真实应用在Applications，Caskroom仅有受管理链接；本轮本地试验app移入可恢复废纸篓，未清空废纸篓。
+安装后`verify-homebrew-install.sh`和`verify-app.sh /Applications/VoiRemote.app`通过：完整源码commit/归档摘要、版本、严格签名、实际显式身份、来源标记策略、自检、CLI、单app和构建缓存均符合预期。真实应用在Applications，Caskroom仅有受管理链接；本轮本地试验app移入可恢复废纸篓，未清空废纸篓。
 
 首次启动前及用户重开后，`configuration.v1`原始数据与向导标记均与升级前一致。既有映射、语音、虚拟麦克风和提醒时间保留；没有重新弹首次向导，也没有为本轮签名试验重新运行胶囊语音验收。
 
@@ -48,13 +48,13 @@ Homebrew的`signer changed`提示属于启动隔离批准继承逻辑，本身�
 
 再用不同代码哈希的离线副本验证这两条系统实际保存的要求，均通过；安装版签名不变，副本未启动或安装，检查后移除。这比只比较自定义规则多了实际TCC持久化证据，但仍不是第二次真实Homebrew升级验收。
 
-[本次main的CI](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml)继续覆盖Linux文档/脱敏/凭据/工作流检查，以及macOS15 arm64与Intel的CLT构建、离线身份检查、远端Cask安装及卸载zap。最终结论以本记录最后提交对应的run为准，不用旧版或取消的运行替代；CI不提供真实TCC授权、Gatekeeper或遥控器验收。
+[本次main的CI](https://github.com/realDGD/VoiRemote/actions/workflows/ci.yml)继续覆盖Linux文档/脱敏/凭据/工作流检查，以及macOS15 arm64与Intel的CLT构建、离线身份检查、远端Cask安装及卸载zap。最终结论以本记录最后提交对应的run为准，不用旧版或取消的运行替代；CI不提供真实TCC授权、Gatekeeper或遥控器验收。
 
 ## 0.2.15仅版本变更的真实升级验收
 
 用户明确要求再发布一个仅更新版本号的测试版，从远端Homebrew源码升级并保留设置，实测输入监控和设备控制权限。源码提交`b03ada8b16c22a19b0edb34060cd5a232708f952`相对上一main提交仅修改`VERSION`，从0.2.14改为0.2.15；与0.2.14固定源码相比，Package、Sources、Tests、Resources、scripts、packaging及Makefile均无差异，没有改应用逻辑或签名规则。
 
-公开归档SHA-256实际下载核验为`7fbeb789304a767e47b3fe9ad8a36ccdb7a76e53801af002bbf5c1c7cef1281a`，同仓库Cask提交`ac79c0de8d546d06c94fa73d98662b94f031363d`固定该来源。HTTPS tap从origin拉取后，通过普通`brew upgrade --cask realdgd/remote2prompt/remote2prompt`在Homebrew沙箱内用独立CLT重新编译；105/105核心、109/109适配器和Release构建通过。安装后来源、严格签名、固定身份、CLI、自检及唯一应用核验均通过，未使用本地checkout或file URL安装。
+公开归档SHA-256实际下载核验为`7fbeb789304a767e47b3fe9ad8a36ccdb7a76e53801af002bbf5c1c7cef1281a`，同仓库Cask提交`ac79c0de8d546d06c94fa73d98662b94f031363d`固定该来源。HTTPS tap从origin拉取后，通过普通`brew upgrade --cask realdgd/voiremote/voiremote`在Homebrew沙箱内用独立CLT重新编译；105/105核心、109/109适配器和Release构建通过。安装后来源、严格签名、固定身份、CLI、自检及唯一应用核验均通过，未使用本地checkout或file URL安装。
 
 升级前在0.2.14原生界面确认两项有效权限，正常退出并确认原生按键恢复记录为空；保存本应用的只读TCC及私有偏好快照。安装后首次启动前和新进程启动后各复核一次：
 

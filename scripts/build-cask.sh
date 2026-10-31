@@ -8,14 +8,14 @@ fi
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 [[ "$(cat "$repo_dir/VERSION")" == "$1" ]] || { echo "Cask/source version mismatch" >&2; exit 1; }
 export DEVELOPER_DIR=/Library/Developer/CommandLineTools
-export REMOTE2PROMPT_HOMEBREW_BUILD=1
+export VOIREMOTE_HOMEBREW_BUILD=1
 export CODE_SIGN_IDENTITY=-
-export REMOTE2PROMPT_STABLE_ADHOC_IDENTITY=1
+export VOIREMOTE_STABLE_ADHOC_IDENTITY=1
 export CONFIGURATION=release
 unset SDKROOT
 "$repo_dir/scripts/test.sh"
 "$repo_dir/scripts/build-app.sh"
-app="$repo_dir/dist/Remote2Prompt.app"
+app="$repo_dir/dist/VoiRemote.app"
 stamp="$app/Contents/Resources/HomebrewSource.plist"
 /usr/bin/plutil -create xml1 "$stamp"
 /usr/libexec/PlistBuddy -c "Add :version string $1" "$stamp"

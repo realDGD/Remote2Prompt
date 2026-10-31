@@ -23,7 +23,7 @@
 
 后续按用户反馈，将两组设备改为根菜单中的原生 Section，两个 Picker 明确使用 inline 样式，去掉外层 Menu；保留当前选项勾选、无设备/失效设备状态，以及语音会话、恢复和向导期间的原有禁用条件。只调整呈现，不改变设备选择和输入事务。
 
-本次独立 CLT `make build`、`scripts/verify-app.sh`、文档及脱敏检查通过。原生 Computer Use 返回 Mac 仍锁屏，因此菜单实际展开、勾选与键盘导航尚未目视验收，没有请求重复解锁。构建位于 `dist/Remote2Prompt.app`，本次未更新 Homebrew 配方或安装版。
+本次独立 CLT `make build`、`scripts/verify-app.sh`、文档及脱敏检查通过。原生 Computer Use 返回 Mac 仍锁屏，因此菜单实际展开、勾选与键盘导航尚未目视验收，没有请求重复解锁。构建位于 `dist/VoiRemote.app`，本次未更新 Homebrew 配方或安装版。
 
 ## 内存优化与回归
 
@@ -35,7 +35,7 @@
 
 ```sh
 DEVELOPER_DIR=/Library/Developer/CommandLineTools xcrun swiftc -O \
-  Sources/Remote2PromptCore/RemoteVoiceProtocol.swift scripts/measure-decoder-memory.swift \
+  Sources/VoiRemoteCore/RemoteVoiceProtocol.swift scripts/measure-decoder-memory.swift \
   -o .build/measure-decoder-memory
 .build/measure-decoder-memory
 ```

@@ -1,6 +1,6 @@
-# Remote2Prompt
+# VoiRemote
 
-[![CI](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml/badge.svg)](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml)
+[![CI](https://github.com/realDGD/VoiRemote/actions/workflows/ci.yml/badge.svg)](https://github.com/realDGD/VoiRemote/actions/workflows/ci.yml)
 
 面向 macOS 的原生遥控器语音与按键工具，以 Swift 编写，采用左栏设置，通过 Command Line Tools 构建，支持 Homebrew 从源码安装。
 
@@ -26,7 +26,9 @@
 
 系统不再弹输入监控提示时，“打开输入监控设置…”会打开真实设置，并显示可拖动的当前应用图标与箭头。需要用户拖入列表并开启；操作引导不会代替系统授权。未弹系统框的完整根因仍待确认。
 
-设置保留按键映射、连接与音频、权限与隐私、关于四页，不含组合动作、统计和回眸。向导分为准备、配置、检查、确认四步，支持“跳过配置”和“跳过检查”：前者不保存草稿，后者明确标记未检查并允许保存。向导期间暂停日常动作，保存时可补齐空的常用动作，不覆盖已有动作；按键检查不证明音频或目标输入法成功。
+设置包含通用、按键映射、连接与音频、权限与隐私、关于五页。“通用”提供登录时自动启动和关闭设置后仍在Dock显示，默认均关闭；登录启动仅显示菜单栏，不弹设置或向导。打开设置时显示Dock图标，关闭后默认隐藏，菜单栏及设备服务继续运行。
+
+不含组合动作、统计和回眸。向导分为准备、配置、检查、确认四步，支持“跳过配置”和“跳过检查”：前者不保存草稿，后者明确标记未检查并允许保存。向导期间暂停日常动作，保存时可补齐空的常用动作，不覆盖已有动作；按键检查不证明音频或目标输入法成功。
 
 左栏底部的“导入与导出…”使用原生文件面板保存便携 JSON。导入会先显示替换摘要，确认后才替换映射和语音触发键；功能开关保持关闭，虚拟麦克风需重新选择。文件不包含系统权限、设备身份或恢复记录，最大 256 KB。
 
@@ -43,7 +45,7 @@
 ```sh
 xcode-select --install       # 已有 CLT 时跳过
 make test
-make build                  # dist/Remote2Prompt.app
+make build                  # dist/VoiRemote.app
 make run
 make check
 ```
@@ -52,48 +54,47 @@ make check
 
 重建前退出目标 app；脚本拒绝覆盖正在运行的应用。本地默认临时签名随二进制变化，更新后可能需要重新授权；应用检测到运行代码与磁盘不同会停止接管并提示重开。
 
-自0.2.14起，源码与同仓库Cask采用无证书固定身份：Homebrew构建仅按应用标识匹配，初次迁移仍需重新关联授权；不验证签名者、不提供Developer ID或公证。本机macOS27.2已从0.2.14远端源码升级到仅更新版本号的0.2.15，设置及两项系统授权均保留，无需重新授权；其他系统版本仍需分别验收。取舍与实测见[固定身份试验](docs/validation/2026-10-29-certificate-free-identity.md)。
+Homebrew继续采用无证书固定身份，不验证签名者、不提供Developer ID或公证。0.3.0完整更名使用`dev.voiremote.app`，首次需要重新授权；旧配置和向导状态会只读迁移，旧导出文件仍可导入。更名前0.2.14到0.2.15的授权保留验收使用旧标识，不算作新身份已获授权。取舍见[更名与启动决定](.agents/notes/implemented/architecture/2026-10-31-voiremote-login-dock-identity.md)，历史实测见[固定身份记录](docs/validation/2026-10-29-certificate-free-identity.md)。
 
 ## Homebrew 源码安装
 
-只需一个源码型 Cask，源码与 tap 都在 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)：
+只需一个源码型 Cask，源码与 tap 都在 [realDGD/VoiRemote](https://github.com/realDGD/VoiRemote)：
 
 ```sh
-brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
-brew install --cask realdgd/remote2prompt/remote2prompt
-remote2prompt --self-check
-open /Applications/Remote2Prompt.app
+brew tap realdgd/voiremote https://github.com/realDGD/VoiRemote.git
+brew install --cask realdgd/voiremote/voiremote
+voiremote --self-check
+open /Applications/VoiRemote.app
 ```
 
-安装会下载固定 commit、SHA-256 的源码归档，用 Swift 6 独立 CLT 运行核心/适配器检查并编译，不下载预编译 app，也不安装配套 Formula 或音频驱动。Cask 将 app 本体移入应用程序，清理构建缓存；Caskroom 只保留指向该 app 的受管理链接，没有第二份 app。`remote2prompt` 命令打开实际安装路径，也支持 `--version` 和 `--self-check`。
+安装会下载固定 commit、SHA-256 的源码归档，用 Swift 6 独立 CLT 运行核心/适配器检查并编译，不下载预编译 app，也不安装配套 Formula 或音频驱动。Cask 将 app 本体移入应用程序，清理构建缓存；Caskroom 只保留指向该 app 的受管理链接，没有第二份 app。`voiremote` 命令打开实际安装路径，也支持 `--version` 和 `--self-check`。
 
-Homebrew 若提示来源未信任，执行 `brew trust --cask realdgd/remote2prompt/remote2prompt` 后重试。这里的 Cask 始终从源码编译，不使用只对 Formula 生效的 `--build-from-source` 或 `brew test`；安装时自动运行检查，安装后的完整来源/签名/单份 app 验收见[构建与安装](docs/development.md)。
+Homebrew 若提示来源未信任，执行 `brew trust --cask realdgd/voiremote/voiremote` 后重试。这里的 Cask 始终从源码编译，不使用只对 Formula 生效的 `--build-from-source` 或 `brew test`；安装时自动运行检查，安装后的完整来源/签名/单份 app 验收见[构建与安装](docs/development.md)。
 
 更新与完整卸载（`--zap` 清本应用设置；去掉则保留设置）：
 
 ```sh
 brew update
-brew upgrade --cask realdgd/remote2prompt/remote2prompt
-brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt
+brew upgrade --cask realdgd/voiremote/voiremote
+brew uninstall --cask --zap realdgd/voiremote/voiremote
 ```
 
-从旧双项版本迁移时，先退出应用并确认原生按键已恢复，再执行：
+从更名前版本迁移时，先退出旧应用并确认原生按键已恢复，卸载不要加`--zap`，以保留待迁移设置：
 
 ```sh
-brew uninstall --cask realdgd/remote2prompt/remote2prompt-app
-brew uninstall --formula realdgd/remote2prompt/remote2prompt
+brew uninstall --cask realdgd/remote2prompt/remote2prompt
 brew untap realdgd/remote2prompt
-brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
-brew install --cask realdgd/remote2prompt/remote2prompt
+brew tap realdgd/voiremote https://github.com/realDGD/VoiRemote.git
+brew install --cask realdgd/voiremote/voiremote
 ```
 
-旧 Cask 卸载可加 `--zap` 清设置；不清理系统隐私记录、蓝牙配对或驱动。所有安装验收均从公开 HTTPS tap 和远端源码开始，不使用本地 checkout 或 file URL。
+这些旧名称仅用于迁移，不维护第二个应用或仓库。不清理系统隐私记录、蓝牙配对或驱动。安装验收均从公开HTTPS tap和远端源码开始，不使用本地checkout或file URL。
 
 ## 当前进度
 
 | 功能 | 状态 |
 | --- | --- |
-| 原生四页设置、菜单栏、设置向导 | 已接入；向导真实完成需硬件验收 |
+| 原生五页设置、菜单栏、设置向导 | 已接入；向导真实完成需硬件验收 |
 | 三列映射、录入预览/清空/确认、RC003 示意 | 已实现，原生交互检查边界见本轮记录 |
 | 单击/双击/长按、重复、任意快捷键 | 已接入 HID 和执行器，真机回归待完成 |
 | 独立语音触发、Fn 与左右 Control/Command/Option | 已接入成对事件及音频排空后释放，目标输入法待验收 |
@@ -105,7 +106,7 @@ brew install --cask realdgd/remote2prompt/remote2prompt
 
 仓库保留分阶段提交。`make privacy-check` 检查当前受跟踪源码，`ruby scripts/check-publication.rb --history` 同时检查全部可达文件历史；构建、原始诊断、录音和签名材料由 `.gitignore` 排除。不要把真实设备标识或未经脱敏的日志贴入仓库与 issue。
 
-[CI](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml) 运行文档、全历史脱敏、凭据扫描、工作流语法、两种架构 CLT 构建和 Homebrew 源码安装；不访问真实遥控器或验证系统权限。详见 [公开维护记录](docs/validation/2026-10-27-publication.md)。当前尚未选择开源许可证，也未发布二进制或驱动。
+[CI](https://github.com/realDGD/VoiRemote/actions/workflows/ci.yml) 运行文档、全历史脱敏、凭据扫描、工作流语法、两种架构 CLT 构建和 Homebrew 源码安装；不访问真实遥控器或验证系统权限。详见 [公开维护记录](docs/validation/2026-10-27-publication.md)。当前尚未选择开源许可证，也未发布二进制或驱动。
 
 ## 开发入口
 

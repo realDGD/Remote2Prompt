@@ -11,10 +11,10 @@ if ! /usr/bin/xcrun --find swift >/dev/null 2>&1; then
 fi
 export SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path)"
 
-r2p_swiftpm() {
+voi_swiftpm() {
     local operation="$1"
     shift
-    if [[ "${REMOTE2PROMPT_HOMEBREW_BUILD:-0}" == "1" ]]; then
+    if [[ "${VOIREMOTE_HOMEBREW_BUILD:-0}" == "1" ]]; then
         # Homebrew already confines the build; macOS rejects a nested sandbox-exec.
         /usr/bin/xcrun swift "$operation" --disable-sandbox \
             --cache-path "$repo_dir/.build/cache" --config-path "$repo_dir/.build/config" \

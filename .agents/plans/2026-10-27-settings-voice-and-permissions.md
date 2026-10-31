@@ -30,7 +30,7 @@
 
 ### 1. 权限取证与拖入授权引导
 
-Files: `Sources/Remote2PromptMac/HIDRemoteMonitor.swift`, `IOHIDPermission.swift`, `RemoteMappingRuntime.swift`, 新建 `PermissionDragGuide.swift`，修改权限页。
+Files: `Sources/VoiRemoteMac/HIDRemoteMonitor.swift`, `IOHIDPermission.swift`, `RemoteMappingRuntime.swift`, 新建 `PermissionDragGuide.swift`，修改权限页。
 
 - [x] 用 IORegistry 元数据代替发现阶段的 HID Manager 实例化，避免未授权时打开 user client。
 - [x] 核对公开请求、上游和 Apple 源码；不把签名漂移当作未弹窗的唯一原因，根因仍未确认。

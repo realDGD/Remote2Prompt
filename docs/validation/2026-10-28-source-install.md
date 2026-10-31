@@ -1,6 +1,6 @@
 # 0.2.0 远端源码清洁安装
 
-日期：2026-10-28。沿用单一 public 仓库 [realDGD/Remote2Prompt](https://github.com/realDGD/Remote2Prompt)，未创建第二个 tap 仓库。
+日期：2026-10-28。沿用单一 public 仓库 [realDGD/VoiRemote](https://github.com/realDGD/VoiRemote)，未创建第二个 tap 仓库。
 
 ## 固定来源
 
@@ -12,11 +12,11 @@
 ## 清理和安装
 
 1. 核对旧应用身份及恢复记录：待恢复原始映射为零。
-2. `brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt-app`：Homebrew 确认旧应用正常退出，移除 Applications 本体，清理本应用偏好、支持文件、缓存与保存状态。
-3. 精确卸载旧 Formula；移除已验证身份且未运行的 `dist/Remote2Prompt.app` 与独立预览 app，刷新本应用偏好域。没有清理其他应用、驱动、系统蓝牙配对或 TCC。
-4. tap checkout 从 `https://github.com/realDGD/Remote2Prompt.git` 快进到新配方；从固定远端源码归档运行 `brew install --build-from-source realdgd/remote2prompt/remote2prompt`。
-5. Formula 沙箱中检查 69/69 与 59/59，通过 CLT 构建及 bundle 验证，安装到 `Cellar/remote2prompt/0.2.0`；记录构建时间约 1 分 33 秒。
-6. `brew install --cask realdgd/remote2prompt/remote2prompt-app` 将该编译产物安装到 `/Applications/Remote2Prompt.app`，然后 `brew test realdgd/remote2prompt/remote2prompt` 通过。
+2. `brew uninstall --cask --zap realdgd/voiremote/voiremote-app`：Homebrew 确认旧应用正常退出，移除 Applications 本体，清理本应用偏好、支持文件、缓存与保存状态。
+3. 精确卸载旧 Formula；移除已验证身份且未运行的 `dist/VoiRemote.app` 与独立预览 app，刷新本应用偏好域。没有清理其他应用、驱动、系统蓝牙配对或 TCC。
+4. tap checkout 从 `https://github.com/realDGD/VoiRemote.git` 快进到新配方；从固定远端源码归档运行 `brew install --build-from-source realdgd/voiremote/voiremote`。
+5. Formula 沙箱中检查 69/69 与 59/59，通过 CLT 构建及 bundle 验证，安装到 `Cellar/voiremote/0.2.0`；记录构建时间约 1 分 33 秒。
+6. `brew install --cask realdgd/voiremote/voiremote-app` 将该编译产物安装到 `/Applications/VoiRemote.app`，然后 `brew test realdgd/voiremote/voiremote` 通过。
 
 ## 安装后核对
 
@@ -26,6 +26,6 @@
 
 ## CI 与界面边界
 
-配方提交的 [CI](https://github.com/realDGD/Remote2Prompt/actions/runs/40539025053) **3/3 通过**：仓库/历史/凭据与工作流检查、arm64 和 Intel 的 CLT 检查，两个架构均完成固定远端源码的 Formula/Cask 安装、brew test、Applications 卸载与设置清理。它覆盖固定的 0.2.0 代码与配方；后续文档提交有各自 CI，不将这次结果冒充未来提交结果。
+配方提交的 [CI](https://github.com/realDGD/VoiRemote/actions/runs/40539025053) **3/3 通过**：仓库/历史/凭据与工作流检查、arm64 和 Intel 的 CLT 检查，两个架构均完成固定远端源码的 Formula/Cask 安装、brew test、Applications 卸载与设置清理。它覆盖固定的 0.2.0 代码与配方；后续文档提交有各自 CI，不将这次结果冒充未来提交结果。
 
 本机 Mac 在安装后已锁屏，原生安装版菜单和首次窗口检查暂未执行，已请求用户回到电脑后解锁；没有绕过锁屏。此前独立预览的向导、文件面板和按键显示结果见[交互记录](2026-10-28-usability.md)。未重新授权系统权限、未安装音频驱动、未做真机说话或真实默认输入写入。

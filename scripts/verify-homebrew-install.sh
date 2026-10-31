@@ -3,9 +3,9 @@
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 if [[ $# -eq 0 ]]; then
-    values="$(brew info --json=v2 --cask realdgd/remote2prompt/remote2prompt | /usr/bin/ruby -rjson -e '
+    values="$(brew info --json=v2 --cask realdgd/voiremote/voiremote | /usr/bin/ruby -rjson -e '
       c = JSON.parse(STDIN.read).fetch("casks").first
-      commit = c.fetch("url").match(%r{\Ahttps://github.com/realDGD/Remote2Prompt/archive/([0-9a-f]{40})\.tar\.gz\z})
+      commit = c.fetch("url").match(%r{\Ahttps://github.com/realDGD/VoiRemote/archive/([0-9a-f]{40})\.tar\.gz\z})
       abort "Cask does not use a fixed public source archive" unless commit
       puts [c.fetch("version"), commit[1], c.fetch("sha256")].join(" ")
     ')"
@@ -16,9 +16,9 @@ if [[ $# -lt 3 || $# -gt 4 || ! "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || ! "$2" =~ ^[
     echo "Usage: verify-homebrew-install.sh VERSION COMMIT SHA256 [APPDIR]" >&2
     exit 2
 fi
-app="${4:-/Applications}/Remote2Prompt.app"
+app="${4:-/Applications}/VoiRemote.app"
 [[ -d "$app" && ! -L "$app" ]]
-[[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Contents/Info.plist")" == dev.remote2prompt.app ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Contents/Info.plist")" == dev.voiremote.app ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist")" == "$1" ]]
 stamp="$app/Contents/Resources/HomebrewSource.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print version' "$stamp")" == "$1" ]]
@@ -32,13 +32,13 @@ if [[ -n "$policy" ]]; then
 else
     echo "Legacy source Cask: no fixed signing policy declared; stable update identity is not verified."
 fi
-"$app/Contents/MacOS/Remote2Prompt" --self-check
-[[ "$(remote2prompt --version)" == "Remote2Prompt $1" ]]
-if brew list --formula remote2prompt >/dev/null 2>&1 || brew list --cask remote2prompt-app >/dev/null 2>&1; then
+"$app/Contents/MacOS/VoiRemote" --self-check
+[[ "$(voiremote --version)" == "VoiRemote $1" ]]
+if brew list --formula voiremote >/dev/null 2>&1 || brew list --cask voiremote-app >/dev/null 2>&1; then
     echo "Legacy Formula/Cask is still installed" >&2; exit 1
 fi
-caskroot="$(brew --caskroom remote2prompt)/$1"
+caskroot="$(brew --caskroom voiremote)/$1"
 [[ -d "$caskroot" ]]
 [[ -z "$(/usr/bin/find "$caskroot" -type d \( -name '*.app' -o -name .build \) -print -quit)" ]]
-[[ "$(/usr/bin/find "$caskroot" -type l -name Remote2Prompt.app | /usr/bin/wc -l | /usr/bin/tr -d ' ')" == 1 ]]
+[[ "$(/usr/bin/find "$caskroot" -type l -name VoiRemote.app | /usr/bin/wc -l | /usr/bin/tr -d ' ')" == 1 ]]
 echo "Single source Cask verified: $1; source identity and signature match; one real app; build cache removed; no legacy package"

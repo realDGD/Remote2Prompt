@@ -2,18 +2,18 @@
 
 ## 模块
 
-- `Remote2PromptCore`：配置、映射、手势、语音键会话、ATVV 数据格式、IMA/DVI 解码及输入优先策略，不依赖 UI、蓝牙、CoreAudio 或系统事件发送。
-- `Remote2PromptMac`：设备与权限、原生按键租约、系统动作、CoreBluetooth、回环设备与音频输出。
-- `Remote2Prompt`：SwiftUI/AppKit 原生设置、配置保存和操作引导。
-- `Tests/Remote2PromptChecks`、`Tests/Remote2PromptMacChecks`：不依赖 XCTest 的检查入口。macOS 模拟检查注入设备服务与事件出口，不向桌面发送按键。
-- `scripts/` 与 `packaging/homebrew/`：独立 CLT 构建、bundle/仓库检查及源码 Cask 生成；公开 tap 只有根目录 `Casks/remote2prompt.rb`。Cask 在源码内编译、记录签名来源，将 app 本体移入 Applications 并清理构建缓存；标准 artifacts 拥有 app 和命令的卸载，不再保留 Formula/keg app。0.2.14源码与Cask按用户选择采用固定标识ad-hoc身份，初次与来源信息后的签名统一并核验实际要求；只约束标识、不认证签名者，实际迁移与TCC持久性仍以独立验证记录为准。
+- `VoiRemoteCore`：配置、映射、手势、语音键会话、ATVV 数据格式、IMA/DVI 解码及输入优先策略，不依赖 UI、蓝牙、CoreAudio 或系统事件发送。
+- `VoiRemoteMac`：设备与权限、原生按键租约、系统动作、CoreBluetooth、回环设备与音频输出。
+- `VoiRemote`：SwiftUI/AppKit 原生设置、配置保存和操作引导。
+- `Tests/VoiRemoteChecks`、`Tests/VoiRemoteMacChecks`：不依赖 XCTest 的检查入口。macOS 模拟检查注入设备服务与事件出口，不向桌面发送按键。
+- `scripts/` 与 `packaging/homebrew/`：独立 CLT 构建、bundle/仓库检查及源码 Cask 生成；公开 tap 只有根目录 `Casks/voiremote.rb`。Cask 在源码内编译、记录签名来源，将 app 本体移入 Applications 并清理构建缓存；标准 artifacts 拥有 app 和命令的卸载，不再保留 Formula/keg app。0.2.14源码与Cask按用户选择采用固定标识ad-hoc身份，初次与来源信息后的签名统一并核验实际要求；只约束标识、不认证签名者，实际迁移与TCC持久性仍以独立验证记录为准。
 - `.agents/notes/`：持久决策；`.agents/plans/`：实施清单；`.agents/skills/`：项目检查与 Note 工作流。
 
 ## 配置与界面
 
-`ConfigurationStore` 在 MainActor 上保存整个配置，存储键保持 `configuration.v1`，应用标识为 `dev.remote2prompt.app`。数据 schema 为 6，新增0–55秒、默认50秒的 `voiceLimitReminderStartSeconds`。保留schema5的有界 `GestureTiming` 与稀疏逐键 `ButtonBehaviorOverride`，缺省保留300/550/450/80ms与关闭的长按/双击连发选项。旧时序与次级手势优先级不变，无修饰自定义方向/退格现在与内置动作同样自动连发。保留schema4的时限提醒配置、独立 `voiceEnabled` 和默认关闭的 `remoteAudioEnabled`。schema3迁移不改变原有开关。读取 schema 1/2 保留原设置；原映射已开则迁移语音触发为开，不自动启用遥控器音频。未知版本、重复绑定、无效快捷键、越界时序及重复逐键策略拒绝加载，保留原始数据并暂停编辑。
+`ConfigurationStore` 在 MainActor 上保存整个配置，存储键保持 `configuration.v1`，应用标识为 `dev.voiremote.app`。数据 schema 为 6，新增0–55秒、默认50秒的 `voiceLimitReminderStartSeconds`。保留schema5的有界 `GestureTiming` 与稀疏逐键 `ButtonBehaviorOverride`，缺省保留300/550/450/80ms与关闭的长按/双击连发选项。旧时序与次级手势优先级不变，无修饰自定义方向/退格现在与内置动作同样自动连发。保留schema4的时限提醒配置、独立 `voiceEnabled` 和默认关闭的 `remoteAudioEnabled`。schema3迁移不改变原有开关。读取 schema 1/2 保留原设置；原映射已开则迁移语音触发为开，不自动启用遥控器音频。未知版本、重复绑定、无效快捷键、越界时序及重复逐键策略拒绝加载，保留原始数据并暂停编辑。
 
-原生四页设置使用 `NavigationSplitView`。映射页左侧常驻遥控器，右侧语音卡置顶，普通键按三组显示三列；点击示意图定位对应行，快捷键图标直接录入，动作菜单内可清除。录入器只处理当前窗口，候选确认前不改配置。遥控器图由 SwiftUI 几何绘制，不包含品牌图片。`SetupWizard` 使用临时检测模式，复用 HID 链路而不执行普通映射或语音触发；仅完成时合并选择，取消恢复原状态。`SetupInputCheck` 限定本次阶段与同一来源的成对事件，断连或停止清除结果，不证明音频或输入法可用。
+原生五页设置使用 `NavigationSplitView`。映射页左侧常驻遥控器，右侧语音卡置顶，普通键按三组显示三列；点击示意图定位对应行，快捷键图标直接录入，动作菜单内可清除。录入器只处理当前窗口，候选确认前不改配置。遥控器图由 SwiftUI 几何绘制，不包含品牌图片。`SetupWizard` 使用临时检测模式，复用 HID 链路而不执行普通映射或语音触发；仅完成时合并选择，取消恢复原状态。`SetupInputCheck` 限定本次阶段与同一来源的成对事件，断连或停止清除结果，不证明音频或输入法可用。
 
 SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>` 显式引用公开 `SwiftUI.State<Value>` 包装器。不能未经独立 CLT 验证改回裸宏。
 

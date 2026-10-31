@@ -22,8 +22,8 @@ BLE实际查找、连接及能力读取共8秒截止，已移除内部无限重�
 
 以下检查已正常退出安装版后独立运行，只提交静音，不采集声音、不发送语音快捷键。
 
-1. `Remote2PromptMacChecks --loopback-stream-smoke --extended --jitter --switch-input`：第一轮120秒，随后两轮各8秒，另30次快速开始/排空/取消；共提交2185600静音样本。发生欠载时序恢复且无迟到排队，健康验证通过，最终默认输入/输出快照恢复。此长测在增加只读静音/零音量检查前执行；未重复长测。
-2. `Remote2PromptMacChecks --voice-input-session-smoke`：真实CoreAudio与生产输入事务的3轮确认、实体抢占重选、排空后精确恢复及listener清理通过，系统输出保持原状。
+1. `VoiRemoteMacChecks --loopback-stream-smoke --extended --jitter --switch-input`：第一轮120秒，随后两轮各8秒，另30次快速开始/排空/取消；共提交2185600静音样本。发生欠载时序恢复且无迟到排队，健康验证通过，最终默认输入/输出快照恢复。此长测在增加只读静音/零音量检查前执行；未重复长测。
+2. `VoiRemoteMacChecks --voice-input-session-smoke`：真实CoreAudio与生产输入事务的3轮确认、实体抢占重选、排空后精确恢复及listener清理通过，系统输出保持原状。
 3. 增加只读静音/零音量检查后，`--loopback-stream-smoke --jitter --switch-input`再次通过3轮共384000样本，最终默认输入/输出恢复。未知静音/音量属性保持未知，不写用户音量。
 
 ## 当前边界
@@ -44,10 +44,10 @@ BLE实际查找、连接及能力读取共8秒截止，已移除内部无限重�
 
 用户确认发布并保留设置后，源码 `4e2650b6a33df034f445859b4e824057f1ea729a` 推送main，同仓库Cask提交 `88434b3140ab1f3a3602c14aa5c5fe71e8195dd0` 固定该源码的GitHub HTTPS归档，SHA-256为 `decca5cb062f4671c502078452c438f2dd330acfc1c5b4e99b0a5277bb680406`。
 
-更新现有HTTPS tap后，执行 `brew upgrade --cask realdgd/remote2prompt/remote2prompt`，归档在Homebrew安装目录内用独立CLT运行78/89检查并编译，应用本体移到 `/Applications/Remote2Prompt.app`。未使用本地checkout、file URL、卸载/zap或驱动操作。安装前后配置数据SHA-256完全一致，私有备份和摘要仅在忽略目录保存。
+更新现有HTTPS tap后，执行 `brew upgrade --cask realdgd/voiremote/voiremote`，归档在Homebrew安装目录内用独立CLT运行78/89检查并编译，应用本体移到 `/Applications/VoiRemote.app`。未使用本地checkout、file URL、卸载/zap或驱动操作。安装前后配置数据SHA-256完全一致，私有备份和摘要仅在忽略目录保存。
 
-`verify-homebrew-install.sh`、`verify-app.sh /Applications/Remote2Prompt.app`、版本与配置自检通过：固定来源、签名、单份应用、CLI、无旧安装项、构建缓存清理均已核对。本地开发预览应用移入可恢复废纸篓。Cask不支持Formula专用 `brew test`，未将其伪报为安装验证。
+`verify-homebrew-install.sh`、`verify-app.sh /Applications/VoiRemote.app`、版本与配置自检通过：固定来源、签名、单份应用、CLI、无旧安装项、构建缓存清理均已核对。本地开发预览应用移入可恢复废纸篓。Cask不支持Formula专用 `brew test`，未将其伪报为安装验证。
 
 临时签名更新后用户重新关联设备控制权限；安装版确认设备控制已授权、按键监听系统已允许、RC003音频已连接，空闲输入为原实体麦克风。未重置TCC、创建证书或修改其他应用权限。
 
-发布提交88434b3的[CI40696877843](https://github.com/realDGD/Remote2Prompt/actions/runs/40696877843)已核实3/3通过：公开边界/文档/Gitleaks/actionlint、macOS15 arm64 CLT与远端Cask安装/卸载/zap、macOS15 Intel同矩阵。最终纯文档提交的CI另行核对，不重新构建或重装本机应用。
+发布提交88434b3的[CI40696877843](https://github.com/realDGD/VoiRemote/actions/runs/40696877843)已核实3/3通过：公开边界/文档/Gitleaks/actionlint、macOS15 arm64 CLT与远端Cask安装/卸载/zap、macOS15 Intel同矩阵。最终纯文档提交的CI另行核对，不重新构建或重装本机应用。

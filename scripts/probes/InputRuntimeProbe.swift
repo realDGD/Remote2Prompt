@@ -1,6 +1,6 @@
 import Foundation
 import Combine
-import Remote2PromptCore
+import VoiRemoteCore
 
 @MainActor
 final class ProbeInputs: AudioInputSystem {

@@ -1,6 +1,6 @@
-# Remote2Prompt 开发约定
+# VoiRemote 开发约定
 
-Remote2Prompt 是 macOS 原生遥控器语音与按键工具。先读 [README](README.md)、[产品需求](docs/product.md) 和 [架构](docs/architecture.md)；当前实施范围见 [路线图](docs/roadmap.md)。
+VoiRemote 是 macOS 原生遥控器语音与按键工具。先读 [README](README.md)、[产品需求](docs/product.md) 和 [架构](docs/architecture.md)；当前实施范围见 [路线图](docs/roadmap.md)。
 
 ## 工作方式
 
@@ -14,7 +14,7 @@ Remote2Prompt 是 macOS 原生遥控器语音与按键工具。先读 [README](R
 
 - 仅面向 macOS 14+，Swift 6 / SwiftPM，原生 SwiftUI + AppKit 左栏设置；不加入 iOS、Electron 或 Web 设置界面。
 - 构建和自动检查必须能用独立 Command Line Tools 完成。默认 `DEVELOPER_DIR=/Library/Developer/CommandLineTools`，不运行 `xcodebuild`，不修改全局 `xcode-select`。
-- `Sources/Remote2PromptCore/` 保持独立于 SwiftUI、蓝牙、CoreAudio 和系统事件发送；系统适配器拥有资源和清理，UI 只消费状态和设置。
+- `Sources/VoiRemoteCore/` 保持独立于 SwiftUI、蓝牙、CoreAudio 和系统事件发送；系统适配器拥有资源和清理，UI 只消费状态和设置。
 - 音频输入优先开关和按键映射默认关闭。语音键不等待普通手势判定；启用临时输入切换时，先确认系统输入再发送触发键，松开排空尾音后释放并恢复。
 - 退出、断连、权限失效或会话取消必须释放已发送的合成按键。左右 Control 分别为独立选项，不能退化成组合键。
 - 音频设备按 UID 保存，瞬时 AudioDeviceID 只存在于适配器。默认不修改系统输入或输出；优先策略只允许在用户开启后接管输入。
@@ -27,7 +27,7 @@ Remote2Prompt 是 macOS 原生遥控器语音与按键工具。先读 [README](R
 - 未来或部分实现放 `proposed/`，真正接入后才移到 `implemented/`，同时改写为当前事实。测试过策略不等于功能已完成。
 - 当前规则写在所属文档；Note 保存理由；实施清单写在 `.agents/plans/`。不建立重复的集中 Note 索引。
 - 文档以中文为主，代码标识符和 Note 格式标记使用英文；无需自动翻译。
-- 仓库技能：维护 Note 时读 [r2p-agent-note](.agents/skills/r2p-agent-note/SKILL.md)，完成改动时读 [r2p-check](.agents/skills/r2p-check/SKILL.md)。小改动不额外启动正式规划。
+- 仓库技能：维护 Note 时读 [voiremote-agent-note](.agents/skills/voiremote-agent-note/SKILL.md)，完成改动时读 [voiremote-check](.agents/skills/voiremote-check/SKILL.md)。小改动不额外启动正式规划。
 - `CLAUDE.md` 是本文件的软链接，只修改 `AGENTS.md`。
 
 ## 验证与交付

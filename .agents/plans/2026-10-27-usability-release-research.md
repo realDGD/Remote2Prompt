@@ -68,4 +68,4 @@
 
 ## Checkpoint and quota
 
-本机续作记录位于被忽略的 `.local/checkpoints/continuation.md`。原心跳 `remote2prompt` 已按用户后续要求删除；未完成的原生验收与探索不会自动续作。本次明确授权的版本发布、远端 tap 清洁安装与 CI 验证单独继续，不恢复心跳。
+本机续作记录位于被忽略的 `.local/checkpoints/continuation.md`。原心跳 `voiremote` 已按用户后续要求删除；未完成的原生验收与探索不会自动续作。本次明确授权的版本发布、远端 tap 清洁安装与 CI 验证单独继续，不恢复心跳。

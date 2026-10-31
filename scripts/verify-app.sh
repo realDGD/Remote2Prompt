@@ -2,16 +2,16 @@
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 source "$repo_dir/scripts/toolchain.sh"
-app_dir="${1:-$repo_dir/dist/Remote2Prompt.app}"
+app_dir="${1:-$repo_dir/dist/VoiRemote.app}"
 /usr/bin/plutil -lint "$app_dir/Contents/Info.plist"
-[[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app_dir/Contents/Info.plist")" == "dev.remote2prompt.app" ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app_dir/Contents/Info.plist")" == "dev.voiremote.app" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print LSMinimumSystemVersion' "$app_dir/Contents/Info.plist")" == "14.0" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app_dir/Contents/Info.plist")" == "$(cat "$repo_dir/VERSION")" ]]
-[[ -x "$app_dir/Contents/MacOS/Remote2Prompt" ]]
+[[ -x "$app_dir/Contents/MacOS/VoiRemote" ]]
 [[ -s "$app_dir/Contents/Resources/AppIcon.icns" ]]
 minimum_system_version="$(/usr/libexec/PlistBuddy -c 'Print LSMinimumSystemVersion' "$app_dir/Contents/Info.plist")"
 sdk_version="$(/usr/bin/xcrun --sdk macosx --show-sdk-version)"
-if ! /usr/bin/otool -l "$app_dir/Contents/MacOS/Remote2Prompt" | /usr/bin/awk \
+if ! /usr/bin/otool -l "$app_dir/Contents/MacOS/VoiRemote" | /usr/bin/awk \
     -v expected_min="$minimum_system_version" -v expected_sdk="$sdk_version" '
     function normalized(version) { sub(/(\.0)+$/, "", version); return version }
     $1 == "cmd" { build = ($2 == "LC_BUILD_VERSION") }
@@ -32,5 +32,5 @@ if [[ -f "$stamp" ]]; then
         "$repo_dir/scripts/verify-signing-identity.sh" "$app_dir" "$policy"
     fi
 fi
-"$app_dir/Contents/MacOS/Remote2Prompt" --version
-"$app_dir/Contents/MacOS/Remote2Prompt" --self-check
+"$app_dir/Contents/MacOS/VoiRemote" --version
+"$app_dir/Contents/MacOS/VoiRemote" --self-check

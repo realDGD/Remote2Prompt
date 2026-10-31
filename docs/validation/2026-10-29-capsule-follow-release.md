@@ -1,6 +1,6 @@
 # 0.2.12胶囊跟随源码发布与清洁安装
 
-日期：2026-10-29。用户明确授权commit、脱敏、公开推送、同仓库tap、从远端源码清洁安装及清除现有设置。复用唯一public仓库`realDGD/Remote2Prompt`，不另建仓库、Formula或第二个Cask。
+日期：2026-10-29。用户明确授权commit、脱敏、公开推送、同仓库tap、从远端源码清洁安装及清除现有设置。复用唯一public仓库`realDGD/VoiRemote`，不另建仓库、Formula或第二个Cask。
 
 ## 发布范围与边界
 
@@ -18,21 +18,21 @@
 
 ## 本机实际清洁安装
 
-正常退出0.2.11后，确认进程已结束、原生按键恢复记录的originals为空，再执行`brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt`。旧Applications app、CLI、Caskroom、Application Support和生产偏好域均已移除。本地`dist/Remote2Prompt.app`移入可恢复废纸篓，不清空废纸篓。
+正常退出0.2.11后，确认进程已结束、原生按键恢复记录的originals为空，再执行`brew uninstall --cask --zap realdgd/voiremote/voiremote`。旧Applications app、CLI、Caskroom、Application Support和生产偏好域均已移除。本地`dist/VoiRemote.app`移入可恢复废纸篓，不清空废纸篓。
 
-untap后按README重新从`https://github.com/realDGD/Remote2Prompt.git`克隆，安装时tap HEAD为`ca74ccc50be5832531efcfe8f8736d7cdd838fe5`，工作区干净、origin与固定归档均核实。执行`brew install --cask realdgd/remote2prompt/remote2prompt`，远端源码在Homebrew目录内通过102/102核心、108/108适配器检查及独立CLT Release编译，安装到`/Applications/Remote2Prompt.app`；未使用本地源码或开发app安装。
+untap后按README重新从`https://github.com/realDGD/VoiRemote.git`克隆，安装时tap HEAD为`ca74ccc50be5832531efcfe8f8736d7cdd838fe5`，工作区干净、origin与固定归档均核实。执行`brew install --cask realdgd/voiremote/voiremote`，远端源码在Homebrew目录内通过102/102核心、108/108适配器检查及独立CLT Release编译，安装到`/Applications/VoiRemote.app`；未使用本地源码或开发app安装。
 
 `verify-homebrew-install.sh`与安装版`verify-app.sh`均通过：0.2.12、完整commit/归档摘要标记、严格临时签名、最低macOS14/实际SDK27、唯一真实app、CLI及自检、无旧Formula/伴随Cask、无Caskroom第二份app及构建缓存。远端归档包含新的跟随实现，不含本地探测、构建、录音或私有目录。
 
-实际执行`brew test realdgd/remote2prompt/remote2prompt`退出1，提示`No available formula`。这是Formula命令不适用于单Cask，不是编译失败，也未记作通过。
+实际执行`brew test realdgd/voiremote/voiremote`退出1，提示`No available formula`。这是Formula命令不适用于单Cask，不是编译失败，也未记作通过。
 
 首次打开前再次确认生产偏好域不存在。原生Computer Use打开安装版后，未点击手动向导入口即显示“准备遥控器”，保留“跳过配置”和“继续配置”。只读核对`setup.pending.v1`为真、`initialSetup.finished.v1`未设置、`configuration.v1`不存在；没有恢复旧配置。应用留在准备页，不请求权限、不保存草稿或启用设备。当前界面权限显示未允许，不据此宣称真实遥控器已可用。
 
 ## CI
 
-源码与Cask提交`ca74ccc50be5832531efcfe8f8736d7cdd838fe5`的[CI 40827208420](https://github.com/realDGD/Remote2Prompt/actions/runs/40827208420)已3/3通过：Linux的公开边界/全历史凭据/工作流语法，以及macOS15 arm64与x86_64的独立CLT、远端单Cask安装、来源核验和卸载zap。Intel耗时约18分钟，两个架构均完整通过，没有把中途运行或旧版本结论当作成功。
+源码与Cask提交`ca74ccc50be5832531efcfe8f8736d7cdd838fe5`的[CI 40827208420](https://github.com/realDGD/VoiRemote/actions/runs/40827208420)已3/3通过：Linux的公开边界/全历史凭据/工作流语法，以及macOS15 arm64与x86_64的独立CLT、远端单Cask安装、来源核验和卸载zap。Intel耗时约18分钟，两个架构均完整通过，没有把中途运行或旧版本结论当作成功。
 
-交付文档与README链接单独提交，沿用main推送工作流；对应最新文档提交的运行可在[Actions](https://github.com/realDGD/Remote2Prompt/actions/workflows/ci.yml)核对。本机没有因文档提交重复编译或重装，安装来源仍为前述固定源码commit。
+交付文档与README链接单独提交，沿用main推送工作流；对应最新文档提交的运行可在[Actions](https://github.com/realDGD/VoiRemote/actions/workflows/ci.yml)核对。本机没有因文档提交重复编译或重装，安装来源仍为前述固定源码commit。
 
 ## 未覆盖项目
 

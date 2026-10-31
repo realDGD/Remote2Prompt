@@ -14,7 +14,7 @@
 
 只阅读官方资料，没有安装这些应用、购买许可或复制实现。下列产品不因此被认定兼容 RC003；它们分别覆盖遥控、映射、音频或听写的一部分。
 
-| 应用与官方来源 | 可借鉴 | Remote2Prompt 的边界 |
+| 应用与官方来源 | 可借鉴 | VoiRemote 的边界 |
 | --- | --- | --- |
 | [Remote Buddy](https://www.iospirit.com/products/remotebuddy/) | 为目标应用组织遥控动作、统一播放控制和设备帮助 | 先做少量应用映射预设；不复制其手机端、屏幕共享或声称同样硬件支持。官方网页的视频兼容列表有旧测试日期，不将它作为当前网站兼容承诺。 |
 | [BetterTouchTool：应用范围](https://docs.folivora.ai/docs/configuration/global-vs-app-specific/)、[方案](https://docs.folivora.ai/docs/configuration/presets/) | 全局默认、应用覆盖、可切换方案与明确激活状态 | 采用一套映射解析入口，避免映射、宏和方案各有默认值；暂不引入脚本和复杂动作链。 |
@@ -27,8 +27,8 @@
 
 | 工作 | 本项目源码证据与剩余问题 | 可验收结果 |
 | --- | --- | --- |
-| 睡眠、锁屏、快速用户切换的统一生命周期 | [RemoteMappingRuntime](../../Sources/Remote2PromptMac/RemoteMappingRuntime.swift) 监听 willSleep 后停止映射；[音频所有者](../../Sources/Remote2PromptMac/RemoteAudioRuntime.swift) 和 BLE 的扫描/重试没有统一锁屏门禁。不能据上游报告认定本机已复现唤醒风暴。对应 #513/#441/#240/#497/#231。 | 睡眠/非活动会话中停止相应连接活动、释放按键并恢复输入；后台维护唤醒不会恢复；用户解锁后一次性重新校验，配对失败不循环弹窗。长时间合盖保留系统蓝牙键鼠功能。 |
-| 有期限的发现和有限退避 | [RemoteVoiceBluetooth](../../Sources/Remote2PromptMac/RemoteVoiceBluetooth.swift) 在 connect 后才启动 8 秒 timeout；discover 的扫描本身没有期限。已有查询系统已连接外设的路径，但仍可能无限扫描。对应 #631/#634/#733/#438。 | 扫描到期结束本轮；外设不在场时无忙循环；已连接但不广播可恢复；重连与正常语音不互相重启。 |
+| 睡眠、锁屏、快速用户切换的统一生命周期 | [RemoteMappingRuntime](../../Sources/VoiRemoteMac/RemoteMappingRuntime.swift) 监听 willSleep 后停止映射；[音频所有者](../../Sources/VoiRemoteMac/RemoteAudioRuntime.swift) 和 BLE 的扫描/重试没有统一锁屏门禁。不能据上游报告认定本机已复现唤醒风暴。对应 #513/#441/#240/#497/#231。 | 睡眠/非活动会话中停止相应连接活动、释放按键并恢复输入；后台维护唤醒不会恢复；用户解锁后一次性重新校验，配对失败不循环弹窗。长时间合盖保留系统蓝牙键鼠功能。 |
+| 有期限的发现和有限退避 | [RemoteVoiceBluetooth](../../Sources/VoiRemoteMac/RemoteVoiceBluetooth.swift) 在 connect 后才启动 8 秒 timeout；discover 的扫描本身没有期限。已有查询系统已连接外设的路径，但仍可能无限扫描。对应 #631/#634/#733/#438。 | 扫描到期结束本轮；外设不在场时无忙循环；已连接但不广播可恢复；重连与正常语音不互相重启。 |
 | 真机音频完整性和输入恢复 | 已有 120 ms 尾音、1 秒有界输出排空、输入读回和精确 UID 恢复，但 #297 是遥控器尚未传来的积压，App 排空不能解决全部情况。 | RC003 与 RC001 分别测开头、末尾、快速连按、60 秒终止、设备断开和 AirPods/USB 抢占；同一段输出保持顺序且结束释放正确，不采集保存输入文字。 |
 | 明确区分占用、权限和输出链路 | #95/#105 是设备被 Karabiner 独占；#711/#308 说明音频到达不等于输入法已提交。 | 提示真正失败阶段；可复制脱敏摘要；不会要求重复授权来修复设备占用，也不把“写入成功”显示为“文字输入成功”。 |
 | 长时间资源回归 | 没有上游全局 event tap 抑制架构，仍需检验 listener、timer、会话和回调释放。#476/#494 的维护者修复过程也说明“timer 共用”不代表查询只执行一次。 | 多轮连接/取消/休眠后资源计数回落，观察 WindowServer 和交互响应；内存只报测量值，不从较小 RSS 推断系统不卡。 |

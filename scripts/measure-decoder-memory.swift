@@ -1,6 +1,6 @@
 import Foundation
 
-/// Compile alongside Sources/Remote2PromptCore/RemoteVoiceProtocol.swift; no hardware or audio output.
+/// Compile alongside Sources/VoiRemoteCore/RemoteVoiceProtocol.swift; no hardware or audio output.
 @main
 enum DecoderMemoryMeasurement {
     static func main() throws {

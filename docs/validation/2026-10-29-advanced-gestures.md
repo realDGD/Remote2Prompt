@@ -6,7 +6,7 @@
 
 比较无线麦固定源码 `b76ac7fc17fb3a77a29281d632820055494008d8` 的真实普通HID路径，而非仅看独立识别器。参考文件：[HIDRemoteMonitor](https://github.com/HD838A/remote-mic-app/blob/b76ac7fc17fb3a77a29281d632820055494008d8/Sources/RemoteMic/HIDRemoteMonitor.swift)、[RemoteButtonGestureRecognizer](https://github.com/HD838A/remote-mic-app/blob/b76ac7fc17fb3a77a29281d632820055494008d8/Sources/RemoteMic/RemoteButtonGestureRecognizer.swift)、[RemoteButtons](https://github.com/HD838A/remote-mic-app/blob/b76ac7fc17fb3a77a29281d632820055494008d8/Sources/RemoteMic/RemoteButtons.swift)。不包含其特殊短语/面板接管。
 
-| 场景 | 无线麦该版本 | Remote2Prompt本轮 |
+| 场景 | 无线麦该版本 | VoiRemote本轮 |
 | --- | --- | --- |
 | 只有单击映射 | 普通HID路径按下即执行 | 同样即时执行 |
 | 双击/长按 | 300/550ms，次级手势使单击等待 | 同样默认300/550ms，可调整 |

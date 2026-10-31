@@ -8,9 +8,9 @@ Status: implemented
 
 ## Decision
 
-`Remote2PromptMac` 隔离 macOS 适配器。`NativeKeyLease` 使用 Apple TN2450 介绍的 IOHIDServiceClient 属性 API，只为 VID/PID 0x2717/0x32B8 的服务中属于遥控器的 usage 写入零目标，并读回验证。每次按键执行前及权限轮询时核验服务覆盖；新接口或外部改动使验证失效时停止接管。
+`VoiRemoteMac` 隔离 macOS 适配器。`NativeKeyLease` 使用 Apple TN2450 介绍的 IOHIDServiceClient 属性 API，只为 VID/PID 0x2717/0x32B8 的服务中属于遥控器的 usage 写入零目标，并读回验证。每次按键执行前及权限轮询时核验服务覆盖；新接口或外部改动使验证失效时停止接管。
 
-原始 HID report 通过限定设备的键盘接口读取，不创建吞键的全局 Event Tap。恢复日志位于本机 Application Support/Remote2Prompt/HIDRecovery.json，包含同次系统启动的瞬时服务 ID 和接管前的所属映射，在首次设备写入前原子保存。启动、退出、关闭功能、断连、权限失效与失败时恢复；恢复失败保留记录供重试。其他软件后来修改的源映射和不属于本应用的映射保留。
+原始 HID report 通过限定设备的键盘接口读取，不创建吞键的全局 Event Tap。恢复日志位于本机 Application Support/VoiRemote/HIDRecovery.json，包含同次系统启动的瞬时服务 ID 和接管前的所属映射，在首次设备写入前原子保存。启动、退出、关闭功能、断连、权限失效与失败时恢复；恢复失败保留记录供重试。其他软件后来修改的源映射和不属于本应用的映射保留。
 
 恢复日志 v2 另外保存本次接管源范围，兼容旧 v1 全键范围。语音触发拥有独立开关；只开语音时只接管 F5 usage，普通映射开而语音关时不接管语音键。切换范围先停止并恢复原租约，再获取新范围，模拟检查覆盖跨实例恢复。
 

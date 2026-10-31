@@ -2,22 +2,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "Remote2Prompt",
+    name: "VoiRemote",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "Remote2Prompt", targets: ["Remote2Prompt"]),
-        .library(name: "Remote2PromptCore", targets: ["Remote2PromptCore"])
+        .executable(name: "VoiRemote", targets: ["VoiRemote"]),
+        .library(name: "VoiRemoteCore", targets: ["VoiRemoteCore"])
     ],
     targets: [
-        .target(name: "Remote2PromptCore"),
-        .target(name: "Remote2PromptMac", dependencies: ["Remote2PromptCore"]),
-        .executableTarget(name: "Remote2Prompt", dependencies: ["Remote2PromptCore", "Remote2PromptMac"]),
+        .target(name: "VoiRemoteCore"),
+        .target(name: "VoiRemoteMac", dependencies: ["VoiRemoteCore"]),
+        .executableTarget(name: "VoiRemote", dependencies: ["VoiRemoteCore", "VoiRemoteMac"]),
         // CLT does not include XCTest. Keep checks runnable with the same toolchain as the app.
         .executableTarget(
-            name: "Remote2PromptChecks",
-            dependencies: ["Remote2PromptCore"],
-            path: "Tests/Remote2PromptChecks"
+            name: "VoiRemoteChecks",
+            dependencies: ["VoiRemoteCore"],
+            path: "Tests/VoiRemoteChecks"
         ),
-        .executableTarget(name: "Remote2PromptMacChecks", dependencies: ["Remote2PromptCore", "Remote2PromptMac"], path: "Tests/Remote2PromptMacChecks")
+        .executableTarget(name: "VoiRemoteMacChecks", dependencies: ["VoiRemoteCore", "VoiRemoteMac"], path: "Tests/VoiRemoteMacChecks")
     ]
 )

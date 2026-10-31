@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tool_dir="$RUNNER_TEMP/r2p-check-tools"
+          tool_dir="$RUNNER_TEMP/voiremote-check-tools"
           mkdir -p "$tool_dir"
           cd "$tool_dir"
           curl --fail --location --retry 3 --silent --show-error \
@@ -43,9 +43,9 @@ jobs:
           echo '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  actionlint.tar.gz' | sha256sum --check
           tar -xzf actionlint.tar.gz actionlint
       - name: Scan all reachable commits for credentials
-        run: '"$RUNNER_TEMP/r2p-check-tools/gitleaks" git --redact --no-banner --log-opts="--all" .'
+        run: '"$RUNNER_TEMP/voiremote-check-tools/gitleaks" git --redact --no-banner --log-opts="--all" .'
       - name: Validate workflow syntax
-        run: '"$RUNNER_TEMP/r2p-check-tools/actionlint" -color'
+        run: '"$RUNNER_TEMP/voiremote-check-tools/actionlint" -color'
 
   macos:
     name: CLT and Homebrew (${{ matrix.arch }})
@@ -82,28 +82,28 @@ jobs:
         run: /usr/bin/make check
       - name: Install single source Cask through the public HTTPS tap
         run: |
-          brew tap realdgd/remote2prompt https://github.com/realDGD/Remote2Prompt.git
-          test "$(git -C "$(brew --repo realdgd/remote2prompt)" remote get-url origin)" = "https://github.com/realDGD/Remote2Prompt.git"
+          brew tap realdgd/voiremote https://github.com/realDGD/VoiRemote.git
+          test "$(git -C "$(brew --repo realdgd/voiremote)" remote get-url origin)" = "https://github.com/realDGD/VoiRemote.git"
           if brew command trust >/dev/null 2>&1; then
-            brew trust --cask realdgd/remote2prompt/remote2prompt
+            brew trust --cask realdgd/voiremote/voiremote
           fi
-          brew install --cask realdgd/remote2prompt/remote2prompt
+          brew install --cask realdgd/voiremote/voiremote
           ./scripts/verify-homebrew-install.sh
       - name: Verify single-item uninstall and settings cleanup
         run: |
-          defaults write dev.remote2prompt.app homebrewCICheck -bool true
-          brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt
-          test ! -e /Applications/Remote2Prompt.app
-          test ! -e "$(brew --prefix)/bin/remote2prompt"
-          test ! -e "$HOME/Library/Preferences/dev.remote2prompt.app.plist"
-          test ! -e "$(brew --caskroom)/remote2prompt"
+          defaults write dev.voiremote.app homebrewCICheck -bool true
+          brew uninstall --cask --zap realdgd/voiremote/voiremote
+          test ! -e /Applications/VoiRemote.app
+          test ! -e "$(brew --prefix)/bin/voiremote"
+          test ! -e "$HOME/Library/Preferences/dev.voiremote.app.plist"
+          test ! -e "$(brew --caskroom)/voiremote"
       - name: Remove CI-only Homebrew installation
         if: always()
         run: |
-          if brew list --cask remote2prompt >/dev/null 2>&1; then
-            brew uninstall --cask --zap realdgd/remote2prompt/remote2prompt
+          if brew list --cask voiremote >/dev/null 2>&1; then
+            brew uninstall --cask --zap realdgd/voiremote/voiremote
           fi
-          test ! -e "$(brew --prefix)/bin/remote2prompt"
-          if brew tap | /usr/bin/grep -qx 'realdgd/remote2prompt'; then
-            brew untap realdgd/remote2prompt
+          test ! -e "$(brew --prefix)/bin/voiremote"
+          if brew tap | /usr/bin/grep -qx 'realdgd/voiremote'; then
+            brew untap realdgd/voiremote
           fi

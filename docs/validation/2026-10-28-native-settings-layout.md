@@ -10,7 +10,7 @@ SDK 版本由使用者的 CLT 自动查询；本机的 27.0 只是本次观察�
 
 ## 原生界面检查
 
-使用独立 Bundle ID 的 `.build/ui-preview/Remote2Prompt.app`，配置与安装版隔离，硬件适配器禁用。通过原生 Computer Use 实际检查：
+使用独立 Bundle ID 的 `.build/ui-preview/VoiRemote.app`，配置与安装版隔离，硬件适配器禁用。通过原生 Computer Use 实际检查：
 
 - 权限页：标题栏至内容底部的侧栏分隔线贯通；两个请求按钮下面只保留原生表单内边距，没有原来额外一行留白。
 - 折叠、展开侧栏：按钮保持可用，标题和内容由原生容器重排，展开后分隔线仍贯通。
@@ -45,12 +45,12 @@ SDK 版本由使用者的 CLT 自动查询；本机的 27.0 只是本次观察�
 
 - 应用源码：`e95cf3082c36ae70fa69274273f65a4850241107`，版本 0.2.3，包含之前四次 UI/构建提交。
 - 同仓库 Cask：`7bb23696de084f68bf3390d696fb20f3cef39b10`，固定上述 GitHub HTTPS 源码归档，SHA-256 为 `986a50914e064c746943bfe805487972cb9f11183a796a8525989208130d0c48`。
-- Cask 提交的 [CI 40629190202](https://github.com/realDGD/Remote2Prompt/actions/runs/40629190202) 三项均成功：arm64 CLT/Homebrew、Intel CLT/Homebrew、脱敏/文档/工作流。两个 macOS job 包含远端源码安装及卸载/zap 检查。
+- Cask 提交的 [CI 40629190202](https://github.com/realDGD/VoiRemote/actions/runs/40629190202) 三项均成功：arm64 CLT/Homebrew、Intel CLT/Homebrew、脱敏/文档/工作流。两个 macOS job 包含远端源码安装及卸载/zap 检查。
 
-本机按 README 执行旧单 Cask 的 `brew uninstall --cask --zap`，确认 app、CLI 和偏好域移除；再 untap 并以 `https://github.com/realDGD/Remote2Prompt.git` 重新 tap，运行 trust 和 cask install。安装输入来自固定的远端源码，不使用本地 checkout、生成归档或预编译 app。旧的本地 dist/隔离预览 app 在确认没有运行后删除。
+本机按 README 执行旧单 Cask 的 `brew uninstall --cask --zap`，确认 app、CLI 和偏好域移除；再 untap 并以 `https://github.com/realDGD/VoiRemote.git` 重新 tap，运行 trust 和 cask install。安装输入来自固定的远端源码，不使用本地 checkout、生成归档或预编译 app。旧的本地 dist/隔离预览 app 在确认没有运行后删除。
 
 安装期核心检查 69/69、macOS 模拟适配器检查 59/59 通过，随后以独立 CLT Release 编译。`verify-homebrew-install.sh` 与针对安装路径的 `verify-app.sh` 均通过：版本 0.2.3、源码 commit/归档 hash/构建标记一致、严格签名和配置自检通过、Mach-O `minos 14.0 / sdk 27.0`。本机实际 SDK 自动取自 CLT，不写死到配方中。
 
-app 本体位于 `/Applications/Remote2Prompt.app`；Caskroom 仅有受管理链接，没有第二份 app 目录或 .build，也没有旧 Formula 或 remote2prompt-app。`remote2prompt --version` 由安装入口返回 0.2.3。当前使用单 Cask，`brew test` 只支持 Formula，不把它作为本轮成功证据。
+app 本体位于 `/Applications/VoiRemote.app`；Caskroom 仅有受管理链接，没有第二份 app 目录或 .build，也没有旧 Formula 或 voiremote-app。`voiremote --version` 由安装入口返回 0.2.3。当前使用单 Cask，`brew test` 只支持 Formula，不把它作为本轮成功证据。
 
 通过原生 Computer Use 打开实际安装版，确认映射为空、普通映射与语音触发关闭；连接页“启用虚拟麦克风”关闭，设备选择和系统输入切换选项隐藏。应用窗口正常可用，检查没有启用这些功能，没有请求/重置系统权限、安装驱动、播放或采集音频、切换系统输入。真实语音、输入法及完整 hover 路径仍保留前述验收边界。
