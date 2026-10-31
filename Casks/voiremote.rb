@@ -20,8 +20,12 @@ cask "voiremote" do
 
   postflight_steps do
     remove ["VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/.build", "VoiRemote-3ba53f40893d36c864c9b188cc997acc22d50766/.swiftpm"], recursive: true
-    run "VoiRemote.app/Contents/MacOS/VoiRemote", base: :appdir,
-        args: ["--restore-login-item"], print_stdout: true, must_succeed: false
+  end
+
+  # ServiceManagement needs Mach services unavailable in the file-preparation sandbox.
+  postflight do
+    system_command "#{appdir}/VoiRemote.app/Contents/MacOS/VoiRemote",
+                   args: ["--restore-login-item"], print_stdout: true, must_succeed: false
   end
 
   uninstall quit: "dev.voiremote.app",

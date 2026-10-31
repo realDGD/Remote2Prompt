@@ -14,7 +14,7 @@ Status: implemented
 
 登录项使用`SMAppService.mainApp`，默认不注册，由用户在“通用”页设置，显示真实状态及错误。登录Apple Event或`--background`走静默路径，不创建设置窗口或向导；用户打开设置后才继续向导。
 
-SwiftUI仅创建菜单栏场景。AppKit按需创建设置窗口，内部保留原生NavigationSplitView；打开切regular，关闭指定窗口后按Dock偏好切accessory。提醒和权限帮助窗口不驱动该状态。Dock常驻默认关闭，本机偏好不进入便携导出。退出沿用已有资源清理，卸载命令先把实际已生效的登录项状态写入本机恢复标记，再注销；Homebrew安装后通过独立CLI恢复。普通启动不隐式注册，关闭或被系统禁用的状态不自动开启。失败保留标记供安装重试或用户在通用页重新开启，显式关闭会取消标记；标记不进入便携配置，zap清除。
+SwiftUI仅创建菜单栏场景。AppKit按需创建设置窗口，内部保留原生NavigationSplitView；打开切regular，关闭指定窗口后按Dock偏好切accessory。提醒和权限帮助窗口不驱动该状态。Dock常驻默认关闭，本机偏好不进入便携导出。退出沿用已有资源清理，卸载命令先把实际已生效的登录项状态写入本机恢复标记，再注销；Homebrew安装后通过独立CLI恢复。缓存清理仍使用受限的postflight_steps；ServiceManagement调用使用本第三方tap支持的postflight系统集成钩子，因为文件准备沙盒不允许相关Mach服务。该钩子只调用已安装的本应用维护入口，不启动界面或设备服务。普通启动不隐式注册，关闭或被系统禁用的状态不自动开启。失败保留标记供安装重试或用户在通用页重新开启，显式关闭会取消标记；标记不进入便携配置，zap清除。
 
 ## Alternatives considered
 
