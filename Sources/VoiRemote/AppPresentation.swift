@@ -99,7 +99,7 @@ final class LoginItemSettings: ObservableObject {
         case .enabled: detail = "登录后静默运行，只显示菜单栏图标。"
         case .requiresApproval: detail = "需要在系统登录项设置中允许 VoiRemote。"
         case .notRegistered: detail = "未启用自动启动。"
-        case .notFound: detail = "请先把 VoiRemote 安装到应用程序，再设置自动启动。"
+        case .notFound: detail = "系统尚未找到登录项。可尝试启用；若失败，请确认应用位于“应用程序”。"
         @unknown default: detail = "无法确认系统登录项状态。"
         }
     }

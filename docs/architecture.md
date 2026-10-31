@@ -13,6 +13,8 @@
 
 `ConfigurationStore` 在 MainActor 上保存整个配置，存储键保持 `configuration.v1`，应用标识为 `dev.voiremote.app`。数据 schema 为 6，新增0–55秒、默认50秒的 `voiceLimitReminderStartSeconds`。保留schema5的有界 `GestureTiming` 与稀疏逐键 `ButtonBehaviorOverride`，缺省保留300/550/450/80ms与关闭的长按/双击连发选项。旧时序与次级手势优先级不变，无修饰自定义方向/退格现在与内置动作同样自动连发。保留schema4的时限提醒配置、独立 `voiceEnabled` 和默认关闭的 `remoteAudioEnabled`。schema3迁移不改变原有开关。读取 schema 1/2 保留原设置；原映射已开则迁移语音触发为开，不自动启用遥控器音频。未知版本、重复绑定、无效快捷键、越界时序及重复逐键策略拒绝加载，保留原始数据并暂停编辑。
 
+设置窗口由 AppKit 按需创建并承载 SwiftUI，菜单栏场景常驻。`AppPresentation` 仅跟踪设置窗口：打开时切换 regular，关闭后按本机 Dock 偏好切回 accessory；提醒与授权面板不改变该状态。系统登录项采用 `SMAppService.mainApp`，默认关闭；登录 Apple Event 或 `--background` 不创建设置窗口，首次向导延后到用户打开设置。登录项状态与 Dock 偏好不进入便携配置。新身份首次只读迁移旧偏好原始配置和向导标记，不覆盖新配置；旧系统权限不能迁移。
+
 原生五页设置使用 `NavigationSplitView`。映射页左侧常驻遥控器，右侧语音卡置顶，普通键按三组显示三列；点击示意图定位对应行，快捷键图标直接录入，动作菜单内可清除。录入器只处理当前窗口，候选确认前不改配置。遥控器图由 SwiftUI 几何绘制，不包含品牌图片。`SetupWizard` 使用临时检测模式，复用 HID 链路而不执行普通映射或语音触发；仅完成时合并选择，取消恢复原状态。`SetupInputCheck` 限定本次阶段与同一来源的成对事件，断连或停止清除结果，不证明音频或输入法可用。
 
 SDK 27 的裸 `@State` 依赖 CLT 不附带的 SwiftUIMacros；`ViewState<Value>` 显式引用公开 `SwiftUI.State<Value>` 包装器。不能未经独立 CLT 验证改回裸宏。
