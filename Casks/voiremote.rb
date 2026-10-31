@@ -1,8 +1,8 @@
 cask "voiremote" do
-  version "0.3.0"
-  sha256 "56c15ffa5d8001508ccf62c4645d6ef41753ca268c58f49fe22c08c3ef27c1dc"
+  version "0.3.1"
+  sha256 "c481b5462475855cdccb9c7eae91b92a09dbb4976013ef11af3b5e209c2e8bec"
 
-  url "https://github.com/realDGD/VoiRemote/archive/ad9140ca389be71960edc9a9f76e315e12ad6916.tar.gz"
+  url "https://github.com/realDGD/VoiRemote/archive/93a31a8eaa1b8e4256268192e00d26f82340d4fc.tar.gz"
   name "VoiRemote"
   desc "Native macOS remote key mapping and voice app compiled with CLT"
   homepage "https://github.com/realDGD/VoiRemote"
@@ -10,16 +10,16 @@ cask "voiremote" do
   depends_on macos: :sonoma
 
   preflight_steps do
-    run "/bin/bash", args: ["scripts/build-cask.sh", "0.3.0", "ad9140ca389be71960edc9a9f76e315e12ad6916", "56c15ffa5d8001508ccf62c4645d6ef41753ca268c58f49fe22c08c3ef27c1dc"],
-                      chdir: "VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916", print_stdout: true,
+    run "/bin/bash", args: ["scripts/build-cask.sh", "0.3.1", "93a31a8eaa1b8e4256268192e00d26f82340d4fc", "c481b5462475855cdccb9c7eae91b92a09dbb4976013ef11af3b5e209c2e8bec"],
+                      chdir: "VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc", print_stdout: true,
                       env: { "DEVELOPER_DIR" => "/Library/Developer/CommandLineTools" }
   end
 
-  app "VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916/dist/VoiRemote.app"
-  binary "VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916/packaging/homebrew/voiremote"
+  app "VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc/dist/VoiRemote.app"
+  binary "VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc/packaging/homebrew/voiremote"
 
   postflight_steps do
-    remove ["VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916/.build", "VoiRemote-ad9140ca389be71960edc9a9f76e315e12ad6916/.swiftpm"], recursive: true
+    remove ["VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc/.build", "VoiRemote-93a31a8eaa1b8e4256268192e00d26f82340d4fc/.swiftpm"], recursive: true
   end
 
   uninstall quit: "dev.voiremote.app",
