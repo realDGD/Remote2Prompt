@@ -98,7 +98,9 @@ final class LoginItemSettings: ObservableObject {
         switch status {
         case .enabled: detail = "登录后静默运行，只显示菜单栏图标。"
         case .requiresApproval: detail = "需要在系统登录项设置中允许 VoiRemote。"
-        case .notRegistered: detail = "未启用自动启动。"
+        case .notRegistered:
+            detail = LoginItemMaintenance.isPending()
+                ? "安装后未能恢复自动启动，可在此重新开启。" : "未启用自动启动。"
         case .notFound: detail = "系统尚未找到登录项。可尝试启用；若失败，请确认应用位于“应用程序”。"
         @unknown default: detail = "无法确认系统登录项状态。"
         }
@@ -107,8 +109,15 @@ final class LoginItemSettings: ObservableObject {
         guard !inspection else { return }
         error = nil
         do {
-            if value { try SMAppService.mainApp.register() }
-            else { try SMAppService.mainApp.unregister() }
+            if value {
+                try SMAppService.mainApp.register()
+                LoginItemMaintenance.cancelPending()
+            } else {
+                LoginItemMaintenance.cancelPending()
+                if [.enabled, .requiresApproval].contains(SMAppService.mainApp.status) {
+                    try SMAppService.mainApp.unregister()
+                }
+            }
         } catch { self.error = "无法更新登录项：\(error.localizedDescription)" }
         refresh()
     }

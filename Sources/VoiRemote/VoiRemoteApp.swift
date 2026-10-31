@@ -35,6 +35,7 @@ enum Launcher {
                 guard try AppConfiguration.decode(configuration.encoded()) == configuration else { exit(1) }
                 try checkInitialSetupLifecycle()
                 try checkDesktopSettings()
+                try checkLoginItemMaintenance()
                 print("VoiRemote self-check passed (configuration and first-launch lifecycle; no hardware access)")
             } catch {
                 fputs("VoiRemote self-check failed: \(error)\n", stderr)
@@ -49,8 +50,19 @@ enum Launcher {
         }
         if CommandLine.arguments.contains("--unregister-login-item") {
             do {
-                if [.enabled, .requiresApproval].contains(SMAppService.mainApp.status) { try SMAppService.mainApp.unregister() }
+                try LoginItemMaintenance.prepareForRemoval()
+                print("Login item after removal: \(LoginItemMaintenance.describe(SMAppService.mainApp.status))")
             } catch { fputs("Could not unregister login item: \(error.localizedDescription)\n", stderr); exit(1) }
+            return
+        }
+        if CommandLine.arguments.contains("--restore-login-item") {
+            do { try LoginItemMaintenance.restoreAfterInstall() }
+            catch { fputs("Could not restore login item: \(error.localizedDescription)\n", stderr); exit(1) }
+            print("Login item after installation: \(LoginItemMaintenance.describe(SMAppService.mainApp.status))")
+            return
+        }
+        if CommandLine.arguments.contains("--login-item-status") {
+            print(LoginItemMaintenance.describe(SMAppService.mainApp.status))
             return
         }
         if CommandLine.arguments.contains("--list-loopback-devices") {
