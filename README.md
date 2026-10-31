@@ -69,7 +69,7 @@ voiremote --self-check
 open /Applications/VoiRemote.app
 ```
 
-安装会下载固定 commit、SHA-256 的源码归档，用 Swift 6 独立 CLT 运行核心/适配器检查并编译，不下载预编译 app，也不安装配套 Formula 或音频驱动。Cask 将 app 本体移入应用程序，清理构建缓存；Caskroom 只保留指向该 app 的受管理链接，没有第二份 app。`voiremote` 命令打开实际安装路径，也支持 `--version` 和 `--self-check`。
+安装会下载固定 commit、SHA-256 的源码归档，用 Swift 6 独立 CLT 运行核心/适配器检查并编译，不下载预编译 app，也不安装配套 Formula 或音频驱动。Cask通过当前支持的非交互安装器将app本体移入应用程序，再恢复此前已启用的登录项，不使用弃用的postflight钩子。安装器验证包的签名和来源，不覆盖已有目标；卸载时退回暂存区供Homebrew清理。构建缓存清理后，Caskroom 只保留指向该 app 的受管理链接，没有第二份 app。`voiremote` 命令打开实际安装路径，也支持 `--version` 和 `--self-check`。
 
 Homebrew 若提示来源未信任，执行 `brew trust --cask realdgd/voiremote/voiremote` 后重试。这里的 Cask 始终从源码编译，不使用只对 Formula 生效的 `--build-from-source` 或 `brew test`；安装时自动运行检查，安装后的完整来源/签名/单份 app 验收见[构建与安装](docs/development.md)。
 

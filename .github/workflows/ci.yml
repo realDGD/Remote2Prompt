@@ -78,6 +78,8 @@ jobs:
           case "$swift_path" in "$DEVELOPER_DIR"/*) ;; *) echo 'Swift is outside standalone CLT' >&2; exit 1 ;; esac
           /usr/bin/xcrun swift --version
           /usr/bin/xcrun --sdk macosx --show-sdk-path
+      - name: Verify vendor installer file ownership
+        run: ./scripts/check-cask-installer.sh
       - name: Core checks, adapter checks, Release bundle and repository checks
         run: /usr/bin/make check
       - name: Install single source Cask through the public HTTPS tap
@@ -87,7 +89,11 @@ jobs:
           if brew command trust >/dev/null 2>&1; then
             brew trust --cask realdgd/voiremote/voiremote
           fi
-          brew install --cask realdgd/voiremote/voiremote
+          set -o pipefail
+          brew install --cask realdgd/voiremote/voiremote 2>&1 | tee "$RUNNER_TEMP/voiremote-install.log"
+          if /usr/bin/grep -E 'Calling `(preflight|postflight|uninstall_preflight|uninstall_postflight)` is deprecated' "$RUNNER_TEMP/voiremote-install.log"; then
+            exit 1
+          fi
           ./scripts/verify-homebrew-install.sh
           case "$(voiremote --login-item-status)" in
             notRegistered|notFound) ;;

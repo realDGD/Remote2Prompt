@@ -15,21 +15,21 @@ cask "voiremote" do
                       env: { "DEVELOPER_DIR" => "/Library/Developer/CommandLineTools" }
   end
 
-  app "@SOURCE_ROOT@/dist/VoiRemote.app"
+  installer script: {
+    executable: "@SOURCE_ROOT@/scripts/install-cask-app.sh",
+    args: ["#{appdir}/VoiRemote.app", @SOURCE_COMMIT@],
+  }
   binary "@SOURCE_ROOT@/packaging/homebrew/voiremote"
 
   postflight_steps do
     remove ["@SOURCE_ROOT@/.build", "@SOURCE_ROOT@/.swiftpm"], recursive: true
   end
 
-  # ServiceManagement needs Mach services unavailable in the file-preparation sandbox.
-  postflight do
-    system_command "#{appdir}/VoiRemote.app/Contents/MacOS/VoiRemote",
-                   args: ["--restore-login-item"], print_stdout: true, must_succeed: false
-  end
-
   uninstall quit: "dev.voiremote.app",
-            script: { executable: "#{appdir}/VoiRemote.app/Contents/MacOS/VoiRemote", args: ["--unregister-login-item"] }
+            script: {
+              executable: "@SOURCE_ROOT@/scripts/uninstall-cask-app.sh",
+              args: ["#{appdir}/VoiRemote.app", @SOURCE_COMMIT@],
+            }
 
   zap trash: [
     "~/Library/Application Support/VoiRemote",
